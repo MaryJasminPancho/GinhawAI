@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import asyncpg
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from uuid import UUID
 
 # Explicitly find and load the backend/.env file relative to this script
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -38,6 +39,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Enable CORS for Next.js frontend
 app.add_middleware(
     CORSMiddleware,
@@ -56,3 +64,29 @@ async def health_db():
     async with app.state.db_pool.acquire() as conn:
         version = await conn.fetchval("SELECT version();")
     return {"database": "connected", "postgres_version": version}
+
+@app.get("/api/programs")
+async def list_programs():
+    async with app.state.db_pool.acquire() as conn:
+        rows = await conn.fetch("SELECT program_id, program_name, agency, scope, is_active FROM programs;")
+    return [dict(row) for row in rows]
+
+@app.get("/api/programs/{program_id}/eligibility")
+async def get_eligibility(program_id: UUID):
+    async with app.state.db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT criteria_id, attribute, operator, threshold_value, weight "
+            "FROM eligibility_criteria WHERE program_id = $1;",
+            program_id,
+        )
+    return [dict(row) for row in rows]
+
+@app.get("/api/programs/{program_id}/documents")
+async def get_documents(program_id: UUID):
+    async with app.state.db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT doc_id, document_name, is_mandatory, notes "
+            "FROM document_requirements WHERE program_id = $1;",
+            program_id,
+        )
+    return [dict(row) for row in rows]
