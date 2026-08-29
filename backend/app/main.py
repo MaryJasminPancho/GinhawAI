@@ -7,6 +7,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from uuid import UUID
 
+from datetime import datetime, timedelta, timezone
+import bcrypt
+import jwt
+from pydantic import BaseModel
+from fastapi import HTTPException
+
+
 # Explicitly find and load the backend/.env file relative to this script
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env_path = BASE_DIR / "backend" / ".env"
@@ -15,6 +22,16 @@ if env_path.exists():
     load_dotenv(dotenv_path=env_path)
 else:
     load_dotenv()  # Fallback to current working directory
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+print("SECRET_KEY loaded:", repr(SECRET_KEY))
+
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRE_MINUTES = 60
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -90,3 +107,28 @@ async def get_documents(program_id: UUID):
             program_id,
         )
     return [dict(row) for row in rows]
+
+@app.post("/api/auth/login")
+async def login(credentials: LoginRequest):
+    async with app.state.db_pool.acquire() as conn:
+        user = await conn.fetchrow(
+            "SELECT au.user_id, au.password_hash, au.is_active, r.role_name "
+            "FROM admin_users au JOIN roles r ON au.role_id = r.role_id "
+            "WHERE au.username = $1;",
+            credentials.username,
+        )
+
+    if user is None or not user["is_active"]:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    if not bcrypt.checkpw(credentials.password.encode("utf-8"), user["password_hash"].encode("utf-8")):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    payload = {
+        "sub": str(user["user_id"]),
+        "role": user["role_name"],
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=JWT_EXPIRE_MINUTES),
+    }
+    token = jwt.encode(payload, SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+    return {"access_token": token, "token_type": "bearer"}
