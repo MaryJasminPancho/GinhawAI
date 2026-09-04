@@ -13,6 +13,9 @@ import jwt
 from pydantic import BaseModel
 from fastapi import HTTPException
 
+from fastapi import Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
 
 # Explicitly find and load the backend/.env file relative to this script
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -32,6 +35,18 @@ JWT_EXPIRE_MINUTES = 60
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+security = HTTPBearer()
+
+def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[JWT_ALGORITHM])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return payload
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -107,6 +122,10 @@ async def get_documents(program_id: UUID):
             program_id,
         )
     return [dict(row) for row in rows]
+
+@app.get("/api/auth/me")
+async def read_current_admin(current_admin: dict = Depends(get_current_admin)):
+    return {"user_id": current_admin["sub"], "role": current_admin["role"]}
 
 @app.post("/api/auth/login")
 async def login(credentials: LoginRequest):
