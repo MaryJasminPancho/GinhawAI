@@ -87,6 +87,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class ProgramCreate(BaseModel):
+    program_name: str
+    agency: str
+    scope: str
+    is_active: bool = True
+
+class EligibilityCriteriaCreate(BaseModel):
+    attribute: str
+    operator: str
+    threshold_value: str
+    weight: float
+
+class DocumentRequirementCreate(BaseModel):
+    document_name: str
+    is_mandatory: bool = True
+    notes: str | None = None
+
 @app.get("/")
 def read_root():
     return {"status": "GinhawAI backend is running"}
@@ -151,3 +168,52 @@ async def login(credentials: LoginRequest):
     token = jwt.encode(payload, SECRET_KEY, algorithm=JWT_ALGORITHM)
 
     return {"access_token": token, "token_type": "bearer"}
+
+@app.post("/api/programs", status_code=201)
+async def create_program(program: ProgramCreate, current_admin: dict = Depends(get_current_admin)):
+    if current_admin["role"] != "System Administrator":
+        raise HTTPException(status_code=403, detail="Only System Administrators can create programs")
+
+    async with app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "INSERT INTO programs (program_name, agency, scope, is_active) "
+            "VALUES ($1, $2, $3, $4) RETURNING program_id, program_name, agency, scope, is_active;",
+            program.program_name, program.agency, program.scope, program.is_active,
+        )
+    return dict(row)
+
+@app.post("/api/programs/{program_id}/eligibility", status_code=201)
+async def create_eligibility_criteria(
+    program_id: UUID,
+    criteria: EligibilityCriteriaCreate,
+    current_admin: dict = Depends(get_current_admin),
+):
+    if current_admin["role"] != "System Administrator":
+        raise HTTPException(status_code=403, detail="Only System Administrators can add eligibility criteria")
+
+    async with app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "INSERT INTO eligibility_criteria (program_id, attribute, operator, threshold_value, weight) "
+            "VALUES ($1, $2, $3, $4, $5) "
+            "RETURNING criteria_id, program_id, attribute, operator, threshold_value, weight;",
+            program_id, criteria.attribute, criteria.operator, criteria.threshold_value, criteria.weight,
+        )
+    return dict(row)
+
+@app.post("/api/programs/{program_id}/documents", status_code=201)
+async def create_document_requirement(
+    program_id: UUID,
+    document: DocumentRequirementCreate,
+    current_admin: dict = Depends(get_current_admin),
+):
+    if current_admin["role"] != "System Administrator":
+        raise HTTPException(status_code=403, detail="Only System Administrators can add document requirements")
+
+    async with app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "INSERT INTO document_requirements (program_id, document_name, is_mandatory, notes) "
+            "VALUES ($1, $2, $3, $4) "
+            "RETURNING doc_id, program_id, document_name, is_mandatory, notes;",
+            program_id, document.document_name, document.is_mandatory, document.notes,
+        )
+    return dict(row)
