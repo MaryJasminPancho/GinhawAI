@@ -87,6 +87,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+#classes
+
 class ProgramCreate(BaseModel):
     program_name: str
     agency: str
@@ -103,6 +105,13 @@ class DocumentRequirementCreate(BaseModel):
     document_name: str
     is_mandatory: bool = True
     notes: str | None = None
+
+class LguOfficeCreate(BaseModel):
+    office_name: str
+    address: str | None = None
+    barangay_code: str
+    contact_number: str | None = None
+    operating_hours: str | None = None
 
 @app.get("/")
 def read_root():
@@ -215,5 +224,34 @@ async def create_document_requirement(
             "VALUES ($1, $2, $3, $4) "
             "RETURNING doc_id, program_id, document_name, is_mandatory, notes;",
             program_id, document.document_name, document.is_mandatory, document.notes,
+        )
+    return dict(row)
+
+@app.get("/api/barangays")
+async def list_barangays():
+    async with app.state.db_pool.acquire() as conn:
+        rows = await conn.fetch("SELECT barangay_code, barangay_name, city_municipality FROM barangays;")
+    return [dict(row) for row in rows]
+
+@app.get("/api/lgu-offices")
+async def list_lgu_offices():
+    async with app.state.db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT office_id, office_name, address, barangay_code, contact_number, operating_hours FROM lgu_offices;"
+        )
+    return [dict(row) for row in rows]
+
+
+@app.post("/api/lgu-offices", status_code=201)
+async def create_lgu_office(office: LguOfficeCreate, current_admin: dict = Depends(get_current_admin)):
+    if current_admin["role"] != "System Administrator":
+        raise HTTPException(status_code=403, detail="Only System Administrators can add LGU offices")
+
+    async with app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "INSERT INTO lgu_offices (office_name, address, barangay_code, contact_number, operating_hours) "
+            "VALUES ($1, $2, $3, $4, $5) "
+            "RETURNING office_id, office_name, address, barangay_code, contact_number, operating_hours;",
+            office.office_name, office.address, office.barangay_code, office.contact_number, office.operating_hours,
         )
     return dict(row)
