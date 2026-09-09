@@ -153,6 +153,38 @@ async def get_documents(program_id: UUID):
 async def read_current_admin(current_admin: dict = Depends(get_current_admin)):
     return {"user_id": current_admin["sub"], "role": current_admin["role"]}
 
+@app.get("/api/admin-users")
+async def list_admin_users(current_admin: dict = Depends(get_current_admin)):
+    if current_admin["role"] != "System Administrator":
+        raise HTTPException(status_code=403, detail="Only System Administrators can view admin accounts")
+
+    async with app.state.db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT au.user_id, au.username, r.role_name, au.is_active, au.last_login "
+            "FROM admin_users au JOIN roles r ON au.role_id = r.role_id;"
+        )
+    return [dict(row) for row in rows]
+
+
+@app.patch("/api/admin-users/{user_id}/deactivate")
+async def deactivate_admin_user(user_id: UUID, current_admin: dict = Depends(get_current_admin)):
+    if current_admin["role"] != "System Administrator":
+        raise HTTPException(status_code=403, detail="Only System Administrators can deactivate accounts")
+
+    # Block self-deactivation — an admin should never be able to lock themselves out
+    if str(user_id) == current_admin["sub"]:
+        raise HTTPException(status_code=400, detail="You cannot deactivate your own account")
+
+    async with app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "UPDATE admin_users SET is_active = FALSE WHERE user_id = $1 "
+            "RETURNING user_id, username, is_active;",
+            user_id,
+        )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    return dict(row)
+
 @app.post("/api/auth/login")
 async def login(credentials: LoginRequest):
     async with app.state.db_pool.acquire() as conn:
@@ -168,6 +200,12 @@ async def login(credentials: LoginRequest):
 
     if not bcrypt.checkpw(credentials.password.encode("utf-8"), user["password_hash"].encode("utf-8")):
         raise HTTPException(status_code=401, detail="Invalid username or password")
+    
+    async with app.state.db_pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE admin_users SET last_login = NOW() WHERE user_id = $1;",
+            user["user_id"],
+        )
 
     payload = {
         "sub": str(user["user_id"]),
