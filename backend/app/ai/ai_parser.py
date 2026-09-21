@@ -24,6 +24,19 @@ Citizen message: {message}
 
 async def extract_entities(message: str) -> dict:
     prompt = EXTRACTION_PROMPT.format(message=message)
-    response = await client.aio.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+
+    try:
+        response = await client.aio.models.generate_content(model="gemini-3.6-flash", contents=prompt)
+    except Exception as e:
+        # Gemini's servers can be temporarily overloaded, rate-limited, or unreachable —
+        # don't let that crash the whole request, just report nothing extracted this turn
+        print(f"Gemini extraction failed: {e}")
+        return {}
+
     text = response.text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-    return json.loads(text)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # The model occasionally doesn't follow the "JSON only" instruction perfectly
+        print(f"Gemini returned non-JSON response: {text}")
+        return {}
