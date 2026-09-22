@@ -8,6 +8,8 @@ from app.ai.ai_parser import extract_entities
 
 router = APIRouter()
 
+REQUIRED_FIELDS = ["monthly_income", "number_of_dependents", "is_unemployed", "has_pwd"]
+
 @router.post("/api/sessions", status_code=201)
 async def start_session(request: Request):
     session_id = secrets.token_urlsafe(24)
@@ -36,8 +38,24 @@ async def send_message(session_id: str, payload: MessageIn, request: Request):
     existing = state.get("entities", {})
     state["entities"] = {**existing, **{k: v for k, v in entities.items() if v is not None}}
 
-    reply = f"Got it — noted what you shared so far: {state['entities']}"
-    state["messages"].append({"from": "system", "text": reply})
+    # Deterministic slot-filling — deliberately separate from the AI extraction step above.
+    # Mirrors how the real XLM-RoBERTa model will only ever handle extraction, never flow control.
+    missing_fields = [f for f in REQUIRED_FIELDS if state["entities"].get(f) is None]
+    profile_complete = len(missing_fields) == 0
+
+    system_message = (
+        "All required information collected — ready for vulnerability scoring."
+        if profile_complete
+        else f"Still need: {', '.join(missing_fields)}"
+    )
+    state["messages"].append({"from": "system", "text": system_message})
 
     await request.app.state.redis.set(f"session:{session_id}", json.dumps(state), ex=SESSION_TTL_SECONDS)
-    return {"session_id": session_id, "reply": reply, "entities": state["entities"]}
+
+    return {
+        "session_id": session_id,
+        "entities": state["entities"],
+        "missing_fields": missing_fields,
+        "profile_complete": profile_complete,
+        "system_message": system_message,
+    }

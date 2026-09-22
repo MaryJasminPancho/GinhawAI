@@ -4,6 +4,7 @@ Extracts the same entity fields the dev guide's XLM-RoBERTa pipeline expects,
 so swapping this out later doesn't require changing anything downstream. """
 
 import json
+import asyncio
 from google import genai
 from app.config import GEMINI_API_KEY
 
@@ -24,6 +25,24 @@ Citizen message: {message}
 
 async def extract_entities(message: str) -> dict:
     prompt = EXTRACTION_PROMPT.format(message=message)
-    response = await client.aio.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+
+    last_error = None
+    for attempt in range(3):
+        try:
+            response = await client.aio.models.generate_content(model="gemini-3.6-flash", contents=prompt)
+            break
+        except Exception as e:
+            last_error = e
+            print(f"Gemini extraction attempt {attempt + 1} failed: {e}")
+            if attempt < 2:
+                await asyncio.sleep(2 ** attempt)  # wait 1s, then 2s, before retrying
+    else:
+        print(f"Gemini extraction failed after 3 attempts: {last_error}")
+        return {}
+
     text = response.text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-    return json.loads(text)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        print(f"Gemini returned non-JSON response: {text}")
+        return {}
