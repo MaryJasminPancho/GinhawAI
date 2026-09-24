@@ -1,6 +1,7 @@
 # Environment secrets (NEVER COMMIT)
 .env
 *.env
+.env.example
 
 # Virtual Environment
 .venv/
