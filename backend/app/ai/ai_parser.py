@@ -27,7 +27,7 @@ async def extract_entities(message: str) -> dict:
     prompt = EXTRACTION_PROMPT.format(message=message)
 
     last_error = None
-    for attempt in range(3):
+    for attempt in range(5):
         try:
             response = await client.aio.models.generate_content(model="gemini-3.6-flash", contents=prompt)
             break
