@@ -36,7 +36,7 @@ export function ColumnChart({ data, height = 180, format = fmtNum, ariaLabel }: 
           <div className="relative flex items-end gap-[2px]" style={{ height: height - 24 }}>
             {data.map((d, i) => (
               <div
-                key={d.label}
+                key={`${i}-${d.label}`}
                 className="group relative flex h-full flex-1 cursor-default items-end justify-center"
                 onMouseEnter={() => setHover(i)}
                 onMouseLeave={() => setHover(null)}
@@ -58,7 +58,7 @@ export function ColumnChart({ data, height = 180, format = fmtNum, ariaLabel }: 
           <div className="mt-1.5 flex gap-[2px]">
             {data.map((d, i) => (
               <span
-                key={d.label}
+                key={`${i}-${d.label}`}
                 className={`flex-1 truncate text-center text-[10px] text-gray-400 dark:text-gray-500 ${data.length > 8 && i % 2 === 1 ? "invisible sm:visible" : ""}`}
               >
                 {d.label}
@@ -76,8 +76,9 @@ export function BarList({ data, format = fmtNum, max: forcedMax }: { data: Point
   const max = forcedMax ?? Math.max(1, ...data.map((d) => d.value));
   return (
     <ul className="space-y-2.5">
-      {data.map((d) => (
-        <li key={d.label} className="group" title={`${d.label}: ${format(d.value)}${d.sub ? ` · ${d.sub}` : ""}`}>
+      {data.map((d, i) => (
+        // Index in the key: two items can share a label (e.g. two programs both shortened to "TUPAD").
+        <li key={`${i}-${d.label}`} className="group" title={`${d.label}: ${format(d.value)}${d.sub ? ` · ${d.sub}` : ""}`}>
           <div className="mb-1 flex items-baseline justify-between gap-3 text-[13px]">
             <span className="truncate text-gray-700 dark:text-gray-300">{d.label}</span>
             <span className="shrink-0 font-semibold tabular-nums text-gray-900 dark:text-white">
