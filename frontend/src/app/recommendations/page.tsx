@@ -1,8 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import Backdrop from "@/components/Backdrop";
+import PageHeader from "@/components/PageHeader";
+import { buttonClasses } from "@/components/Button";
 import {
   getProgramDocuments,
   getProgramEligibility,
@@ -22,16 +24,48 @@ function asText(item: ListItem): string {
   return JSON.stringify(item);
 }
 
+function ProgramIcon() {
+  return (
+    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M12 2l3 6 6 .9-4.5 4.3 1 6.3L12 16.9 6.5 19.5l1-6.3L3 8.9 9 8l3-6z" />
+      </svg>
+    </div>
+  );
+}
+
+function ChevronDown() {
+  return (
+    <svg
+      className="mt-1 shrink-0 text-gray-300 transition group-open:rotate-180 dark:text-gray-600"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.3"
+      aria-hidden="true"
+    >
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
 function DetailList({ title, items }: { title: string; items: ListItem[] }) {
   return (
     <div>
-      <h3 className="mb-1 text-sm font-semibold">{title}</h3>
+      <h3 className="mb-1.5 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+        {title}
+      </h3>
       {items.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">Nothing listed.</p>
+        <p className="text-[13px] text-gray-400 dark:text-gray-500">Nothing listed.</p>
       ) : (
-        <ul className="list-disc space-y-1 pl-5 text-sm text-gray-700 dark:text-gray-300">
+        <ul className="space-y-1.5 text-[13px] text-gray-600 dark:text-gray-300">
           {items.map((it, i) => (
-            <li key={i}>{asText(it)}</li>
+            <li key={i} className="flex gap-2">
+              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand-500" />
+              {asText(it)}
+            </li>
           ))}
         </ul>
       )}
@@ -61,36 +95,27 @@ function ProgramCard({ program }: { program: Program }) {
   return (
     <details
       onToggle={handleToggle}
-      className="group rounded-lg border border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-900"
+      className="group overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 open:ring-brand-300 dark:bg-white/[0.04] dark:ring-white/10 dark:open:ring-brand-500/40"
     >
-      <summary className="cursor-pointer list-none rounded-lg p-4 focus:outline-none focus:ring-2 focus:ring-green-600">
-        <div className="flex items-start justify-between gap-3">
+      <summary className="flex cursor-pointer list-none items-start justify-between gap-3 p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
+        <div className="flex gap-3">
+          <ProgramIcon />
           <div>
-            <h2 className="font-semibold text-green-800 dark:text-green-400">
-              {program.name}
-            </h2>
+            <h2 className="text-[15px] font-semibold text-gray-900 dark:text-white">{program.name}</h2>
             {program.description && (
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+              <p className="mt-0.5 text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">
                 {program.description}
               </p>
             )}
           </div>
-          <span
-            aria-hidden="true"
-            className="mt-1 text-gray-400 transition group-open:rotate-180"
-          >
-            ▾
-          </span>
         </div>
-        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-          Tap to see requirements
-        </p>
+        <ChevronDown />
       </summary>
 
-      <div className="space-y-4 border-t border-gray-200 p-4 dark:border-gray-700">
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      <div className="space-y-4 border-t border-gray-100 px-4 py-4 dark:border-white/10">
+        {error && <p className="text-[13px] text-red-600 dark:text-red-400">{error}</p>}
         {!error && (!eligibility || !documents) && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
+          <p className="text-[13px] text-gray-400 dark:text-gray-500">Loading…</p>
         )}
         {eligibility && documents && (
           <>
@@ -114,47 +139,33 @@ export default function RecommendationsPage() {
   }, []);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col p-4 text-gray-900 dark:text-gray-100">
-      <header className="mb-6 flex items-center gap-3">
-        <div className="rounded-lg bg-white p-1 shadow-sm">
-          <Image
-            src="/logo.png"
-            alt="GinhawAI"
-            width={243}
-            height={313}
-            priority
-            className="h-14 w-auto"
-          />
+    <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
+      <Backdrop />
+
+      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-lg sm:rounded-[32px] sm:bg-white/70 sm:p-8 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/[0.04] dark:sm:ring-white/10">
+        <PageHeader title="Programs for you" subtitle="Based on your assessment" />
+
+        <div className="relative z-10 mt-6 space-y-3">
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {!error && programs === null && (
+            <p className="text-sm text-gray-400 dark:text-gray-500">Loading programs…</p>
+          )}
+          {programs?.length === 0 && (
+            <p className="text-sm text-gray-400 dark:text-gray-500">No programs found.</p>
+          )}
+          {programs?.map((p) => (
+            <ProgramCard key={p.program_id} program={p} />
+          ))}
         </div>
-        <h1 className="text-xl font-semibold text-green-800 dark:text-green-400">
-          Programs for you
-        </h1>
-      </header>
 
-      <div className="space-y-3">
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-        {!error && programs === null && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading programs…</p>
-        )}
-        {programs?.length === 0 && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">No programs found.</p>
-        )}
-        {programs?.map((p) => (
-          <ProgramCard key={p.program_id} program={p} />
-        ))}
-      </div>
+        <p className="relative z-10 mt-4 text-xs leading-relaxed text-gray-400 dark:text-gray-500">
+          Final eligibility is confirmed by your LGU office. Bring the listed documents when you visit.
+        </p>
 
-      <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-        Final eligibility is confirmed by your LGU office. Bring the listed
-        documents when you visit.
-      </p>
-
-      <Link
-        href="/language"
-        className="mt-6 rounded-xl border border-gray-300 px-6 py-3 text-center font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
-      >
-        Start over
-      </Link>
-    </main>
+        <Link href="/language" className={buttonClasses("secondary", "relative z-10 mt-6 w-full text-center")}>
+          Start over
+        </Link>
+      </main>
+    </div>
   );
 }

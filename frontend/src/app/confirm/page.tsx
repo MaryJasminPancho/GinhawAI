@@ -1,9 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Backdrop from "@/components/Backdrop";
+import PageHeader from "@/components/PageHeader";
+import { buttonClasses } from "@/components/Button";
 import { getSession } from "@/lib/api";
 
 // Friendly names for known fields. Anything not listed is auto-formatted
@@ -22,6 +24,18 @@ function labelFor(key: string) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+function ErrorNotice({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2 p-4 text-sm text-red-700 dark:text-red-300">
+      <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 8v5M12 16h.01" />
+      </svg>
+      <span>{children}</span>
+    </div>
+  );
+}
+
 function ConfirmInner() {
   const sessionId = useSearchParams().get("session");
   const [data, setData] = useState<Record<string, unknown> | null>(null);
@@ -38,76 +52,54 @@ function ConfirmInner() {
   const entries = data ? Object.entries(data) : [];
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col p-4 text-gray-900 dark:text-gray-100">
-      <header className="mb-6 flex items-center gap-3">
-        <div className="rounded-lg bg-white p-1 shadow-sm">
-          <Image
-            src="/logo.png"
-            alt="GinhawAI"
-            width={243}
-            height={313}
-            priority
-            className="h-14 w-auto"
-          />
+    <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
+      <Backdrop />
+
+      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-lg sm:rounded-[32px] sm:bg-white/70 sm:p-8 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/[0.04] dark:sm:ring-white/10">
+        <PageHeader title="Confirm your answers" step={3} totalSteps={4} />
+
+        <section className="relative z-10 mt-6 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5 dark:bg-white/[0.04] dark:ring-white/10">
+          {missingSession && <ErrorNotice>No session found. Please start over.</ErrorNotice>}
+          {error && <ErrorNotice>{error}</ErrorNotice>}
+          {!missingSession && !error && data === null && (
+            <p className="p-4 text-sm text-gray-400 dark:text-gray-500">Loading your answers…</p>
+          )}
+          {data !== null && entries.length === 0 && (
+            <p className="p-4 text-sm text-gray-400 dark:text-gray-500">
+              No answers were collected yet.
+            </p>
+          )}
+          {entries.length > 0 && (
+            <dl className="divide-y divide-gray-100 dark:divide-white/10">
+              {entries.map(([key, value]) => (
+                <div key={key} className="flex justify-between gap-4 px-5 py-3.5">
+                  <dt className="text-sm text-gray-400 dark:text-gray-500">{labelFor(key)}</dt>
+                  <dd className="text-right text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {String(value ?? "—")}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </section>
+
+        <div className="relative z-10 mt-6 flex flex-col gap-3">
+          <Link
+            href={`/score?session=${sessionId ?? ""}`}
+            aria-disabled={missingSession}
+            className={buttonClasses(
+              "primary",
+              `w-full text-center ${missingSession ? "pointer-events-none opacity-50" : ""}`
+            )}
+          >
+            Yes, this is correct
+          </Link>
+          <Link href="/language" className={buttonClasses("secondary", "w-full text-center")}>
+            Start over
+          </Link>
         </div>
-        <h1 className="text-xl font-semibold text-green-800 dark:text-green-400">
-          Confirm your answers
-        </h1>
-      </header>
-
-      <section className="rounded-lg border border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-900">
-        {missingSession && (
-          <p className="p-4 text-sm text-red-600 dark:text-red-400">
-            No session found. Please start over.
-          </p>
-        )}
-        {error && (
-          <p className="p-4 text-sm text-red-600 dark:text-red-400">{error}</p>
-        )}
-        {!missingSession && !error && data === null && (
-          <p className="p-4 text-sm text-gray-500 dark:text-gray-400">
-            Loading your answers…
-          </p>
-        )}
-        {data !== null && entries.length === 0 && (
-          <p className="p-4 text-sm text-gray-500 dark:text-gray-400">
-            No answers were collected yet.
-          </p>
-        )}
-        {entries.length > 0 && (
-          <dl className="divide-y divide-gray-200 dark:divide-gray-700">
-            {entries.map(([key, value]) => (
-              <div key={key} className="flex justify-between gap-4 px-4 py-3">
-                <dt className="text-sm text-gray-500 dark:text-gray-400">
-                  {labelFor(key)}
-                </dt>
-                <dd className="text-right text-sm font-medium">
-                  {String(value ?? "—")}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        )}
-      </section>
-
-      <div className="mt-6 flex flex-col gap-3">
-        <Link
-          href={`/score?session=${sessionId ?? ""}`}
-          aria-disabled={missingSession}
-          className={`rounded-xl bg-green-700 px-6 py-3 text-center font-semibold text-white transition hover:bg-green-800 dark:bg-green-600 dark:hover:bg-green-500 ${
-            missingSession ? "pointer-events-none opacity-50" : ""
-          }`}
-        >
-          Yes, this is correct
-        </Link>
-        <Link
-          href="/language"
-          className="rounded-xl border border-gray-300 px-6 py-3 text-center font-medium transition hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
-        >
-          Start over
-        </Link>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
 
