@@ -4,6 +4,26 @@
    not by the device setting alone. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+@theme inline {
+  /* Brand scale sampled from the GinhawAI logo (green, hue ~152°). */
+  --color-brand-50: #f1f8f5;
+  --color-brand-100: #dff1e9;
+  --color-brand-200: #bde5d2;
+  --color-brand-300: #8fd6b5;
+  --color-brand-400: #65c397;
+  --color-brand-500: #3fab79;
+  --color-brand-600: #2c8c5f;
+  --color-brand-700: #1f6f4a;
+  --color-brand-800: #165538;
+  --color-brand-900: #103c28;
+  --color-brand-950: #0a2418;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -11,16 +31,9 @@
 }
 
 .dark {
-  --background: #0a0a0a;
+  --background: #0a0f0c;
   --foreground: #ededed;
   color-scheme: dark;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 body {

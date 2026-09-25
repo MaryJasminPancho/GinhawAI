@@ -1,16 +1,20 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import ChatBubble, { Role } from "@/components/ChatBubble";
+import Backdrop from "@/components/Backdrop";
+import PageHeader from "@/components/PageHeader";
+import ChatBubble, { Role, TypingBubble } from "@/components/ChatBubble";
+import { buttonClasses } from "@/components/Button";
 import { sendMessage, startSession } from "@/lib/api";
 
 type Msg = { id: number; role: Role; text: string };
 
+const LANGUAGE_LABELS: Record<string, string> = { fil: "Filipino", ceb: "Bisaya", en: "English" };
+
 function ChatInner() {
-  // Language page should link here as /chat?lang=fil | /chat?lang=bis | /chat?lang=en
+  // Language page should link here as /chat?lang=fil | /chat?lang=ceb | /chat?lang=en
   const lang = useSearchParams().get("lang") ?? "en";
 
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -22,7 +26,8 @@ function ChatInner() {
 
   const nextId = useRef(0);
   const started = useRef(false); // stops React dev Strict Mode from creating 2 sessions
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const addMessage = (role: Role, text: string) =>
     setMessages((prev) => [...prev, { id: nextId.current++, role, text }]);
@@ -36,9 +41,14 @@ function ChatInner() {
       .catch((e) => setError(`Could not start a chat session. Is the backend running? (${e.message})`));
   }, [lang]);
 
-  // Keep the newest message in view.
+  // Keep the newest message in view. Scrolls only the message list itself
+  // (via scrollTop), not scrollIntoView — that call also "scrolls" ancestors
+  // with overflow-hidden (like the h-screen <main> below), which silently
+  // shifted the whole page up and pushed the header off-screen.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, sending]);
 
   async function handleSend(e: React.FormEvent) {
@@ -58,73 +68,77 @@ function ChatInner() {
       setError(`Message failed to send. ${(e as Error).message}`);
     } finally {
       setSending(false);
+      inputRef.current?.focus();
     }
   }
 
   return (
-    <main className="mx-auto flex h-screen max-w-2xl flex-col p-4 text-gray-900 dark:text-gray-100">
-      <header className="mb-4 flex items-center gap-3">
-        {/* White tile keeps the logo's white background looking intentional in dark mode */}
-        <div className="rounded-lg bg-white p-1 shadow-sm">
-          <Image
-            src="/logo.png"
-            alt="GinhawAI"
-            width={243}
-            height={313}
-            priority
-            className="h-14 w-auto"
-          />
-        </div>
-        <h1 className="text-xl font-semibold text-green-800 dark:text-green-400">
-          Assessment
-        </h1>
-      </header>
+    // On phones this is a full h-screen app (edge-to-edge, no page scroll).
+    // From sm: up it becomes a fixed-height card (bounded, not stretched to
+    // whatever the monitor's height is) centered over the full-bleed backdrop.
+    <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
+      <Backdrop />
 
-      <div className="flex-1 space-y-3 overflow-y-auto rounded-lg border border-gray-300 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-        {messages.length === 0 && !error && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {sessionId ? "Say hello to begin." : "Starting session…"}
-          </p>
-        )}
-        {messages.map((m) => (
-          <ChatBubble key={m.id} role={m.role} text={m.text} />
-        ))}
-        {sending && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Typing…</p>
-        )}
-        <div ref={bottomRef} />
-      </div>
+      <main className="relative mx-auto flex h-screen w-full max-w-md flex-col p-4 text-gray-900 dark:text-gray-100 sm:h-[min(760px,88vh)] sm:max-w-lg sm:rounded-[32px] sm:bg-white/70 sm:p-6 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/[0.04] dark:sm:ring-white/10">
+        <PageHeader title="Assessment" subtitle={LANGUAGE_LABELS[lang] ?? lang} step={2} totalSteps={4} />
 
-      {error && (
-        <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
-      )}
-
-      {complete ? (
-        <Link
-          href={`/confirm?session=${sessionId}`}
-          className="mt-3 rounded-lg bg-green-700 px-4 py-2 text-center font-medium text-white hover:bg-green-800 dark:bg-green-600 dark:hover:bg-green-500"
+        <div
+          ref={scrollRef}
+          className="relative z-10 mt-4 flex-1 space-y-4 overflow-y-auto rounded-3xl bg-white/70 p-4 shadow-sm ring-1 ring-black/5 backdrop-blur dark:bg-white/[0.03] dark:ring-white/10"
         >
-          Review your answers
-        </Link>
-      ) : (
-        <form onSubmit={handleSend} className="mt-3 flex gap-2">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message…"
-            disabled={!sessionId || sending}
-            className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-600 disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
-          />
-          <button
-            type="submit"
-            disabled={!sessionId || sending || !input.trim()}
-            className="rounded-lg bg-green-700 px-4 py-2 font-medium text-white hover:bg-green-800 disabled:opacity-50 dark:bg-green-600 dark:hover:bg-green-500"
+          {messages.length === 0 && !error && (
+            <p className="p-2 text-sm text-gray-400 dark:text-gray-500">
+              {sessionId ? "Say hello to begin." : "Starting session…"}
+            </p>
+          )}
+          {messages.map((m) => (
+            <ChatBubble key={m.id} role={m.role} text={m.text} />
+          ))}
+          {sending && <TypingBubble />}
+        </div>
+
+        {error && (
+          <div className="relative z-10 mt-3 flex items-start gap-2 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-100 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20">
+            <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v5M12 16h.01" />
+            </svg>
+            <span>{error}</span>
+          </div>
+        )}
+
+        {complete ? (
+          <Link
+            href={`/confirm?session=${sessionId}`}
+            className={buttonClasses("primary", "mt-3 w-full text-center")}
           >
-            Send
-          </button>
-        </form>
-      )}
-    </main>
+            Review your answers
+          </Link>
+        ) : (
+          <form onSubmit={handleSend} className="relative z-10 mt-3 flex items-center gap-2">
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type your message…"
+              disabled={!sessionId || sending}
+              className="flex-1 rounded-full bg-white px-4 py-3 text-[14px] text-gray-900 shadow-sm ring-1 ring-black/5 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-60 dark:bg-white/[0.04] dark:text-gray-100 dark:ring-white/10 dark:placeholder:text-gray-500"
+            />
+            <button
+              type="submit"
+              disabled={!sessionId || sending || !input.trim()}
+              aria-label="Send message"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-sm transition hover:shadow-md active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M22 2L11 13" />
+                <path d="M22 2l-7 20-4-9-9-4 20-7z" />
+              </svg>
+            </button>
+          </form>
+        )}
+      </main>
+    </div>
   );
 }
 
