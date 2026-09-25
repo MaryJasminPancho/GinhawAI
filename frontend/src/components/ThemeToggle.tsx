@@ -26,32 +26,21 @@ export default function ThemeToggle() {
     }
   }
 
-  const base =
-    "px-3 py-1.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600";
-  const on = "bg-green-700 text-white dark:bg-green-600";
-  const off =
-    "bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800";
+  const pill =
+    "rounded-full px-3 py-1.5 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500";
+  const on = "bg-brand-700 text-white shadow-sm dark:bg-brand-600";
+  const off = "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200";
 
   return (
     <div
       role="group"
       aria-label="Color theme"
-      className="inline-flex overflow-hidden rounded-lg border border-gray-300 dark:border-gray-700"
+      className="inline-flex rounded-full border border-gray-200/80 bg-white/80 p-0.5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5"
     >
-      <button
-        type="button"
-        aria-pressed={!isDark}
-        onClick={() => choose(false)}
-        className={`${base} ${!isDark ? on : off}`}
-      >
+      <button type="button" aria-pressed={!isDark} onClick={() => choose(false)} className={`${pill} ${!isDark ? on : off}`}>
         Light
       </button>
-      <button
-        type="button"
-        aria-pressed={isDark}
-        onClick={() => choose(true)}
-        className={`${base} ${isDark ? on : off}`}
-      >
+      <button type="button" aria-pressed={isDark} onClick={() => choose(true)} className={`${pill} ${isDark ? on : off}`}>
         Dark
       </button>
     </div>
