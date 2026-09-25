@@ -12,7 +12,6 @@ import { LANG_LABELS, t } from "@/lib/i18n";
 
 type Msg = { id: number; role: Role; text: string };
 
-
 function ChatInner() {
   // Language page should link here as /chat?lang=fil | /chat?lang=ceb | /chat?lang=en
   const param = useSearchParams().get("lang");
@@ -89,12 +88,12 @@ function ChatInner() {
     <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
       <Backdrop />
 
-      <main className="relative mx-auto flex h-screen w-full max-w-md flex-col p-4 text-gray-900 dark:text-gray-100 sm:h-[min(760px,88vh)] sm:max-w-lg sm:rounded-[32px] sm:bg-white/70 sm:p-6 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/[0.04] dark:sm:ring-white/10">
+      <main className="relative mx-auto flex h-screen w-full max-w-md flex-col p-4 text-gray-900 dark:text-gray-100 sm:h-[min(760px,88vh)] sm:max-w-lg sm:rounded-4xl sm:bg-white/70 sm:p-6 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
         <PageHeader title={t(lang, "assessment")} subtitle={LANG_LABELS[lang]} step={2} totalSteps={4} />
 
         <div
           ref={scrollRef}
-          className="relative z-10 mt-4 flex-1 space-y-4 overflow-y-auto rounded-3xl bg-white/70 p-4 shadow-sm ring-1 ring-black/5 backdrop-blur dark:bg-white/[0.03] dark:ring-white/10"
+          className="relative z-10 mt-4 flex-1 space-y-4 overflow-y-auto rounded-3xl bg-white/70 p-4 shadow-sm ring-1 ring-black/5 backdrop-blur dark:bg-white/3 dark:ring-white/10"
         >
           {messages.length === 0 && !error && (
             <p className="p-2 text-sm text-gray-400 dark:text-gray-500">
@@ -112,7 +111,7 @@ function ChatInner() {
                   key={c.value}
                   type="button"
                   onClick={() => send(c.label)}
-                  className="rounded-full bg-white px-3.5 py-2 text-[13px] font-medium text-brand-800 shadow-sm ring-1 ring-brand-200 transition hover:bg-brand-50 active:scale-95 dark:bg-white/[0.04] dark:text-brand-300 dark:ring-brand-500/30 dark:hover:bg-white/10"
+                  className="rounded-full bg-white px-3.5 py-2 text-[13px] font-medium text-brand-800 shadow-sm ring-1 ring-brand-200 transition hover:bg-brand-50 active:scale-95 dark:bg-white/4 dark:text-brand-300 dark:ring-brand-500/30 dark:hover:bg-white/10"
                 >
                   {c.label}
                 </button>
@@ -146,13 +145,13 @@ function ChatInner() {
               onChange={(e) => setInput(e.target.value)}
               placeholder={t(lang, "typeMessage")}
               disabled={!sessionId || sending}
-              className="flex-1 rounded-full bg-white px-4 py-3 text-[14px] text-gray-900 shadow-sm ring-1 ring-black/5 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-60 dark:bg-white/[0.04] dark:text-gray-100 dark:ring-white/10 dark:placeholder:text-gray-500"
+              className="flex-1 rounded-full bg-white px-4 py-3 text-[14px] text-gray-900 shadow-sm ring-1 ring-black/5 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-60 dark:bg-white/4 dark:text-gray-100 dark:ring-white/10 dark:placeholder:text-gray-500"
             />
             <button
               type="submit"
               disabled={!sessionId || sending || !input.trim()}
               aria-label="Send message"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-sm transition hover:shadow-md active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-linear-to-b from-brand-600 to-brand-700 text-white shadow-sm transition hover:shadow-md active:scale-95 disabled:pointer-events-none disabled:opacity-50"
             >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M22 2L11 13" />

@@ -8,7 +8,7 @@ from redis.exceptions import ConnectionError as RedisConnectionError, TimeoutErr
 
 from app.cache import create_redis_client
 from app.database import create_db_pool
-from app.routers import admin_users, analytics, audit_logs, auth, health, localization, programs, sessions, system, validation
+from app.routers import admin_users, analytics, audit_logs, auth, feedback, health, localization, programs, sessions, system, validation
 from app.settings import DEFAULTS, load_settings
 
 # Shared list object: the CORS middleware reads it on every request, so the
@@ -29,6 +29,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
 
 @app.exception_handler(RedisConnectionError)
 @app.exception_handler(RedisTimeoutError)
@@ -73,6 +74,7 @@ app.include_router(admin_users.router)
 app.include_router(programs.router)
 app.include_router(localization.router)
 app.include_router(sessions.router)
+app.include_router(feedback.router)
 app.include_router(audit_logs.router)
 app.include_router(analytics.router)
 app.include_router(validation.router)

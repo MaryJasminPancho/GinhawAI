@@ -43,7 +43,7 @@ function ProgramCard({ p, lang, have, onToggleDoc }: { p: ProgramResult; lang: L
   const st = STATUS[p.status];
   const matched = p.status !== "not_qualified";
   return (
-    <details className={`group overflow-hidden rounded-2xl border-l-4 bg-white shadow-sm ring-1 ring-black/5 dark:bg-white/[0.04] dark:ring-white/10 ${st.border}`}>
+    <details className={`group overflow-hidden rounded-2xl border-l-4 bg-white shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10 ${st.border}`}>
       <summary className="flex cursor-pointer list-none items-start justify-between gap-3 p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
         <div className="min-w-0">
           <h2 className="text-[15px] font-semibold leading-snug text-gray-900 dark:text-white">{p.program_name}</h2>
@@ -88,7 +88,7 @@ function ProgramCard({ p, lang, have, onToggleDoc }: { p: ProgramResult; lang: L
             <ul className="space-y-2">
               {p.documents.map((d) => (
                 <li key={d.doc_id}>
-                  <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-gray-50 p-3 dark:bg-white/[0.04]">
+                  <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-gray-50 p-3 dark:bg-white/4">
                     <input type="checkbox" checked={have.has(d.doc_id)} onChange={() => onToggleDoc(d.doc_id)} className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600" />
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-1.5 text-[13px] font-medium text-gray-800 dark:text-gray-200">
@@ -195,7 +195,7 @@ function RecommendationsInner() {
     <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
       <Backdrop />
 
-      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-lg sm:rounded-[32px] sm:bg-white/70 sm:p-8 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/[0.04] dark:sm:ring-white/10">
+      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-lg sm:rounded-4xl sm:bg-white/70 sm:p-8 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
         <PageHeader title={t(lang, "programsTitle")} subtitle={result?.barangay ? `Brgy. ${result.barangay}` : undefined} />
 
         <div className="relative z-10 mt-6 space-y-3">
@@ -228,7 +228,7 @@ function RecommendationsInner() {
             <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">{t(lang, "officesTitle")}</h2>
             <ul className="space-y-2">
               {result.offices.map((o) => (
-                <li key={o.office_id} className="rounded-2xl bg-white p-4 text-[13px] shadow-sm ring-1 ring-black/5 dark:bg-white/[0.04] dark:ring-white/10">
+                <li key={o.office_id} className="rounded-2xl bg-white p-4 text-[13px] shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10">
                   <p className="font-semibold text-gray-900 dark:text-white">{o.office_name}</p>
                   {o.address && <p className="mt-0.5 text-gray-600 dark:text-gray-300">{o.address}</p>}
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -242,7 +242,7 @@ function RecommendationsInner() {
 
         {/* Figs. 21–22 — SMS delivery */}
         {result && matched.length > 0 && (
-          <section className="relative z-10 mt-6 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 print:hidden dark:bg-white/[0.04] dark:ring-white/10">
+          <section className="relative z-10 mt-6 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 print:hidden dark:bg-white/4 dark:ring-white/10">
             {sms.state === "sent" ? (
               <div className="flex flex-col items-center gap-2 py-2 text-center">
                 <span className="flex h-12 w-12 animate-[pulse_1s_ease-out_1] items-center justify-center rounded-full bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-300">
@@ -263,9 +263,9 @@ function RecommendationsInner() {
                     placeholder="09XX XXX XXXX"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="flex-1 rounded-full bg-white px-4 py-2.5 text-[14px] text-gray-900 ring-1 ring-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-white/[0.04] dark:text-gray-100 dark:ring-white/10"
+                    className="flex-1 rounded-full bg-white px-4 py-2.5 text-[14px] text-gray-900 ring-1 ring-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-white/4 dark:text-gray-100 dark:ring-white/10"
                   />
-                  <button type="submit" disabled={!phone || sms.state === "sending"} className="rounded-full bg-gradient-to-b from-brand-600 to-brand-700 px-5 text-sm font-semibold text-white shadow-sm disabled:opacity-50">
+                  <button type="submit" disabled={!phone || sms.state === "sending"} className="rounded-full bg-linear-to-b from-brand-600 to-brand-700 px-5 text-sm font-semibold text-white shadow-sm disabled:opacity-50">
                     {sms.state === "sending" ? t(lang, "sending") : t(lang, "send")}
                   </button>
                 </div>

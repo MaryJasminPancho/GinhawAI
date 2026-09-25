@@ -45,7 +45,7 @@ async def extract_entities(message: str, current_question: str = "(start of conv
         except Exception as e:
             last_error = e
             print(f"Gemini extraction attempt {attempt + 1} failed: {e}")
-            if attempt < 2:
+            if attempt < 4:
                 await asyncio.sleep(2 ** attempt)  # wait 1s, then 2s, before retrying
     else:
         print(f"Gemini extraction failed after 3 attempts: {last_error}")
