@@ -74,7 +74,7 @@ function ScoreInner() {
   useEffect(() => {
     if (!sessionId) return;
     getSession(sessionId)
-      .then((s) => setScore(s.vulnerability_score ?? null))
+      .then((s) => setScore(s.state.vulnerability_score ?? null))
       .catch((e) => setError(`Could not load your score. (${e.message})`));
   }, [sessionId]);
 

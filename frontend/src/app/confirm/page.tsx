@@ -8,13 +8,19 @@ import { getSession } from "@/lib/api";
 
 // Friendly names for known fields. Anything not listed is auto-formatted
 // (e.g. "monthly_income" -> "Monthly income"), so new backend fields still show up.
-// CHECK: update the keys to match the backend's real field names.
 const LABELS: Record<string, string> = {
-  full_name: "Full name",
-  barangay: "Barangay",
-  household_size: "Household size",
   monthly_income: "Monthly income (₱)",
+  number_of_dependents: "Number of dependents",
+  is_unemployed: "Currently unemployed",
+  has_pwd: "Household member with disability",
 };
+
+function formatValue(value: unknown) {
+  if (value === true) return "Yes";
+  if (value === false) return "No";
+  if (value === null || value === undefined || value === "") return "—";
+  return String(value);
+}
 
 function labelFor(key: string) {
   if (LABELS[key]) return LABELS[key];
@@ -30,7 +36,7 @@ function ConfirmInner() {
   useEffect(() => {
     if (!sessionId) return;
     getSession(sessionId)
-      .then((s) => setData(s.extracted_data ?? {}))
+      .then((s) => setData(s.state.entities ?? {}))
       .catch((e) => setError(`Could not load your answers. (${e.message})`));
   }, [sessionId]);
 
@@ -82,7 +88,7 @@ function ConfirmInner() {
                   {labelFor(key)}
                 </dt>
                 <dd className="text-right text-sm font-medium">
-                  {String(value ?? "—")}
+                  {formatValue(value)}
                 </dd>
               </div>
             ))}
