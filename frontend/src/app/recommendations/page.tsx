@@ -7,22 +7,23 @@ import {
   getProgramDocuments,
   getProgramEligibility,
   getPrograms,
-  type ListItem,
+  type DocumentRequirement,
+  type EligibilityCriterion,
   type Program,
 } from "@/lib/api";
 
-// Rows from the backend may be strings or objects. Show the first text-like field.
-// CHECK: once you know the real field name, simplify this.
-function asText(item: ListItem): string {
-  if (typeof item === "string") return item;
-  for (const key of ["description", "criteria", "requirement", "document_name", "name", "title"]) {
-    const v = item[key];
-    if (typeof v === "string" && v) return v;
-  }
-  return JSON.stringify(item);
+function criterionText(c: EligibilityCriterion) {
+  return `${c.attribute.replace(/_/g, " ")} ${c.operator} ${c.threshold_value}`;
 }
 
-function DetailList({ title, items }: { title: string; items: ListItem[] }) {
+function documentText(d: DocumentRequirement) {
+  let text = d.document_name;
+  if (!d.is_mandatory) text += " (optional)";
+  if (d.notes) text += ` — ${d.notes}`;
+  return text;
+}
+
+function DetailList({ title, items }: { title: string; items: string[] }) {
   return (
     <div>
       <h3 className="mb-1 text-sm font-semibold">{title}</h3>
@@ -31,7 +32,7 @@ function DetailList({ title, items }: { title: string; items: ListItem[] }) {
       ) : (
         <ul className="list-disc space-y-1 pl-5 text-sm text-gray-700 dark:text-gray-300">
           {items.map((it, i) => (
-            <li key={i}>{asText(it)}</li>
+            <li key={i}>{it}</li>
           ))}
         </ul>
       )}
@@ -40,8 +41,8 @@ function DetailList({ title, items }: { title: string; items: ListItem[] }) {
 }
 
 function ProgramCard({ program }: { program: Program }) {
-  const [eligibility, setEligibility] = useState<ListItem[] | null>(null);
-  const [documents, setDocuments] = useState<ListItem[] | null>(null);
+  const [eligibility, setEligibility] = useState<EligibilityCriterion[] | null>(null);
+  const [documents, setDocuments] = useState<DocumentRequirement[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Load the details the first time the card is opened.
@@ -67,13 +68,11 @@ function ProgramCard({ program }: { program: Program }) {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="font-semibold text-green-800 dark:text-green-400">
-              {program.name}
+              {program.program_name}
             </h2>
-            {program.description && (
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                {program.description}
-              </p>
-            )}
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+              {program.agency} · {program.scope}
+            </p>
           </div>
           <span
             aria-hidden="true"
@@ -94,8 +93,8 @@ function ProgramCard({ program }: { program: Program }) {
         )}
         {eligibility && documents && (
           <>
-            <DetailList title="Who can apply" items={eligibility} />
-            <DetailList title="Documents to bring" items={documents} />
+            <DetailList title="Who can apply" items={eligibility.map(criterionText)} />
+            <DetailList title="Documents to bring" items={documents.map(documentText)} />
           </>
         )}
       </div>
@@ -109,7 +108,7 @@ export default function RecommendationsPage() {
 
   useEffect(() => {
     getPrograms()
-      .then(setPrograms)
+      .then((all) => setPrograms(all.filter((p) => p.is_active)))
       .catch((e) => setError(`Could not load programs. Is the backend running? (${e.message})`));
   }, []);
 

@@ -9,6 +9,20 @@ import { sendMessage, startSession } from "@/lib/api";
 
 type Msg = { id: number; role: Role; text: string };
 
+// Plain-language names for the backend's missing_fields (routers/sessions.py REQUIRED_FIELDS).
+const FIELD_QUESTIONS: Record<string, string> = {
+  monthly_income: "your household's monthly income (in pesos)",
+  number_of_dependents: "how many dependents you support",
+  is_unemployed: "whether you are currently unemployed",
+  has_pwd: "whether anyone in your household has a disability",
+};
+
+function replyFor(missing: string[], complete: boolean, fallback: string) {
+  if (complete) return "Thank you, that's everything I need. Please review your answers.";
+  const asks = missing.map((f) => FIELD_QUESTIONS[f]).filter(Boolean);
+  return asks.length ? `Thanks! Could you also tell me ${asks.join(", and ")}?` : fallback;
+}
+
 function ChatInner() {
   // Language page should link here as /chat?lang=fil | /chat?lang=bis | /chat?lang=en
   const lang = useSearchParams().get("lang") ?? "en";
@@ -52,8 +66,8 @@ function ChatInner() {
     setSending(true);
     try {
       const res = await sendMessage(sessionId, text);
-      addMessage("assistant", res.reply);
-      if (res.is_complete) setComplete(true);
+      addMessage("assistant", replyFor(res.missing_fields, res.profile_complete, res.system_message));
+      if (res.profile_complete) setComplete(true);
     } catch (e) {
       setError(`Message failed to send. ${(e as Error).message}`);
     } finally {
@@ -83,7 +97,9 @@ function ChatInner() {
       <div className="flex-1 space-y-3 overflow-y-auto rounded-lg border border-gray-300 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
         {messages.length === 0 && !error && (
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {sessionId ? "Say hello to begin." : "Starting session…"}
+            {sessionId
+              ? "Tell me about your household: monthly income, number of dependents, whether you're unemployed, and whether anyone has a disability."
+              : "Starting session…"}
           </p>
         )}
         {messages.map((m) => (
