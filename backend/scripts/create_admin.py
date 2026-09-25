@@ -30,4 +30,4 @@ async def create_admin(username: str, plain_password: str, role_name: str):
 
 if __name__ == "__main__":
     # ---- EDIT THESE THREE VALUES EACH TIME YOU WANT A NEW TEST ACCOUNT ----
-    asyncio.run(create_admin("test", "password123", "Social Worker"))
+    asyncio.run(create_admin("admin", "ginhawai", "Social Worker"))
