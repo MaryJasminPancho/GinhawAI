@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import CORS_ORIGINS
 from app.database import create_db_pool
 from app.cache import create_redis_client
-from app.routers import health, auth, admin_users, programs, localization, sessions
+from app.routers import health, auth, admin_users, programs, localization, sessions, feedback
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -30,3 +30,4 @@ app.include_router(admin_users.router)
 app.include_router(programs.router)
 app.include_router(localization.router)
 app.include_router(sessions.router)
+app.include_router(feedback.router)
