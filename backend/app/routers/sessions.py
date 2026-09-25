@@ -7,6 +7,7 @@ programs), document_checks, sms_logs (masked number) and feedback_logs.
 """
 
 import json
+import math
 import re
 import secrets
 import uuid
@@ -243,10 +244,11 @@ async def assess(session_id: str, request: Request):
             "SELECT office_id, office_name, address, barangay_code, contact_number, operating_hours FROM lgu_offices ORDER BY office_name;"
         )
         schedules = await conn.fetch(
-            "SELECT s.schedule_id, s.program_id, s.start_date, s.end_date, s.notes, o.office_name, o.address "
+            "SELECT s.schedule_id, s.program_id, s.office_id, s.start_date, s.end_date, s.notes, o.office_name, o.address "
             "FROM barangay_schedules s JOIN lgu_offices o ON o.office_id = s.office_id "
             "WHERE s.end_date >= CURRENT_DATE ORDER BY s.start_date;"
         )
+        coords = {r["barangay_code"]: (r["latitude"], r["longitude"]) for r in await conn.fetch("SELECT barangay_code, latitude, longitude FROM barangays;")}
 
         by_program: dict[str, list] = {}
         for c in criteria:
@@ -266,13 +268,34 @@ async def assess(session_id: str, request: Request):
                 for s in schedules if str(s["program_id"]) == e["program_id"]
             ]
 
-        # Offices in the citizen's barangay first, then the rest.
+        # "Where to go" (Fig. 21): the nearest relevant offices.
+        #   1. offices in the citizen's own barangay
+        #   2. offices running a current schedule for a program the citizen matched
+        #   3. everything else, nearest first (by barangay map coordinates)
+        # Other barangays' halls are skipped — they only serve their own residents.
         code = state["entities"].get("barangay_code")
-        office_list = sorted((dict(o) for o in offices), key=lambda o: 0 if code and o["barangay_code"] == code else 1)
+        matched = [e for e in evaluations if e["status"] in ("qualified", "partial")]
+        matched_ids = {e["program_id"] for e in matched}
+        hosting = {str(s["office_id"]) for s in schedules if str(s["program_id"]) in matched_ids}
+        here = coords.get(code)
+
+        def other_barangay_hall(o):
+            return o["barangay_code"] and o["barangay_code"] != code and re.match(r"(barangay|brgy\.?)\s", o["office_name"], re.I)
+
+        def distance(o):
+            there = coords.get(o["barangay_code"])
+            if not here or not there or None in here or None in there:
+                return float("inf")
+            return math.hypot(here[0] - there[0], here[1] - there[1])
+
+        def rank(o):
+            tier = 0 if code and o["barangay_code"] == code else 1 if str(o["office_id"]) in hosting else 2
+            return (tier, distance(o), o["office_name"])
+
+        office_list = sorted((dict(o) for o in offices if not other_barangay_hall(o)), key=rank)
         office_list = [{**o, "office_id": str(o["office_id"])} for o in office_list[:3]]
 
         # Anonymized demand log — once per session (Fig. 22 / Table 16).
-        matched = [e for e in evaluations if e["status"] in ("qualified", "partial")]
         if not state.get("demand_logged"):
             assessment_id = uuid.uuid4()
             async with conn.transaction():
