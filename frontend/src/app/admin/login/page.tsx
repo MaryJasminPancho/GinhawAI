@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Backdrop from "@/components/Backdrop";
 import Button from "@/components/Button";
 import ThemeToggle from "@/components/ThemeToggle";
-import { clearAdminSession, DEMO_ACCOUNTS, LIVE, login } from "@/lib/adminApi";
+import { login } from "@/lib/adminApi";
 import { inputClass } from "@/components/admin/ui";
 
 // Staff sign-in ("Log into Administrative Console / Executive Dashboard / System
@@ -19,13 +19,9 @@ function LoginInner() {
   const next = useSearchParams().get("next");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
-  const [step, setStep] = useState<"password" | "otp">("password");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  const goNext = () => router.replace(next && next.startsWith("/admin") ? next : "/admin");
 
   async function handlePassword(e: FormEvent) {
     e.preventDefault();
@@ -33,30 +29,11 @@ function LoginInner() {
     setBusy(true);
     try {
       await login(username, password);
-      // Multi-Factor OTP Verification (module list). The backend has no OTP
-      // endpoint yet, so this step only appears in mock mode. CHECK
-      if (!LIVE.auth) setStep("otp");
-      else goNext();
+      router.replace(next && next.startsWith("/admin") ? next : "/admin");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-in failed");
-    } finally {
       setBusy(false);
     }
-  }
-
-  function handleOtp(e: FormEvent) {
-    e.preventDefault();
-    if (!/^\d{6}$/.test(otp)) {
-      setError("Enter the 6-digit code.");
-      return;
-    }
-    goNext();
-  }
-
-  function cancelOtp() {
-    clearAdminSession();
-    setOtp("");
-    setStep("password");
   }
 
   return (
@@ -77,14 +54,13 @@ function LoginInner() {
             Authorized personnel only
           </div>
           <div className="space-y-1.5">
-            <h1 className="text-2xl font-bold tracking-tight">{step === "password" ? "Staff sign in" : "Verify it's you"}</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Staff sign in</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {step === "password" ? "LGU welfare personnel, executives and system administrators." : "Enter the 6-digit code sent to your registered mobile number."}
+              LGU welfare personnel, executives and system administrators.
             </p>
           </div>
         </div>
 
-        {step === "password" ? (
           <form onSubmit={handlePassword} className="space-y-4">
             <div className="space-y-1.5">
               <label htmlFor="username" className="block text-xs font-semibold text-gray-600 dark:text-gray-300">
@@ -123,54 +99,7 @@ function LoginInner() {
             </Button>
             <p className="text-center text-xs text-gray-400 dark:text-gray-500">Forgot your password? Ask your System Administrator to reset it.</p>
           </form>
-        ) : (
-          <form onSubmit={handleOtp} className="space-y-4">
-            <input
-              aria-label="6-digit code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              autoFocus
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-              className={`${inputClass} py-3 text-center text-2xl font-bold tracking-[0.5em]`}
-            />
-            {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-[13px] text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</p>}
-            <Button type="submit" className="w-full">
-              Verify and continue
-            </Button>
-            <Button type="button" variant="ghost" className="w-full" onClick={cancelOtp}>
-              Use a different account
-            </Button>
-            <p className="text-center text-xs text-gray-400 dark:text-gray-500">Demo mode: any 6 digits will work.</p>
-          </form>
-        )}
 
-        {!LIVE.auth && step === "password" && (
-          <details className="rounded-2xl bg-brand-50/70 p-4 text-[13px] ring-1 ring-brand-100 dark:bg-white/[0.04] dark:ring-white/10">
-            <summary className="cursor-pointer font-semibold text-brand-800 dark:text-brand-300">Demo accounts (mock mode)</summary>
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              Password for all: <code className="font-mono font-semibold">ginhawai123</code>
-            </p>
-            <ul className="mt-2 space-y-1">
-              {DEMO_ACCOUNTS.map((a) => (
-                <li key={a.username}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUsername(a.username);
-                      setPassword("ginhawai123");
-                    }}
-                    className="flex w-full items-center justify-between rounded-lg px-2 py-1 text-left hover:bg-white dark:hover:bg-white/5"
-                  >
-                    <code className="font-mono text-gray-800 dark:text-gray-200">{a.username}</code>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">{a.role}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </details>
-        )}
 
         <Link href="/" className="text-center text-xs font-medium text-gray-400 hover:text-brand-700 dark:text-gray-500 dark:hover:text-brand-300">
           ← Back to the citizen app

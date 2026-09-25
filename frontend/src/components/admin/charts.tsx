@@ -14,7 +14,9 @@ type Point = { label: string; value: number; sub?: string };
 export function ColumnChart({ data, height = 180, format = fmtNum, ariaLabel }: { data: Point[]; height?: number; format?: (n: number) => string; ariaLabel: string }) {
   const [hover, setHover] = useState<number | null>(null);
   const max = Math.max(1, ...data.map((d) => d.value));
-  const ticks = [0, 0.5, 1].map((t) => (max >= 10 ? Math.round(max * t) : max * t));
+  // Counts get whole-number ticks (no "0.5 assessments"); rates keep fractions.
+  const counts = data.every((d) => Number.isInteger(d.value));
+  const ticks = counts ? [...new Set([0, Math.round(max / 2), max])] : [0, max / 2, max];
 
   return (
     <div className="relative" role="img" aria-label={ariaLabel}>

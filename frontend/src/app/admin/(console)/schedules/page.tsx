@@ -1,8 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Badge, Btn, Card, EmptyState, ErrorText, Field, fmtDate, inputClass, Loading, Modal, PageTitle, SampleDataNotice, Segmented } from "@/components/admin/ui";
-import { AdminProgram, deleteSchedule, LIVE, listOffices, listPrograms, listSchedules, Office, saveSchedule, Schedule } from "@/lib/adminApi";
+import { Badge, Btn, Card, EmptyState, ErrorText, Field, fmtDate, inputClass, Loading, Modal, PageTitle, Segmented } from "@/components/admin/ui";
+import { AdminProgram, deleteSchedule, listOffices, listPrograms, listSchedules, Office, saveSchedule, Schedule } from "@/lib/adminApi";
 
 // "Insert Local Barangay Aid Schedules" (Fig. 9) — seasonal barangay livelihood
 // tracks, health-center feeding calendars, registration drives, etc. Citizens
@@ -64,7 +64,6 @@ export default function SchedulesPage() {
         description="Local distribution and registration dates. Active schedules appear in citizens' recommendations and SMS checklists for the matching program."
         actions={<Btn onClick={() => setEditing({})}>+ Add schedule</Btn>}
       />
-      {!LIVE.schedules && <SampleDataNotice what="Barangay schedules" />}
       {error && <div className="mb-4"><ErrorText>{error}</ErrorText></div>}
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

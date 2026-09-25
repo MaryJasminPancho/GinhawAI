@@ -70,8 +70,8 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const sections = navFor(group);
   const allowed = canAccess(group, pathname);
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     router.replace("/admin/login");
   }
 

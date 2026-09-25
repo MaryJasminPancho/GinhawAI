@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Btn, Card, ErrorText, Field, inputClass, Loading, Modal, PageTitle, SampleDataNotice, Toggle } from "@/components/admin/ui";
-import { getSecurityPolicy, LIVE, revokeAllSessions, SecurityPolicy, updateSecurityPolicy } from "@/lib/adminApi";
+import { useRouter } from "next/navigation";
+import { Btn, Card, ErrorText, Field, inputClass, Loading, Modal, PageTitle, Toggle } from "@/components/admin/ui";
+import { getSecurityPolicy, revokeAllSessions, SecurityPolicy, updateSecurityPolicy } from "@/lib/adminApi";
 
 // "Manage Infrastructure Security Policy" (Fig. 11): JWT lifetime, password
-// rules, MFA, lockout, API rate limit, CORS origins, and the privacy-first
+// rules, lockout, API rate limit, CORS origins, and the privacy-first
 // session purge required by RA 10173.
 
 export default function SecurityPage() {
+  const router = useRouter();
   const [policy, setPolicy] = useState<SecurityPolicy | null>(null);
   const [saved, setSaved] = useState<SecurityPolicy | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +85,6 @@ export default function SecurityPage() {
           </>
         }
       />
-      {!LIVE.security && <SampleDataNotice what="The security policy" />}
       {error && <div className="mb-4"><ErrorText>{error}</ErrorText></div>}
       {notice && !dirty && <p className="mb-4 rounded-xl bg-brand-50 px-3 py-2 text-[13px] text-brand-800 dark:bg-brand-500/10 dark:text-brand-300">{notice}</p>}
       {!policy && !error && <Loading />}
@@ -92,18 +93,11 @@ export default function SecurityPage() {
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <Card title="Staff authentication" subtitle="JSON Web Token (JWT) sessions">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="Token lifetime (minutes)" hint="Staff are signed out after this.">{(id) => <input id={id} {...num("jwt_expire_minutes", 5, 720)} />}</Field>
+              <Field label="Token lifetime (minutes)" hint="Staff are signed out after this. Applies to new sign-ins.">{(id) => <input id={id} {...num("jwt_expire_minutes", 5, 720)} />}</Field>
               <Field label="Minimum password length">{(id) => <input id={id} {...num("password_min_length", 8, 64)} />}</Field>
               <Field label="Failed attempts before lockout">{(id) => <input id={id} {...num("max_failed_logins", 3, 20)} />}</Field>
               <Field label="Lockout duration (minutes)">{(id) => <input id={id} {...num("lockout_minutes", 1, 1440)} />}</Field>
             </div>
-            <label className="mt-5 flex items-center justify-between gap-4 rounded-2xl bg-gray-50 p-4 dark:bg-white/[0.04]">
-              <span>
-                <span className="block text-[13px] font-semibold text-gray-900 dark:text-white">Require multi-factor sign-in (OTP)</span>
-                <span className="block text-xs text-gray-500 dark:text-gray-400">A 6-digit code is sent to the staff member&apos;s registered number.</span>
-              </span>
-              <Toggle checked={policy.require_mfa} onChange={(v) => set("require_mfa", v)} label="Require MFA" />
-            </label>
             <div className="mt-5 flex flex-col gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
               <p className="text-xs text-gray-500 dark:text-gray-400">Suspect a leaked credential? Force every staff member to sign in again.</p>
               <Btn variant="danger" onClick={() => setRevoking(true)}>Revoke all sessions</Btn>
@@ -129,6 +123,7 @@ export default function SecurityPage() {
             <Card title="API protection">
               <Field label="Rate limit (requests per minute, per client)">{(id) => <input id={id} {...num("rate_limit_per_minute", 10, 1000)} />}</Field>
               <p className="mb-1.5 mt-5 text-xs font-semibold text-gray-600 dark:text-gray-300">Allowed origins (CORS)</p>
+              <p className="mb-2 text-[11px] text-gray-400">Web addresses allowed to call the API — the citizen app and this console. Changes apply immediately.</p>
               <ul className="space-y-1.5">
                 {policy.allowed_origins.map((o) => (
                   <li key={o} className="flex items-center justify-between gap-2 rounded-xl bg-gray-50 px-3 py-2 dark:bg-white/[0.04]">
@@ -163,9 +158,11 @@ export default function SecurityPage() {
             <Btn
               variant="danger"
               onClick={async () => {
-                await revokeAllSessions();
-                setRevoking(false);
-                setNotice("All staff sessions were revoked.");
+                try {
+                  await revokeAllSessions();
+                } catch {}
+                // This also signs the current user out; the console will return to the sign-in page.
+                router.replace("/admin/login");
               }}
             >
               Revoke all

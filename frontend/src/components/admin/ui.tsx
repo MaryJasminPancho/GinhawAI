@@ -90,21 +90,6 @@ export function TierBadge({ tier }: { tier: "high" | "moderate" | "low" }) {
   );
 }
 
-/** Notice shown on pages that still run on mock data because the endpoint isn't built. */
-export function SampleDataNotice({ what }: { what?: string }) {
-  return (
-    <div className="mb-5 flex items-start gap-2.5 rounded-2xl bg-amber-50 px-4 py-3 text-[13px] leading-relaxed text-amber-900 ring-1 ring-amber-200/70 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/20">
-      <svg className="mt-0.5 shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 8v4M12 16h.01" />
-      </svg>
-      <span>
-        <strong className="font-semibold">Sample data.</strong> {what ?? "This screen"} isn&apos;t connected to the backend yet — numbers shown are placeholders.
-      </span>
-    </div>
-  );
-}
-
 export function PrivacyChip() {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-100/80 px-2.5 py-1 text-[11px] font-semibold text-brand-800 dark:bg-brand-500/10 dark:text-brand-300">
