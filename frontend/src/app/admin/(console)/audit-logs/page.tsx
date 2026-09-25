@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge, Btn, Card, downloadCsv, EmptyState, ErrorText, fmtDateTime, inputClass, Loading, PageTitle, SampleDataNotice, Table, td, th, Toggle } from "@/components/admin/ui";
-import { AuditLog, getAuditLogs, LIVE } from "@/lib/adminApi";
+import { Badge, Btn, Card, downloadCsv, EmptyState, ErrorText, fmtDateTime, inputClass, Loading, PageTitle, Table, td, th, Toggle } from "@/components/admin/ui";
+import { AuditLog, getAuditLogs } from "@/lib/adminApi";
 
 // "View Administrative Audit Logs" (Fig. 9) + System Audit & Compliance Trail
 // modules: view consolidated trail, export compliance reports, flag anomalous
@@ -47,8 +47,8 @@ export default function AuditLogsPage() {
 
   function exportCsv() {
     downloadCsv(`ginhawai-audit-trail-${new Date().toISOString().slice(0, 10)}.csv`, [
-      ["timestamp", "user", "action", "table", "old_value", "new_value", "flagged"],
-      ...filtered.map((l) => [l.timestamp, l.username, l.action_type, l.target_table, l.old_value, l.new_value, l.flagged ? "yes" : ""]),
+      ["timestamp", "user", "action", "table", "old_value", "new_value", "flag"],
+      ...filtered.map((l) => [l.timestamp, l.username, l.action_type, l.target_table, l.old_value, l.new_value, l.flag_reason ?? ""]),
     ]);
   }
 
@@ -59,13 +59,12 @@ export default function AuditLogsPage() {
         description="Every change to rules, schedules, offices and accounts — who made it, when, and what it was before. Entries can't be edited or deleted."
         actions={<Btn variant="secondary" onClick={exportCsv} disabled={!logs}>Export compliance CSV</Btn>}
       />
-      {!LIVE.auditLogs && <SampleDataNotice what="The audit trail" />}
       {error && <div className="mb-4"><ErrorText>{error}</ErrorText></div>}
 
       {flaggedCount > 0 && (
         <div className="mb-4 flex flex-col gap-2 rounded-2xl bg-red-50 px-4 py-3 text-[13px] text-red-800 ring-1 ring-red-200 sm:flex-row sm:items-center sm:justify-between dark:bg-red-500/10 dark:text-red-200 dark:ring-red-500/20">
           <span>
-            <strong>{flaggedCount} anomalous events flagged</strong> — repeated failed sign-ins outside office hours.
+            <strong>{flaggedCount} events flagged</strong> — repeated failed sign-ins or activity outside office hours. Review them with the account owners.
           </span>
           <Btn variant="danger" onClick={() => setFlaggedOnly(true)}>Review flagged</Btn>
         </div>
@@ -113,7 +112,7 @@ export default function AuditLogsPage() {
                   <td className={td}>
                     <div className="flex items-center gap-1.5">
                       <Badge tone={ACTION_TONE[l.action_type] ?? "gray"}>{l.action_type.replace("_", " ")}</Badge>
-                      {l.flagged && <Badge tone="red" dot>Flagged</Badge>}
+                      {l.flagged && <span title={l.flag_reason}><Badge tone="red" dot>Flagged</Badge></span>}
                     </div>
                   </td>
                   <td className={td}>
@@ -122,6 +121,7 @@ export default function AuditLogsPage() {
                   <td className={`${td} max-w-md`}>
                     {l.old_value && <p className="text-xs text-gray-400 line-through decoration-gray-300 dark:text-gray-500">{l.old_value}</p>}
                     {l.new_value && <p className="text-xs text-gray-800 dark:text-gray-200">{l.new_value}</p>}
+                    {l.flag_reason && <p className="mt-0.5 text-[11px] font-semibold text-red-600 dark:text-red-400">{l.flag_reason}</p>}
                   </td>
                 </tr>
               ))}

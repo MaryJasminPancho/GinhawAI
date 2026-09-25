@@ -1,17 +1,7 @@
-// Aggregations over anonymized demand_logs rows, shared by the dashboard,
-// heatmap and reports screens. Pure functions — easy to move server-side later.
+// Aggregations over the anonymized demand data from /api/analytics/demand,
+// shared by the dashboard, heatmap and reports screens.
 
-import { DemandCell, MONTHS, Tier } from "./adminApi";
-
-// Short labels for charts. Keys match the mock program ids; null = no program matched.
-export const PROGRAM_SHORT: Record<string, string> = {
-  "p-4ps": "4Ps",
-  "p-aics": "AICS",
-  "p-tupad": "TUPAD",
-  "p-feed": "Supplemental Feeding",
-  "p-senior": "Senior Citizens Aid",
-};
-export const programShort = (id: string | null) => (id ? PROGRAM_SHORT[id] ?? id : "No program matched");
+import { AdminProgram, AssessmentRow, DemandData, shortProgramName, Tier } from "./adminApi";
 
 export type Range = "3m" | "6m" | "12m";
 export const RANGE_OPTIONS: { value: Range; label: string }[] = [
@@ -19,48 +9,66 @@ export const RANGE_OPTIONS: { value: Range; label: string }[] = [
   { value: "6m", label: "6 months" },
   { value: "12m", label: "12 months" },
 ];
-export const monthsFor = (r: Range) => MONTHS.slice(-{ "3m": 3, "6m": 6, "12m": 12 }[r]);
+export const monthsFor = (all: string[], r: Range) => all.slice(-{ "3m": 3, "6m": 6, "12m": 12 }[r]);
 
-export function filterDemand(cells: DemandCell[], months: string[], program: string = "all") {
+/** Assessment rows for the chosen months. With a program chosen, only
+ * assessments that matched that program are counted (gap is then 0). */
+export function filterDemand(d: DemandData, months: string[], program = "all"): AssessmentRow[] {
   const set = new Set(months);
-  return cells.filter((c) => set.has(c.month) && (program === "all" || c.program_id === program));
+  if (program === "all") return d.assessments.filter((r) => set.has(r.month));
+  return d.matches
+    .filter((r) => set.has(r.month) && r.program_id === program)
+    .map((r) => ({ month: r.month, barangay_code: r.barangay_code, tier: r.tier, count: r.count, gap: 0 }));
 }
 
-export const sum = (cells: DemandCell[]) => cells.reduce((a, c) => a + c.count, 0);
+export const sum = (rows: { count: number }[]) => rows.reduce((a, r) => a + r.count, 0);
 
-export function byMonth(cells: DemandCell[], months: string[]) {
+export function byMonth(rows: AssessmentRow[], months: string[]) {
   const m = new Map(months.map((x) => [x, 0]));
-  for (const c of cells) if (m.has(c.month)) m.set(c.month, m.get(c.month)! + c.count);
+  for (const r of rows) if (m.has(r.month)) m.set(r.month, m.get(r.month)! + r.count);
   return months.map((x) => ({ month: x, value: m.get(x)! }));
 }
 
-export function byTier(cells: DemandCell[]): Record<Tier, number> {
+export function byTier(rows: AssessmentRow[]): Record<Tier, number> {
   const out = { high: 0, moderate: 0, low: 0 };
-  for (const c of cells) out[c.tier] += c.count;
+  for (const r of rows) out[r.tier] += r.count;
   return out;
 }
 
 export type BarangayAgg = { code: string; high: number; moderate: number; low: number; total: number; gap: number };
+export const UNTAGGED = "__none__";
 
-export function byBarangay(cells: DemandCell[]): BarangayAgg[] {
+export function byBarangay(rows: AssessmentRow[]): BarangayAgg[] {
   const m = new Map<string, BarangayAgg>();
-  for (const c of cells) {
-    const row = m.get(c.barangay_code) ?? { code: c.barangay_code, high: 0, moderate: 0, low: 0, total: 0, gap: 0 };
-    row[c.tier] += c.count;
-    row.total += c.count;
-    if (c.program_id === null) row.gap += c.count;
-    m.set(c.barangay_code, row);
+  for (const r of rows) {
+    const code = r.barangay_code ?? UNTAGGED;
+    const row = m.get(code) ?? { code, high: 0, moderate: 0, low: 0, total: 0, gap: 0 };
+    row[r.tier] += r.count;
+    row.total += r.count;
+    row.gap += r.gap;
+    m.set(code, row);
   }
   return [...m.values()].sort((a, b) => b.total - a.total);
 }
 
-export function byProgram(cells: DemandCell[]) {
-  const m = new Map<string | null, number>();
-  for (const c of cells) m.set(c.program_id, (m.get(c.program_id) ?? 0) + c.count);
+/** How many assessments matched each program (for the chosen months / barangay). */
+export function byProgram(d: DemandData, months: string[], barangay?: string | null) {
+  const set = new Set(months);
+  const m = new Map<string, number>();
+  for (const r of d.matches) {
+    if (!set.has(r.month)) continue;
+    if (barangay !== undefined && (r.barangay_code ?? UNTAGGED) !== barangay) continue;
+    m.set(r.program_id, (m.get(r.program_id) ?? 0) + r.count);
+  }
   return [...m.entries()].map(([id, value]) => ({ id, value })).sort((a, b) => b.value - a.value);
 }
 
-/** Percent change of the last month vs the one before it. */
+export function programLabel(programs: AdminProgram[], id: string | null) {
+  if (!id) return "No program matched";
+  const p = programs.find((x) => x.program_id === id);
+  return p ? shortProgramName(p.program_name) : "Removed program";
+}
+
 export function lastMonthChange(series: { value: number }[]) {
   if (series.length < 2) return 0;
   const a = series[series.length - 2].value;

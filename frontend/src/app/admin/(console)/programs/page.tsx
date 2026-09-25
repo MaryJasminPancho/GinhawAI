@@ -4,12 +4,13 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Badge, Btn, Card, EmptyState, ErrorText, Field, inputClass, Loading, Modal, PageTitle, Segmented, Table, td, th, Toggle } from "@/components/admin/ui";
 import {
   AdminProgram,
-  ATTRIBUTES,
+  AttributeMeta,
   createProgram,
   Criterion,
   deleteCriterion,
   deleteDocument,
   DocumentReq,
+  listAttributes,
   listCriteria,
   listDocuments,
   listPrograms,
@@ -114,12 +115,14 @@ function ProgramDetail({ program }: { program: AdminProgram }) {
   const [error, setError] = useState<string | null>(null);
   const [editCriterion, setEditCriterion] = useState<Partial<Criterion> | null>(null);
   const [editDoc, setEditDoc] = useState<Partial<DocumentReq> | null>(null);
+  const [attributes, setAttributes] = useState<AttributeMeta[]>([]);
 
   useEffect(() => {
-    Promise.all([listCriteria(program.program_id), listDocuments(program.program_id)])
-      .then(([c, d]) => {
+    Promise.all([listCriteria(program.program_id), listDocuments(program.program_id), listAttributes()])
+      .then(([c, d, a]) => {
         setCriteria(c);
         setDocs(d);
+        setAttributes(a);
       })
       .catch((e) => setError(e.message));
   }, [program.program_id]);
@@ -189,7 +192,11 @@ function ProgramDetail({ program }: { program: AdminProgram }) {
                 {criteria.map((c) => (
                   <tr key={c.criteria_id} className="hover:bg-gray-50/60 dark:hover:bg-white/[0.02]">
                     <td className={td}>
-                      <code className="font-mono text-[12px] text-gray-900 dark:text-gray-100">{c.attribute}</code>
+                      <p className="text-[13px] text-gray-900 dark:text-gray-100">{attributes.find((a) => a.attribute === c.attribute)?.label ?? c.attribute}</p>
+                      <div className="mt-0.5 flex items-center gap-1.5">
+                        <code className="font-mono text-[11px] text-gray-400">{c.attribute}</code>
+                        {attributes.length > 0 && !attributes.find((a) => a.attribute === c.attribute)?.computed && <Badge tone="amber">Verified at office</Badge>}
+                      </div>
                     </td>
                     <td className={td}>
                       <span className="rounded-md bg-gray-100 px-1.5 py-0.5 font-mono text-[12px] dark:bg-white/10">{c.operator}</span>{" "}
@@ -257,6 +264,7 @@ function ProgramDetail({ program }: { program: AdminProgram }) {
 
       <CriterionModal
         programId={program.program_id}
+        attributes={attributes}
         value={editCriterion}
         onClose={() => setEditCriterion(null)}
         onSaved={(c) => {
@@ -332,8 +340,8 @@ function AddProgramModal({ open, onClose, onCreated }: { open: boolean; onClose:
   );
 }
 
-function CriterionModal({ programId, value, onClose, onSaved }: { programId: string; value: Partial<Criterion> | null; onClose: () => void; onSaved: (c: Criterion) => void }) {
-  const [form, setForm] = useState({ attribute: ATTRIBUTES[0], operator: "<=", threshold_value: "", weight: "0.25" });
+function CriterionModal({ programId, attributes, value, onClose, onSaved }: { programId: string; attributes: AttributeMeta[]; value: Partial<Criterion> | null; onClose: () => void; onSaved: (c: Criterion) => void }) {
+  const [form, setForm] = useState({ attribute: "monthly_income", operator: "<=", threshold_value: "", weight: "0.25" });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [lastValue, setLastValue] = useState(value);
@@ -343,7 +351,7 @@ function CriterionModal({ programId, value, onClose, onSaved }: { programId: str
     setLastValue(value);
     if (value) {
       setForm({
-        attribute: value.attribute ?? ATTRIBUTES[0],
+        attribute: value.attribute ?? "monthly_income",
         operator: value.operator ?? "<=",
         threshold_value: value.threshold_value ?? "",
         weight: String(value.weight ?? "0.25"),
@@ -382,12 +390,27 @@ function CriterionModal({ programId, value, onClose, onSaved }: { programId: str
       }
     >
       <form id="criterion-form" onSubmit={submit} className="space-y-4">
-        <Field label="Household attribute" hint="Collected by the conversational assessment.">
+        <Field
+          label="Household attribute"
+          hint={
+            attributes.find((a) => a.attribute === form.attribute)?.computed === false
+              ? "The chat can't check this one — citizens will see it as “to be verified at the office”."
+              : "Checked automatically from the citizen's chat answers."
+          }
+        >
           {(id) => (
-            <select id={id} className={`${inputClass} font-mono`} value={form.attribute} onChange={(e) => setForm({ ...form, attribute: e.target.value })}>
-              {ATTRIBUTES.map((a) => (
-                <option key={a}>{a}</option>
-              ))}
+            <select id={id} className={inputClass} value={form.attribute} onChange={(e) => setForm({ ...form, attribute: e.target.value })}>
+              {!attributes.some((a) => a.attribute === form.attribute) && <option value={form.attribute}>{form.attribute}</option>}
+              <optgroup label="Checked from the chat">
+                {attributes.filter((a) => a.computed).map((a) => (
+                  <option key={a.attribute} value={a.attribute}>{a.label}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Verified at the office">
+                {attributes.filter((a) => !a.computed).map((a) => (
+                  <option key={a.attribute} value={a.attribute}>{a.label}</option>
+                ))}
+              </optgroup>
             </select>
           )}
         </Field>
@@ -401,7 +424,7 @@ function CriterionModal({ programId, value, onClose, onSaved }: { programId: str
               </select>
             )}
           </Field>
-          <Field label="Threshold value" hint={form.operator === "in" ? "Comma-separated list, e.g. informal,rented" : undefined}>
+          <Field label="Threshold value" hint={form.operator === "in" ? "Comma-separated, e.g. unemployed,displaced" : "Use true / false for yes-no answers"}>
             {(id) => <input id={id} required className={inputClass} value={form.threshold_value} onChange={(e) => setForm({ ...form, threshold_value: e.target.value })} />}
           </Field>
         </div>
