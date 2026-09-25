@@ -6,43 +6,38 @@ import { useSearchParams } from "next/navigation";
 import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
 import { buttonClasses } from "@/components/Button";
-import { getSession } from "@/lib/api";
+import { assess, Assessment, getSession, Lang, SessionExpiredError, Tier } from "@/lib/api";
+import { t } from "@/lib/i18n";
 
-// CHECK: these cut-offs and colors are placeholders. Ask Jasmin what the real bands are.
-function levelFor(score: number) {
-  if (score >= 67)
-    return {
-      label: "High need",
-      from: "#f87171",
-      to: "#dc2626",
-      badge: "bg-red-100 text-red-800 dark:bg-red-500/10 dark:text-red-300",
-      dot: "bg-red-500",
-      message: "Based on your answers, your household may benefit from support right away.",
-    };
-  if (score >= 34)
-    return {
-      label: "Moderate need",
-      from: "#f59e0b",
-      to: "#d97706",
-      badge: "bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300",
-      dot: "bg-amber-500",
-      message: "Based on your answers, your household may qualify for some support programs.",
-    };
-  return {
-    label: "Lower need",
+// Fig. 18: red = High Risk, amber = Moderate Risk, green = Low Risk.
+const LEVELS: Record<Tier, { label: Record<Lang, string>; from: string; to: string; badge: string; dot: string }> = {
+  high: {
+    label: { fil: "Mataas na pangangailangan", ceb: "Taas nga panginahanglan", en: "High need" },
+    from: "#f87171",
+    to: "#dc2626",
+    badge: "bg-red-100 text-red-800 dark:bg-red-500/10 dark:text-red-300",
+    dot: "bg-red-500",
+  },
+  moderate: {
+    label: { fil: "Katamtamang pangangailangan", ceb: "Kasarangang panginahanglan", en: "Moderate need" },
+    from: "#f59e0b",
+    to: "#d97706",
+    badge: "bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300",
+    dot: "bg-amber-500",
+  },
+  low: {
+    label: { fil: "Mas mababang pangangailangan", ceb: "Ubos nga panginahanglan", en: "Lower need" },
     from: "#4ade80",
     to: "#16a34a",
     badge: "bg-green-100 text-green-800 dark:bg-green-500/10 dark:text-green-300",
     dot: "bg-green-500",
-    message:
-      "Based on your answers, your household's need looks lower right now, but you can still check available programs.",
-  };
-}
+  },
+};
 
 const RADIUS = 52;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function ScoreRing({ score, from, to }: { score: number; from: string; to: string }) {
+function ScoreRing({ score, from, to, label }: { score: number; from: string; to: string; label: string }) {
   const pct = Math.min(Math.max(score, 0), 100);
   // Start empty, then animate to the target offset once mounted (fill-in effect).
   const [offset, setOffset] = useState(CIRCUMFERENCE);
@@ -76,7 +71,7 @@ function ScoreRing({ score, from, to }: { score: number; from: string; to: strin
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-5xl font-extrabold tracking-tight">{Math.round(pct)}</span>
-        <span className="text-xs font-medium text-gray-400 dark:text-gray-500">out of 100</span>
+        <span className="text-xs font-medium text-gray-400 dark:text-gray-500">{label}</span>
       </div>
     </div>
   );
@@ -84,68 +79,73 @@ function ScoreRing({ score, from, to }: { score: number; from: string; to: strin
 
 function ScoreInner() {
   const sessionId = useSearchParams().get("session");
-  const [score, setScore] = useState<number | null | undefined>(undefined); // undefined = loading
+  const [lang, setLang] = useState<Lang>("en");
+  const [result, setResult] = useState<Assessment | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sessionId) return;
     getSession(sessionId)
-      .then((s) => setScore(s.vulnerability_score ?? null))
-      .catch((e) => setError(`Could not load your score. (${e.message})`));
+      .then(async (s) => {
+        setLang(s.language);
+        setResult(s.assessment ?? (await assess(sessionId)));
+      })
+      .catch((e) => setError(e instanceof SessionExpiredError ? t("en", "sessionEnded") : e.message));
   }, [sessionId]);
 
   const missingSession = !sessionId;
-  const level = typeof score === "number" ? levelFor(score) : null;
+  const v = result?.vulnerability;
+  const level = v ? LEVELS[v.tier] : null;
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
       <Backdrop />
 
       <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-lg sm:rounded-[32px] sm:bg-white/70 sm:p-8 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/[0.04] dark:sm:ring-white/10">
-        <PageHeader title="Your result" step={4} totalSteps={4} />
+        <PageHeader title={t(lang, "resultTitle")} step={4} totalSteps={4} />
 
         <section className="relative z-10 mt-8 flex flex-col items-center gap-5 rounded-3xl bg-white p-7 text-center shadow-sm ring-1 ring-black/5 dark:bg-white/[0.04] dark:ring-white/10">
-          {missingSession && (
-            <p className="text-sm text-red-600 dark:text-red-400">No session found. Please start over.</p>
-          )}
+          {missingSession && <p className="text-sm text-red-600 dark:text-red-400">{t(lang, "sessionEnded")}</p>}
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-          {!missingSession && !error && score === undefined && (
-            <p className="text-sm text-gray-400 dark:text-gray-500">Calculating your score…</p>
-          )}
-          {score === null && (
-            <p className="text-sm text-gray-400 dark:text-gray-500">
-              Your score isn&apos;t available yet. Please try again in a moment.
-            </p>
-          )}
-          {typeof score === "number" && level && (
+          {!missingSession && !error && !v && <p className="text-sm text-gray-400 dark:text-gray-500">{t(lang, "checking")}</p>}
+          {v && level && (
             <>
-              <ScoreRing score={score} from={level.from} to={level.to} />
+              <ScoreRing score={v.score} from={level.from} to={level.to} label={t(lang, "outOf100")} />
               <span className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ${level.badge}`}>
                 <span className={`h-1.5 w-1.5 rounded-full ${level.dot}`} />
-                {level.label}
+                {level.label[lang]}
               </span>
-              <p className="text-[14px] leading-relaxed text-gray-600 dark:text-gray-300">{level.message}</p>
+              <p className="text-[14px] leading-relaxed text-gray-600 dark:text-gray-300">{v.message}</p>
             </>
           )}
         </section>
 
-        <p className="relative z-10 mt-4 text-center text-xs leading-relaxed text-gray-400 dark:text-gray-500">
-          This score is an estimate used to suggest programs. It is not an official decision — your LGU office confirms eligibility.
-        </p>
+        {v && v.top_factors.length > 0 && (
+          <section className="relative z-10 mt-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 dark:bg-white/[0.04] dark:ring-white/10">
+            <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">{t(lang, "whyThisScore")}</h2>
+            <ol className="space-y-2.5">
+              {v.top_factors.map((f, i) => (
+                <li key={i} className="flex gap-3 text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[11px] font-bold text-brand-800 dark:bg-brand-500/15 dark:text-brand-300">{i + 1}</span>
+                  {f}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
+        <p className="relative z-10 mt-4 text-center text-xs leading-relaxed text-gray-400 dark:text-gray-500">{t(lang, "scoreNote")}</p>
 
         <div className="relative z-10 mt-6 flex flex-col gap-3">
           <Link
             href={`/recommendations?session=${sessionId ?? ""}`}
-            aria-disabled={typeof score !== "number"}
-            className={buttonClasses(
-              "primary",
-              `w-full text-center ${typeof score !== "number" ? "pointer-events-none opacity-50" : ""}`
-            )}
+            aria-disabled={!v}
+            className={buttonClasses("primary", `w-full text-center ${!v ? "pointer-events-none opacity-50" : ""}`)}
           >
-            See recommended programs
+            {t(lang, "seePrograms")}
           </Link>
           <Link href="/language" className={buttonClasses("secondary", "w-full text-center")}>
-            Start over
+            {t(lang, "startOver")}
           </Link>
         </div>
       </main>
