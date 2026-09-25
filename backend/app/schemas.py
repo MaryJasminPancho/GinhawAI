@@ -83,6 +83,15 @@ class MessageIn(BaseModel):
     message: str
 
 
+class BarangayIn(BaseModel):
+    barangay_code: str
+
+
+class FeedbackCreate(BaseModel):
+    sus_score: int                              # required — the usability rating
+    qualitative_feedback: str | None = None     # optional — citizen can leave this blank
+
+
 class EntityPatch(BaseModel):
     values: dict
 
