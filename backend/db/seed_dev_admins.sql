@@ -1,3 +1,6 @@
+-- Read this file as UTF-8 even when psql runs in a Windows console (which defaults to WIN1252).
+SET client_encoding = 'UTF8';
+
 -- DEVELOPMENT / DEMO ACCOUNTS ONLY — do not run this on a real deployment.
 -- Creates one staff login per role so the admin console can be tested.
 -- Password for every account: ginhawai123
