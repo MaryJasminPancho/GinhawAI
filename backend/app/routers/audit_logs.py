@@ -5,10 +5,11 @@ from datetime import timedelta, timezone
 
 from fastapi import APIRouter, Depends, Request
 
-from app.auth import WELFARE_ROLES, require_roles
+from app.auth import SYSADMIN_ROLES, require_roles
 
 router = APIRouter()
-welfare = require_roles(WELFARE_ROLES)
+# Only System Administrators may read the audit trail.
+sysadmin = require_roles(SYSADMIN_ROLES)
 
 MANILA = timezone(timedelta(hours=8))
 BURST_WINDOW = timedelta(minutes=15)
@@ -16,7 +17,7 @@ BURST_COUNT = 3
 
 
 @router.get("/api/audit-logs")
-async def list_audit_logs(request: Request, limit: int = 1000, current_admin: dict = Depends(welfare)):
+async def list_audit_logs(request: Request, limit: int = 1000, current_admin: dict = Depends(sysadmin)):
     limit = max(1, min(limit, 5000))
     async with request.app.state.db_pool.acquire() as conn:
         rows = await conn.fetch(

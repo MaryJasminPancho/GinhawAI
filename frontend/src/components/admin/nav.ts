@@ -5,7 +5,8 @@ import type { RoleGroup } from "@/lib/adminApi";
 //   welfare   = Authorized Welfare Personnel (LGU Administrator, Social Worker)  — Fig. 9
 //   executive = LGU Executive / Partner Organization                            — Fig. 10
 //   sysadmin  = System Administrator                                            — Fig. 11
-// The System Administrator can open every screen.
+// The System Administrator can open every screen, and every staff role can see the
+// (anonymized) Vulnerability Heatmap.
 
 export type NavItem = { href: string; label: string; icon: string; roles: RoleGroup[] };
 export type NavSection = { title: string; items: NavItem[] };
@@ -38,13 +39,13 @@ export const NAV: NavSection[] = [
       { href: "/admin/schedules", label: "Barangay Aid Schedules", icon: I.calendar, roles: ["welfare", "sysadmin"] },
       { href: "/admin/offices", label: "Office Directory", icon: I.office, roles: ["welfare", "sysadmin"] },
       { href: "/admin/validation", label: "Blind Validation", icon: I.check, roles: ["welfare", "sysadmin"] },
-      { href: "/admin/audit-logs", label: "Audit Logs", icon: I.audit, roles: ["welfare", "sysadmin"] },
+      { href: "/admin/audit-logs", label: "Audit Logs", icon: I.audit, roles: ["sysadmin"] },
     ],
   },
   {
     title: "Policy Intelligence",
     items: [
-      { href: "/admin/analytics", label: "Vulnerability Heatmap", icon: I.map, roles: ["executive", "sysadmin"] },
+      { href: "/admin/analytics", label: "Vulnerability Heatmap", icon: I.map, roles: ["welfare", "executive", "sysadmin"] },
       { href: "/admin/reports", label: "Reports & Exports", icon: I.report, roles: ["executive", "sysadmin"] },
     ],
   },
