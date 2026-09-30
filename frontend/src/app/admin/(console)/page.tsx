@@ -61,7 +61,7 @@ async function load(group: RoleGroup): Promise<Data> {
     getFeedback(12),
     ops ? listSchedules() : Promise.resolve([]),
     ops ? listOffices() : Promise.resolve([]),
-    ops ? getAuditLogs() : Promise.resolve([]),
+    group === "sysadmin" ? getAuditLogs() : Promise.resolve([]), // audit trail is System Administrator only
     ops ? getValidationCases().then((c) => c.length) : Promise.resolve(0),
     ops ? getRatings() : Promise.resolve([]),
     group === "sysadmin" ? getSystemHealth() : Promise.resolve(null),
@@ -194,13 +194,17 @@ function OperationsView({ d, group }: { d: Data; group: RoleGroup }) {
         <StatCard label="Active programs" value={active} hint={`${d.programs.length - active} inactive · ${d.programs.length} total`} />
         <StatCard label="Aid schedules" value={upcoming.length} hint={`${ongoing} running now · ${upcoming.length - ongoing} upcoming`} />
         <StatCard label="Blind validation" value={d.cases ? `${myRatings}/${d.cases}` : "—"} hint={d.cases ? "Cases you've rated" : "No test cases generated yet"} tone={!d.cases || myRatings >= d.cases ? "brand" : "amber"} />
-        <StatCard label="Changes this week" value={changes} hint={flagged ? `${flagged} flagged access events` : "No flagged access events"} tone={flagged ? "red" : "gray"} />
+        {group === "sysadmin" ? (
+          <StatCard label="Changes this week" value={changes} hint={flagged ? `${flagged} flagged access events` : "No flagged access events"} tone={flagged ? "red" : "gray"} />
+        ) : (
+          <StatCard label="Offices in directory" value={d.offices.length} hint="Shown to citizens as “Where to go”" tone="gray" />
+        )}
       </div>
 
       {group === "sysadmin" && <AnalyticsBlock d={d} />}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-        <Card title="Upcoming barangay aid schedules" className="xl:col-span-3" actions={<Link href="/admin/schedules" className="text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300">Manage →</Link>}>
+        <Card title="Upcoming barangay aid schedules" className={group === "sysadmin" ? "xl:col-span-3" : "xl:col-span-5"} actions={<Link href="/admin/schedules" className="text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300">Manage →</Link>}>
           {upcoming.length === 0 ? (
             <EmptyState title="No upcoming schedules">Add one so citizens know when and where to go.</EmptyState>
           ) : (
@@ -224,6 +228,7 @@ function OperationsView({ d, group }: { d: Data; group: RoleGroup }) {
           )}
         </Card>
 
+        {group === "sysadmin" && (
         <Card title="Recent activity" className="xl:col-span-2" actions={<Link href="/admin/audit-logs" className="text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300">Audit trail →</Link>}>
           {d.audit.length === 0 ? (
             <p className="text-sm text-gray-500">No activity yet.</p>
@@ -243,6 +248,7 @@ function OperationsView({ d, group }: { d: Data; group: RoleGroup }) {
             </ul>
           )}
         </Card>
+        )}
       </div>
     </div>
   );
