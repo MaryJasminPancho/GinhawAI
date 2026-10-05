@@ -1,5 +1,6 @@
 "use client";
 
+import { DELIVERY_CHANNEL } from "@/lib/features";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { BarList, ColumnChart, TierStack } from "@/components/admin/charts";
 import { Badge, Btn, Card, downloadCsv, EmptyState, ErrorText, fmtDateTime, fmtMonth, fmtNum, fmtPct, Loading, PageTitle, PrivacyChip, Segmented, StatCard, Table, td, th } from "@/components/admin/ui";
@@ -12,12 +13,11 @@ import {
   getDemand,
   getDocumentDeficiency,
   getFeedback,
-  getSmsStats,
+  getDeliveryStats,
   listBarangays,
   listPrograms,
   shortProgramName,
-  SmsLog,
-  SmsMonth,
+  DeliveryStats,
 } from "@/lib/adminApi";
 import { byBarangay, byMonth, byProgram, byTier, filterDemand, monthsFor, programLabel, Range, RANGE_OPTIONS, sum, susGrade, UNTAGGED } from "@/lib/adminAnalytics";
 
@@ -31,11 +31,11 @@ const REPORTS: { id: ReportId; title: string; blurb: string }[] = [
   { id: "gap", title: "Eligibility Gap Report", blurb: "Households that matched no program, by barangay." },
   { id: "density", title: "Vulnerability Heatmap Density", blurb: "Risk tiers per barangay." },
   { id: "documents", title: "Document Deficiency Summary", blurb: "Documents citizens most often lack." },
-  { id: "sms", title: "SMS Delivery Success Log", blurb: "Semaphore checklist delivery rates." },
+  { id: "sms", title: `${DELIVERY_CHANNEL} Delivery Success Log`, blurb: `Checklist ${DELIVERY_CHANNEL.toLowerCase()} delivery rates.` },
   { id: "satisfaction", title: "Aggregate User Satisfaction", blurb: "SUS scores and citizen comments." },
 ];
 
-type Data = { demand: DemandData; barangays: Barangay[]; programs: AdminProgram[]; docs: DocDeficiency[]; sms: { months: SmsMonth[]; recent: SmsLog[] }; feedback: Feedback[] };
+type Data = { demand: DemandData; barangays: Barangay[]; programs: AdminProgram[]; docs: DocDeficiency[]; sms: DeliveryStats; feedback: Feedback[] };
 type Built = { summary: ReactNode; body: ReactNode; csv: (string | number | null)[][]; empty?: string };
 
 export default function ReportsPage() {
@@ -45,7 +45,7 @@ export default function ReportsPage() {
   const [range, setRange] = useState<Range>("6m");
 
   useEffect(() => {
-    Promise.all([getDemand(12), listBarangays(), listPrograms(), getDocumentDeficiency(12), getSmsStats(12), getFeedback(12)])
+    Promise.all([getDemand(12), listBarangays(), listPrograms(), getDocumentDeficiency(12), getDeliveryStats(12), getFeedback(12)])
       .then(([demand, barangays, programs, docs, sms, feedback]) => setData({ demand, barangays, programs, docs, sms, feedback }))
       .catch((e) => setError(e.message));
   }, []);
@@ -249,12 +249,12 @@ function build(id: ReportId, d: Data, months: string[]): Built {
     const ms = d.sms.months.filter((m) => set.has(m.month));
     const sent = ms.reduce((a, m) => a + m.sent, 0);
     const failed = ms.reduce((a, m) => a + m.failed, 0);
-    if (!sent && !failed) return { summary: null, body: null, csv: [], empty: "No checklist SMS has been sent in this period." };
+    if (!sent && !failed) return { summary: null, body: null, csv: [], empty: `No checklist ${DELIVERY_CHANNEL === "SMS" ? "SMS has" : "emails have"} been sent in this period.` };
     const rate = sent / (sent + failed);
     return {
       summary: (
         <>
-          <StatCard label="Success rate" value={fmtPct(rate)} hint="Accepted by the Semaphore gateway" tone={rate >= 0.95 ? "brand" : "amber"} />
+          <StatCard label="Success rate" value={fmtPct(rate)} hint={`Accepted by the ${DELIVERY_CHANNEL.toLowerCase()} gateway`} tone={rate >= 0.95 ? "brand" : "amber"} />
           <StatCard label="Sent" value={fmtNum(sent)} />
           <StatCard label="Failed" value={fmtNum(failed)} tone="red" />
         </>
@@ -262,9 +262,9 @@ function build(id: ReportId, d: Data, months: string[]): Built {
       body: (
         <>
           <Card title="Success rate per month">
-            <ColumnChart ariaLabel="SMS success rate per month" data={ms.map((m) => ({ label: fmtMonth(m.month), value: m.sent + m.failed ? m.sent / (m.sent + m.failed) : 0, sub: `${fmtNum(m.sent + m.failed)} attempts` }))} format={(v) => fmtPct(v, 0)} />
+            <ColumnChart ariaLabel={`${DELIVERY_CHANNEL} success rate per month`} data={ms.map((m) => ({ label: fmtMonth(m.month), value: m.sent + m.failed ? m.sent / (m.sent + m.failed) : 0, sub: `${fmtNum(m.sent + m.failed)} attempts` }))} format={(v) => fmtPct(v, 0)} />
           </Card>
-          <Card title="Recent messages" subtitle="Recipient numbers are masked before they're logged.">
+          <Card title="Recent messages" subtitle="Recipients are masked before they're logged.">
             <Table>
               <thead>
                 <tr>
@@ -276,7 +276,7 @@ function build(id: ReportId, d: Data, months: string[]): Built {
               </thead>
               <tbody>
                 {d.sms.recent.slice(0, 12).map((s) => (
-                  <tr key={s.sms_id}>
+                  <tr key={s.log_id}>
                     <td className={`${td} tabular-nums`}>{fmtDateTime(s.sent_at)}</td>
                     <td className={`${td} font-mono`}>{s.masked_recipient}</td>
                     <td className={td}>{shortProgramName(s.program_name)}</td>

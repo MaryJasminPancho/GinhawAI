@@ -67,11 +67,62 @@ class StaffCreate(BaseModel):
     password: str
     role_name: str
     office_id: str | None = None
+    full_name: str | None = Field(default=None, max_length=100)
+
+
+class MobileIn(BaseModel):
+    mobile: str = Field(min_length=1, max_length=20)
+
+
+class EmailIn(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+
+
+class CodeIn(BaseModel):
+    code: str = Field(pattern=r"^\s*\d{6}\s*$")
+
+
+class ForgotStartIn(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+
+
+class ForgotCompleteIn(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    code: str = Field(pattern=r"^\s*\d{6}\s*$")
+    new_password: str = Field(min_length=1, max_length=200)
+
+
+class ProfileUpdate(BaseModel):
+    full_name: str = Field(max_length=100)
+
+
+class AvatarIn(BaseModel):
+    # data:image/jpeg;base64,... produced by the browser after cropping to 256x256
+    data_url: str = Field(max_length=700_000)
+
+
+class PasswordRequestIn(BaseModel):
+    current_password: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=1, max_length=200)
+
+
+class RevealPinIn(BaseModel):
+    current_password: str = Field(min_length=1, max_length=200)
+    pin: str = Field(pattern=r"^\d{4}$")
+
+
+class RevealIn(BaseModel):
+    pin: str = Field(pattern=r"^\d{4}$")
+
+
+class PasswordDecisionIn(BaseModel):
+    note: str | None = Field(default=None, max_length=500)
 
 
 class StaffUpdate(BaseModel):
     role_name: str | None = None
     office_id: str | None = None
+    full_name: str | None = Field(default=None, max_length=100)
 
 
 # ---- Citizen sessions ----
@@ -101,6 +152,11 @@ class SmsRequest(BaseModel):
     program_ids: list[str] | None = None
 
 
+class EmailChecklistRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    program_ids: list[str] | None = None
+
+
 class AssessmentFeedbackIn(BaseModel):
     # The 10 System Usability Scale items, each answered 1 (strongly disagree) to 5 (strongly agree).
     answers: list[int] = Field(min_length=10, max_length=10)
@@ -122,9 +178,28 @@ class CacheTtlIn(BaseModel):
 
 
 class SmsGatewayUpdate(BaseModel):
-    sender_name: str | None = Field(default=None, pattern=r"^[A-Za-z0-9 ]{1,11}$")
+    # Empty sender name = use Semaphore's default sender.
+    sender_name: str | None = Field(default=None, pattern=r"^[A-Za-z0-9 ]{0,11}$")
     enabled: bool | None = None
     api_key: str | None = Field(default=None, min_length=16, max_length=200)
+    provider: str | None = Field(default=None, pattern=r"^(semaphore|android)$")
+    # Phone gateway ("SMS Gateway for Android", Local Server mode), e.g. http://192.168.1.23:8080
+    android_url: str | None = Field(default=None, pattern=r"^https?://[A-Za-z0-9.\-]+(:\d{1,5})?/?$", max_length=200)
+    android_username: str | None = Field(default=None, min_length=1, max_length=100)
+    android_password: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+class EmailGatewayUpdate(BaseModel):
+    enabled: bool | None = None
+    smtp_host: str | None = Field(default=None, pattern=r"^[A-Za-z0-9.\-]{3,100}$")
+    smtp_port: int | None = Field(default=None, ge=1, le=65535)
+    smtp_username: str | None = Field(default=None, min_length=3, max_length=254)
+    smtp_password: str | None = Field(default=None, min_length=1, max_length=200)
+    from_name: str | None = Field(default=None, min_length=1, max_length=60)
+
+
+class TestEmailIn(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
 
 
 class TestSmsIn(BaseModel):

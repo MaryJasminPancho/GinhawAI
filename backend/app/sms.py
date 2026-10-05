@@ -1,12 +1,27 @@
-"""Semaphore SMS gateway (one-way). The API key comes from the admin console
-(system_config.sms_api_key) or, as a fallback, the SEMAPHORE_API_KEY env var."""
+"""One-way SMS, used by both sides: citizens' checklists and staff verification
+/ password-reset codes. Two providers, chosen on the SMS Gateway page:
+
+* "semaphore": the Semaphore API. The key comes from the admin console
+  (system_config.sms_api_key) or, as a fallback, the SEMAPHORE_API_KEY env var.
+* "android": an Android phone on the same network running the open-source
+  "SMS Gateway for Android" app in Local Server mode. Texts go out from the
+  phone's own SIM, so they use that SIM's load or unlimited-text promo.
+"""
 
 import os
 import re
 
 import httpx
 
+from app import secretbox
+
+# SMS is a future enhancement: email is the delivery channel for now. Everything
+# below is kept and tested, so turning this on (and showing the SMS pages again
+# in frontend/src/lib/features.ts) is all it takes to bring SMS back.
+SMS_FEATURE_ENABLED = False
+
 SEMAPHORE_URL = "https://api.semaphore.co/api/v4"
+ANDROID_SECRET = "sms-gateway"
 
 
 def normalize_ph_number(raw: str) -> str | None:
@@ -23,6 +38,21 @@ def mask_number(number: str) -> str:
 
 def api_key(settings: dict) -> str | None:
     return settings.get("sms_api_key") or os.getenv("SEMAPHORE_API_KEY")
+
+
+def provider(settings: dict) -> str:
+    return "android" if settings.get("sms_provider") == "android" else "semaphore"
+
+
+def android_password(settings: dict) -> str | None:
+    token = settings.get("android_gateway_password")
+    return secretbox.decrypt(token, ANDROID_SECRET) if token else None
+
+
+def is_configured(settings: dict) -> bool:
+    if provider(settings) == "android":
+        return bool(settings.get("android_gateway_url") and settings.get("android_gateway_username") and android_password(settings))
+    return bool(api_key(settings))
 
 
 def short_name(program_name: str) -> str:
@@ -48,11 +78,39 @@ def build_checklist_sms(programs: list[dict], offices: list[dict]) -> str:
 
 
 async def send_sms(settings: dict, number: str, message: str) -> dict:
+    """number is a normalized 09XXXXXXXXX. Returns {"status": "SENT"|"FAILED", "detail": ...}."""
+    if not SMS_FEATURE_ENABLED:
+        return {"status": "FAILED", "detail": "SMS isn't available yet (planned as a future enhancement)."}
     if not settings.get("sms_enabled", True):
         return {"status": "FAILED", "detail": "SMS sending is paused by the administrator."}
-    key = api_key(settings)
-    if not key:
-        return {"status": "FAILED", "detail": "The SMS gateway isn't set up yet. Please save or screenshot your checklist instead."}
+    if not is_configured(settings):
+        return {"status": "FAILED", "detail": "The SMS gateway isn't set up yet."}
+    if provider(settings) == "android":
+        return await _send_android(settings, number, message)
+    return await _send_semaphore(settings, api_key(settings), number, message)
+
+
+async def _send_android(settings: dict, number: str, message: str) -> dict:
+    url = settings["android_gateway_url"].rstrip("/") + "/message"
+    payload = {"textMessage": {"text": message}, "phoneNumbers": ["+63" + number[1:]]}
+    auth = (settings["android_gateway_username"], android_password(settings) or "")
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            res = await client.post(url, json=payload, auth=auth)
+    except Exception as e:
+        return {"status": "FAILED", "detail": f"Could not reach the phone gateway ({type(e).__name__}). Check that the phone is on the same Wi-Fi and the app says Online."}
+    if res.status_code == 401:
+        return {"status": "FAILED", "detail": "The phone gateway rejected the username or password."}
+    if res.status_code >= 400:
+        return {"status": "FAILED", "detail": f"The phone gateway refused the message (HTTP {res.status_code})."}
+    try:
+        state = str(res.json().get("state", "Pending")).upper()
+    except Exception:
+        state = "PENDING"
+    return {"status": "FAILED" if state == "FAILED" else "SENT", "detail": state}
+
+
+async def _send_semaphore(settings: dict, key: str, number: str, message: str) -> dict:
     data = {"apikey": key, "number": number, "message": message}
     if settings.get("sms_sender_name"):
         data["sendername"] = settings["sms_sender_name"]
@@ -69,6 +127,9 @@ async def send_sms(settings: dict, number: str, message: str) -> dict:
 
 
 async def account_balance(settings: dict) -> int | None:
+    """Semaphore credits left. None for the phone gateway (the SIM's load isn't visible)."""
+    if provider(settings) == "android":
+        return None
     key = api_key(settings)
     if not key:
         return None

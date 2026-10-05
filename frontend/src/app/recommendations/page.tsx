@@ -6,11 +6,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
 import Button, { buttonClasses } from "@/components/Button";
-import { assess, Assessment, endSession, getSession, Lang, ProgramResult, sendDocumentChecks, sendSms, SessionExpiredError } from "@/lib/api";
+import { assess, Assessment, endSession, getChannels, getSession, Lang, ProgramResult, sendDocumentChecks, sendEmail, sendSms, SessionExpiredError } from "@/lib/api";
 import { t } from "@/lib/i18n";
 
 // Figs. 19–22: ranked programs (green / amber / red), the explainable
-// eligibility breakdown, document checklist + office directory, SMS delivery,
+// eligibility breakdown, document checklist + office directory, email delivery (SMS later),
 // and session end (which purges the citizen's data).
 
 const STATUS = {
@@ -136,7 +136,11 @@ function RecommendationsInner() {
   const [have, setHave] = useState<Set<string>>(new Set());
   const [touched, setTouched] = useState<Set<string>>(new Set()); // programs whose checklist the citizen used
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [sms, setSms] = useState<{ state: "idle" | "sending" | "sent" | "error"; text?: string }>({ state: "idle" });
+  // Which ways to send the checklist are set up (email is free; SMS needs a gateway).
+  const [channels, setChannels] = useState<{ sms: boolean; email: boolean }>({ sms: false, email: false });
+  const [via, setVia] = useState<"email" | "sms">("email");
   const [finishing, setFinishing] = useState(false);
 
   useEffect(() => {
@@ -147,6 +151,12 @@ function RecommendationsInner() {
         setResult(s.assessment ?? (await assess(sessionId)));
       })
       .catch((e) => setError(e instanceof SessionExpiredError ? t("en", "sessionEnded") : e.message));
+    getChannels()
+      .then((c) => {
+        setChannels(c);
+        setVia(c.email ? "email" : "sms");
+      })
+      .catch(() => {});
   }, [sessionId]);
 
   const matched = result?.programs.filter((p) => p.status !== "not_qualified") ?? [];
@@ -167,7 +177,7 @@ function RecommendationsInner() {
     if (!sessionId) return;
     setSms({ state: "sending" });
     try {
-      const r = await sendSms(sessionId, phone);
+      const r = via === "email" ? await sendEmail(sessionId, email) : await sendSms(sessionId, phone);
       setSms({ state: "sent", text: r.masked_recipient });
     } catch (err) {
       setSms({ state: "error", text: (err as Error).message });
@@ -240,8 +250,8 @@ function RecommendationsInner() {
           </section>
         )}
 
-        {/* Figs. 21–22 — SMS delivery */}
-        {result && matched.length > 0 && (
+        {/* Figs. 21–22 — send the checklist by email (free, optional) or SMS */}
+        {result && matched.length > 0 && (channels.email || channels.sms) && (
           <section className="relative z-10 mt-6 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 print:hidden dark:bg-white/[0.04] dark:ring-white/10">
             {sms.state === "sent" ? (
               <div className="flex flex-col items-center gap-2 py-2 text-center">
@@ -250,22 +260,56 @@ function RecommendationsInner() {
                 </span>
                 <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t(lang, "sent")}</p>
                 <p className="font-mono text-xs text-gray-500">{sms.text}</p>
+                {via === "email" && <p className="text-xs text-gray-500 dark:text-gray-400">{t(lang, "checkSpam")}</p>}
               </div>
             ) : (
               <form onSubmit={onSendSms}>
-                <h2 className="text-[15px] font-semibold text-gray-900 dark:text-white">{t(lang, "smsTitle")}</h2>
-                <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{t(lang, "smsHint")}</p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-[15px] font-semibold text-gray-900 dark:text-white">{channels.email ? t(lang, "sendTitle") : t(lang, "smsTitle")}</h2>
+                  {channels.email && channels.sms && (
+                    <div role="tablist" aria-label={t(lang, "sendTitle")} className="flex rounded-full bg-gray-100 p-0.5 text-xs font-semibold dark:bg-white/10">
+                      {(["email", "sms"] as const).map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          role="tab"
+                          aria-selected={via === v}
+                          onClick={() => { setVia(v); setSms({ state: "idle" }); }}
+                          className={`rounded-full px-3 py-1 ${via === v ? "bg-white text-brand-800 shadow-sm dark:bg-white/15 dark:text-white" : "text-gray-500 dark:text-gray-400"}`}
+                        >
+                          {v === "email" ? "Email" : "SMS"}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{via === "email" ? t(lang, "emailHint") : t(lang, "smsHint")}</p>
                 <div className="mt-3 flex gap-2">
-                  <input
-                    aria-label="Mobile number"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    placeholder="09XX XXX XXXX"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="flex-1 rounded-full bg-white px-4 py-2.5 text-[14px] text-gray-900 ring-1 ring-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-white/[0.04] dark:text-gray-100 dark:ring-white/10"
-                  />
-                  <button type="submit" disabled={!phone || sms.state === "sending"} className="rounded-full bg-gradient-to-b from-brand-600 to-brand-700 px-5 text-sm font-semibold text-white shadow-sm disabled:opacity-50">
+                  {via === "email" ? (
+                    <input
+                      key="email"
+                      aria-label="Email address"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      placeholder="name@gmail.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="min-w-0 flex-1 rounded-full bg-white px-4 py-2.5 text-[14px] text-gray-900 ring-1 ring-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-white/[0.04] dark:text-gray-100 dark:ring-white/10"
+                    />
+                  ) : (
+                    <input
+                      key="sms"
+                      aria-label="Mobile number"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      placeholder="09XX XXX XXXX"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="min-w-0 flex-1 rounded-full bg-white px-4 py-2.5 text-[14px] text-gray-900 ring-1 ring-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-white/[0.04] dark:text-gray-100 dark:ring-white/10"
+                    />
+                  )}
+                  <button type="submit" disabled={!(via === "email" ? email.trim() : phone) || sms.state === "sending"} className="rounded-full bg-gradient-to-b from-brand-600 to-brand-700 px-5 text-sm font-semibold text-white shadow-sm disabled:opacity-50">
                     {sms.state === "sending" ? t(lang, "sending") : t(lang, "send")}
                   </button>
                 </div>

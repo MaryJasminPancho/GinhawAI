@@ -480,7 +480,7 @@ function DocumentModal({ programId, value, onClose, onSaved }: { programId: stri
     >
       <form id="doc-form" onSubmit={submit} className="space-y-4">
         <Field label="Document name">{(id) => <input id={id} required className={inputClass} value={form.document_name} onChange={(e) => setForm({ ...form, document_name: e.target.value })} placeholder="e.g. Certificate of Indigency" />}</Field>
-        <Field label="Notes for citizens" hint="Plain language — this is shown in the checklist and sent via SMS.">
+        <Field label="Notes for citizens" hint="Plain language — this is shown in the checklist citizens see and receive.">
           {(id) => <textarea id={id} rows={3} className={inputClass} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Where to get it, what to bring…" />}
         </Field>
         <label className="flex items-center justify-between gap-3 text-sm">

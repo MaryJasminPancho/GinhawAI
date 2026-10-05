@@ -16,9 +16,11 @@ from fastapi import APIRouter, HTTPException, Request
 
 from app import chatflow
 from app.ai.ai_parser import extract_entities
-from app.schemas import AssessmentFeedbackIn, DocumentChecksIn, EntityPatch, MessageIn, SessionStart, SmsRequest
+from app.schemas import AssessmentFeedbackIn, DocumentChecksIn, EmailChecklistRequest, EntityPatch, MessageIn, SessionStart, SmsRequest
 from app.scoring import derive_profile, evaluate_program, rank_programs, score_vulnerability, today_iso
 from app.settings import get_settings
+from app import mailer, sms
+from app.mailer import build_checklist_email, mask_email, normalize_email, send_email
 from app.sms import build_checklist_sms, mask_number, normalize_ph_number, send_sms
 
 router = APIRouter()
@@ -342,6 +344,59 @@ async def document_checks(session_id: str, payload: DocumentChecksIn, request: R
 
 
 # ---------------------------------------------------------------------------
+# Which ways the checklist can be sent (the results page only shows these)
+# ---------------------------------------------------------------------------
+@router.get("/api/channels")
+async def delivery_channels(request: Request):
+    s = get_settings(request)
+    return {
+        "sms": sms.SMS_FEATURE_ENABLED and sms.is_configured(s) and bool(s.get("sms_enabled", True)),
+        "email": mailer.is_configured(s) and bool(s.get("email_enabled", True)),
+    }
+
+
+def _chosen_programs(assessment: dict, program_ids: list[str] | None) -> list[dict]:
+    chosen = [p for p in assessment["programs"] if p["status"] in ("qualified", "partial")]
+    if program_ids:
+        chosen = [p for p in assessment["programs"] if p["program_id"] in program_ids]
+    if not chosen:
+        raise HTTPException(status_code=422, detail="There are no matched programs to send.")
+    return chosen
+
+
+# ---------------------------------------------------------------------------
+# Email checklist (optional; free alternative to SMS). The address is used once
+# and never stored; only a masked form is logged.
+# ---------------------------------------------------------------------------
+@router.post("/api/sessions/{session_id}/email")
+async def send_checklist_email(session_id: str, payload: EmailChecklistRequest, request: Request):
+    state = await _load(request, session_id)
+    assessment = state.get("assessment")
+    if not assessment:
+        raise HTTPException(status_code=409, detail="Please finish the assessment first.")
+    email = normalize_email(payload.email)
+    if email is None:
+        raise HTTPException(status_code=422, detail="Enter a valid email address, like name@gmail.com.")
+    if state.get("emails_sent", 0) >= 3:
+        raise HTTPException(status_code=429, detail="You've already emailed this checklist 3 times.")
+
+    chosen = _chosen_programs(assessment, payload.program_ids)
+    subject, body = build_checklist_email(chosen, assessment.get("offices", []))
+    result = await send_email(get_settings(request), email, subject, body)
+
+    async with request.app.state.db_pool.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO email_logs (masked_recipient, program_id, delivery_status) VALUES ($1, $2::uuid, $3);",
+            mask_email(email), chosen[0]["program_id"], result["status"],
+        )
+    state["emails_sent"] = state.get("emails_sent", 0) + (1 if result["status"] != "FAILED" else 0)
+    await _save(request, session_id, state)
+    if result["status"] == "FAILED":
+        raise HTTPException(status_code=502, detail=f"{result['detail']} Please save or screenshot your checklist instead.")
+    return {"status": result["status"], "masked_recipient": mask_email(email)}
+
+
+# ---------------------------------------------------------------------------
 # SMS checklist (Figs. 21–22)
 # ---------------------------------------------------------------------------
 @router.post("/api/sessions/{session_id}/sms")
@@ -373,7 +428,7 @@ async def send_checklist_sms(session_id: str, payload: SmsRequest, request: Requ
     state["sms_sent"] = state.get("sms_sent", 0) + (1 if result["status"] != "FAILED" else 0)
     await _save(request, session_id, state)
     if result["status"] == "FAILED":
-        raise HTTPException(status_code=502, detail=result["detail"])
+        raise HTTPException(status_code=502, detail=f"{result['detail']} Please save or screenshot your checklist instead.")
     return {"status": result["status"], "masked_recipient": mask_number(number), "message": message}
 
 

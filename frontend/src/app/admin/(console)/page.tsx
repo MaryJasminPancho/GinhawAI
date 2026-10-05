@@ -1,5 +1,6 @@
 "use client";
 
+import { DELIVERY_CHANNEL } from "@/lib/features";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAdmin } from "@/components/admin/AdminShell";
@@ -15,11 +16,12 @@ import {
   getDemand,
   getFeedback,
   getRatings,
-  getSmsStats,
+  getDeliveryStats,
   getSystemHealth,
   getValidationCases,
   listBarangays,
   listOffices,
+  listPasswordRequests,
   listPrograms,
   listSchedules,
   Office,
@@ -43,21 +45,22 @@ type Data = {
   cases: number;
   ratings: Rating[];
   health: ServiceStatus[] | null;
+  pendingPasswords: number;
   loadedAt: number;
 };
 
 function greeting() {
   const h = new Date().getHours();
-  return h < 12 ? "Magandang umaga" : h < 18 ? "Magandang hapon" : "Magandang gabii";
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
 
 async function load(group: RoleGroup): Promise<Data> {
   const ops = group !== "executive";
-  const [programs, barangays, demand, sms, feedback, schedules, offices, audit, cases, ratings, health] = await Promise.all([
+  const [programs, barangays, demand, sms, feedback, schedules, offices, audit, cases, ratings, health, pendingPasswords] = await Promise.all([
     listPrograms(),
     listBarangays(),
     getDemand(12),
-    getSmsStats(12),
+    getDeliveryStats(12),
     getFeedback(12),
     ops ? listSchedules() : Promise.resolve([]),
     ops ? listOffices() : Promise.resolve([]),
@@ -65,12 +68,14 @@ async function load(group: RoleGroup): Promise<Data> {
     ops ? getValidationCases().then((c) => c.length) : Promise.resolve(0),
     ops ? getRatings() : Promise.resolve([]),
     group === "sysadmin" ? getSystemHealth() : Promise.resolve(null),
+    group === "sysadmin" ? listPasswordRequests("pending").then((r) => r.length) : Promise.resolve(0),
   ]);
-  return { programs, barangays, demand, sms: sms.months, feedback, schedules, offices, audit, cases, ratings, health, loadedAt: Date.now() };
+  return { programs, barangays, demand, sms: sms.months, feedback, schedules, offices, audit, cases, ratings, health, pendingPasswords, loadedAt: Date.now() };
 }
 
 export default function DashboardPage() {
-  const { session, group } = useAdmin();
+  const { session, group, profile } = useAdmin();
+  const firstName = profile?.full_name?.split(" ")[0] || session.username;
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,7 +92,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageTitle title={`${greeting()}, ${session.username}`} description={intro} actions={group !== "welfare" ? <PrivacyChip /> : undefined} />
+      <PageTitle title={`${greeting()}, ${firstName}`} description={intro} actions={group !== "welfare" ? <PrivacyChip /> : undefined} />
       {error && <ErrorText>Could not load the dashboard. {error}</ErrorText>}
       {!data && !error && <Loading />}
       {data && (group === "executive" ? <ExecutiveView d={data} /> : <OperationsView d={data} group={group} />)}
@@ -119,7 +124,7 @@ function AnalyticsBlock({ d }: { d: Data }) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label={`Assessments · ${fmtMonth(months[months.length - 1])}`} value={fmtNum(trend[trend.length - 1].value)} hint={trend.length > 1 && trend[trend.length - 2].value > 0 ? `${change >= 0 ? "▲" : "▼"} ${fmtPct(Math.abs(change))} vs last month` : "First month of data"} />
         <StatCard label="High-risk households (6 mo)" value={total ? fmtPct(tiers.high / total, 0) : "—"} hint={`${fmtNum(tiers.high)} of ${fmtNum(total)} assessments`} tone="red" />
-        <StatCard label="SMS sent this month" value={smsTotal ? fmtPct(smsMonth.sent / smsTotal) : "—"} hint={smsTotal ? `${fmtNum(smsMonth.sent)} of ${fmtNum(smsTotal)} accepted by gateway` : "No SMS sent yet"} tone={!smsTotal || smsMonth.sent / smsTotal >= 0.95 ? "brand" : "amber"} />
+        <StatCard label={`Checklists sent by ${DELIVERY_CHANNEL.toLowerCase()} this month`} value={smsTotal ? fmtPct(smsMonth.sent / smsTotal) : "—"} hint={smsTotal ? `${fmtNum(smsMonth.sent)} of ${fmtNum(smsTotal)} delivered to the gateway` : "None sent yet"} tone={!smsTotal || smsMonth.sent / smsTotal >= 0.95 ? "brand" : "amber"} />
         <StatCard label="Avg. SUS score" value={sus === null ? "—" : sus.toFixed(1)} hint={sus === null ? "No feedback yet" : `From the last ${recentFb.length} citizen responses`} tone={sus === null || sus >= 68 ? "brand" : "amber"} />
       </div>
 
@@ -145,7 +150,7 @@ function ExecutiveView({ d }: { d: Data }) {
       <AnalyticsBlock d={d} />
       <Card title="Policy intelligence reports" subtitle="Six export-ready reports for planning">
         <ul className="grid grid-cols-1 gap-2 text-[13px] sm:grid-cols-2 lg:grid-cols-3">
-          {["Aid Demand Trend", "Eligibility Gap", "Vulnerability Heatmap Density", "Document Deficiency", "SMS Delivery Success", "Aggregate User Satisfaction"].map((r) => (
+          {["Aid Demand Trend", "Eligibility Gap", "Vulnerability Heatmap Density", "Document Deficiency", `${DELIVERY_CHANNEL} Delivery Success`, "Aggregate User Satisfaction"].map((r) => (
             <li key={r} className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-gray-700 dark:bg-white/[0.04] dark:text-gray-300">
               <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
               {r}
@@ -175,6 +180,14 @@ function OperationsView({ d, group }: { d: Data; group: RoleGroup }) {
 
   return (
     <div className="space-y-4">
+      {group === "sysadmin" && d.pendingPasswords > 0 && (
+        <div className="flex flex-col gap-2 rounded-2xl bg-amber-50 px-4 py-3 text-[13px] text-amber-900 ring-1 ring-amber-200/70 sm:flex-row sm:items-center sm:justify-between dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/20">
+          <span>
+            <strong>{d.pendingPasswords} password {d.pendingPasswords === 1 ? "change is" : "changes are"} waiting for your approval.</strong> Staff on a temporary password can&apos;t use the console until you approve.
+          </span>
+          <Link href="/admin/users" className="shrink-0 font-semibold text-amber-900 underline underline-offset-2 dark:text-amber-200">Review in Staff Credentials →</Link>
+        </div>
+      )}
       {group === "sysadmin" && d.health && (
         <Card title="Service status" actions={<Link href="/admin/system" className="text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300">Details →</Link>}>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
