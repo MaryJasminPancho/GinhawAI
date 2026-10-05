@@ -5,10 +5,20 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
-import { AdminSession, getAdminSession, logout, roleGroup, RoleGroup } from "@/lib/adminApi";
-import { canAccess, CONSOLE_NAME, navFor } from "./nav";
+import { AdminSession, getAdminSession, getProfile, logout, OWN_AVATAR_PATH, Profile, roleGroup, RoleGroup } from "@/lib/adminApi";
+import Avatar from "./Avatar";
+import { ACCOUNT_PATH, canAccess, CONSOLE_NAME, navFor } from "./nav";
 
-type Ctx = { session: AdminSession; group: RoleGroup };
+type Ctx = {
+  session: AdminSession;
+  group: RoleGroup;
+  /** Signed-in person's profile (name, picture); null until loaded or while on a temporary password. */
+  profile: Profile | null;
+  setProfile: (p: Profile) => void;
+  /** Why the profile could not be loaded (null when fine or still loading). */
+  profileError: string | null;
+  reloadProfile: () => void;
+};
 const AdminContext = createContext<Ctx | null>(null);
 
 export function useAdmin(): Ctx {
@@ -42,10 +52,6 @@ function NavIcon({ d }: { d: string }) {
   );
 }
 
-function initials(name: string) {
-  return name.slice(0, 2).toUpperCase();
-}
-
 export default function AdminShell({ children }: { children: ReactNode }) {
   const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const session = useMemo<AdminSession | null>(() => (raw ? JSON.parse(raw) : null), [raw]);
@@ -58,6 +64,31 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     if (raw === "") router.replace(`/admin/login?next=${encodeURIComponent(pathname)}`);
   }, [raw, router, pathname]);
 
+  // On a temporary password, My Account (where the new password is set) is the only page.
+  const mustChange = !!session?.must_change_password;
+  useEffect(() => {
+    if (mustChange && pathname !== ACCOUNT_PATH) router.replace(ACCOUNT_PATH);
+  }, [mustChange, pathname, router]);
+
+  // Name and picture for the sidebar card (the API refuses this until a temporary password is replaced).
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileTry, setProfileTry] = useState(0);
+  const userId = session?.user_id;
+  useEffect(() => {
+    if (!userId || mustChange) return;
+    getProfile()
+      .then((p) => {
+        setProfile(p);
+        setProfileError(null);
+      })
+      .catch((e) => setProfileError(e instanceof Error ? e.message : "Could not load your profile"));
+  }, [userId, mustChange, profileTry]);
+  const reloadProfile = () => {
+    setProfileError(null);
+    setProfileTry((n) => n + 1);
+  };
+
   if (!session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#0a0f0c]">
@@ -67,8 +98,10 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   }
 
   const group = roleGroup(session.role);
-  const sections = navFor(group);
-  const allowed = canAccess(group, pathname);
+  const sections = navFor(group, mustChange);
+  // My Account is reachable by everyone (System Administrators open it from their name card).
+  const allowed = mustChange ? pathname === ACCOUNT_PATH : pathname === ACCOUNT_PATH || canAccess(group, pathname);
+  const displayName = profile?.full_name || session.username;
 
   async function handleLogout() {
     await logout();
@@ -118,13 +151,18 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       </div>
 
       <div className="mt-4 rounded-2xl bg-brand-50/80 p-3 ring-1 ring-brand-100 dark:bg-white/[0.04] dark:ring-white/10">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-xs font-bold text-white">{initials(session.username)}</div>
+        <Link
+          href={ACCOUNT_PATH}
+          onClick={() => setMenuOpen(false)}
+          title="Your profile"
+          className="-m-1 flex items-center gap-2.5 rounded-xl p-1 transition hover:bg-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:hover:bg-white/5"
+        >
+          <Avatar path={profile?.has_avatar ? OWN_AVATAR_PATH : null} version={profile?.avatar_updated_at} name={displayName} size="md" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-semibold text-gray-900 dark:text-white">{session.username}</p>
+            <p className="truncate text-[13px] font-semibold text-gray-900 dark:text-white">{displayName}</p>
             <p className="truncate text-[11px] text-gray-500 dark:text-gray-400">{session.role}</p>
           </div>
-        </div>
+        </Link>
         <button
           type="button"
           onClick={handleLogout}
@@ -137,7 +175,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   );
 
   return (
-    <AdminContext.Provider value={{ session, group }}>
+    <AdminContext.Provider value={{ session, group, profile, setProfile, profileError, reloadProfile }}>
       <div className="relative isolate min-h-screen bg-gray-50/60 text-gray-900 dark:bg-[#0a0f0c] dark:text-gray-100">
         {/* soft brand wash like the citizen screens, kept subtle for dense data */}
         <div className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-72 bg-gradient-to-b from-brand-50 to-transparent dark:from-brand-950/30" />

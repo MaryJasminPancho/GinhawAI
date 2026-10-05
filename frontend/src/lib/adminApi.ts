@@ -1,3 +1,5 @@
+import { SMS_ENABLED } from "@/lib/features";
+
 // Data layer for the admin console (/admin). Every call goes to the FastAPI
 // backend at NEXT_PUBLIC_API_URL; there is no sample data here.
 
@@ -19,9 +21,35 @@ export function roleGroup(role: string): RoleGroup {
 // ===========================================================================
 // SESSION (JWT kept in sessionStorage so it's cleared when the tab closes)
 // ===========================================================================
-export type AdminSession = { token: string; user_id: string; username: string; role: RoleName; expires_at: number };
+export type AdminSession = {
+  token: string;
+  user_id: string;
+  username: string;
+  role: RoleName;
+  expires_at: number;
+  /** True while the account still uses a temporary password (new account or admin reset). */
+  must_change_password?: boolean;
+};
 
 const SESSION_KEY = "ginhawai_admin_session";
+const NOTICE_KEY = "ginhawai_admin_notice";
+
+/** One-time message for the sign-in screen (e.g. why the session ended). */
+export function takeSignInNotice(): string | null {
+  try {
+    const n = sessionStorage.getItem(NOTICE_KEY);
+    sessionStorage.removeItem(NOTICE_KEY);
+    return n;
+  } catch {
+    return null;
+  }
+}
+
+function setSignInNotice(text: string) {
+  try {
+    sessionStorage.setItem(NOTICE_KEY, text);
+  } catch {}
+}
 
 export function getAdminSession(): AdminSession | null {
   try {
@@ -75,6 +103,16 @@ async function request<T>(path: string, init?: RequestInit & { auth?: boolean })
   }
   if (res.status === 401 && init?.auth !== false) {
     clearAdminSession();
+    let why = "";
+    try {
+      why = (await res.json()).detail ?? "";
+    } catch {}
+    // A revoked session usually means a password change was approved or a reset happened.
+    setSignInNotice(
+      /revoked/i.test(why)
+        ? "You were signed out because your password changed (or an administrator ended all sessions). Sign in with your current password."
+        : "Your session has ended. Please sign in again."
+    );
     throw new AuthError("Your session has ended. Please sign in again.");
   }
   if (!res.ok) {
@@ -92,7 +130,11 @@ async function request<T>(path: string, init?: RequestInit & { auth?: boolean })
 const json = (body: unknown) => JSON.stringify(body);
 
 export async function login(username: string, password: string): Promise<AdminSession> {
-  const res = await request<{ access_token: string }>("/api/auth/login", { method: "POST", auth: false, body: json({ username, password }) });
+  const res = await request<{ access_token: string; must_change_password?: boolean }>("/api/auth/login", {
+    method: "POST",
+    auth: false,
+    body: json({ username, password }),
+  });
   const claims = decodeJwt(res.access_token);
   const s: AdminSession = {
     token: res.access_token,
@@ -100,6 +142,7 @@ export async function login(username: string, password: string): Promise<AdminSe
     username: username.trim().toLowerCase(),
     role: String(claims.role ?? "") as RoleName,
     expires_at: typeof claims.exp === "number" ? claims.exp * 1000 : Date.now() + 60 * 60 * 1000,
+    must_change_password: !!res.must_change_password,
   };
   saveAdminSession(s);
   return s;
@@ -216,14 +259,130 @@ export const getAuditLogs = () => request<AuditLog[]>("/api/audit-logs?limit=200
 // ===========================================================================
 // STAFF ACCOUNTS (System Administrator)
 // ===========================================================================
-export type StaffUser = { user_id: string; username: string; role_name: RoleName; office_id: string | null; is_active: boolean; last_login: string | null };
+export type StaffUser = {
+  user_id: string;
+  username: string;
+  full_name?: string | null;
+  has_avatar?: boolean;
+  avatar_updated_at?: string | null;
+  role_name: RoleName;
+  office_id: string | null;
+  is_active: boolean;
+  last_login: string | null;
+  must_change_password?: boolean;
+};
 export type Role = { role_id: string; role_name: RoleName; description: string | null };
 
 export const listStaff = () => request<StaffUser[]>("/api/admin-users");
+
+// ---- Own profile: display name + profile picture ----
+export type Profile = {
+  user_id: string;
+  username: string;
+  full_name: string | null;
+  role_name: RoleName;
+  office_name: string | null;
+  last_login: string | null;
+  has_avatar: boolean;
+  avatar_updated_at: string | null;
+  /** e.g. "0917****567"; null if no verified number yet. */
+  mobile_masked: string | null;
+  mobile_verified_at: string | null;
+  email_masked: string | null;
+  email_verified_at: string | null;
+};
+export const getProfile = () => request<Profile>("/api/auth/profile");
+// Mobile number for "forgot password" codes — confirmed with a code sent by SMS.
+export const sendMobileCode = (mobile: string) => request<{ sent_to: string }>("/api/auth/profile/mobile", { method: "POST", body: json({ mobile }) });
+export const verifyMobileCode = (code: string) => request<Profile>("/api/auth/profile/mobile/verify", { method: "POST", body: json({ code }) });
+export const removeMobile = () => request<Profile>("/api/auth/profile/mobile", { method: "DELETE" });
+
+// Email address for "forgot password" codes (free) — confirmed with a code sent by email.
+export const sendEmailCode = (email: string) => request<{ sent_to: string }>("/api/auth/profile/email", { method: "POST", body: json({ email }) });
+export const verifyEmailCode = (code: string) => request<Profile>("/api/auth/profile/email/verify", { method: "POST", body: json({ code }) });
+export const removeEmail = () => request<Profile>("/api/auth/profile/email", { method: "DELETE" });
+
+// Forgot password (signed out): SMS code, then the new password waits for approval.
+export const forgotPasswordStart = (username: string) =>
+  request<{ message: string }>("/api/auth/forgot-password/start", { method: "POST", auth: false, body: json({ username }) });
+export const forgotPasswordComplete = (username: string, code: string, new_password: string) =>
+  request<{ applied: boolean }>("/api/auth/forgot-password/complete", { method: "POST", auth: false, body: json({ username, code, new_password }) });
+export const updateProfileName = (full_name: string) => request<Profile>("/api/auth/profile", { method: "PATCH", body: json({ full_name }) });
+export const uploadAvatar = (data_url: string) => request<Profile>("/api/auth/profile/avatar", { method: "PUT", body: json({ data_url }) });
+export const removeAvatar = () => request<Profile>("/api/auth/profile/avatar", { method: "DELETE" });
+export const OWN_AVATAR_PATH = "/api/auth/profile/avatar";
+export const staffAvatarPath = (userId: string) => `/api/admin-users/${userId}/avatar`;
+
+/** Profile pictures need the sign-in token, so they're fetched and shown as blob: URLs. */
+export async function fetchAvatarUrl(path: string): Promise<string | null> {
+  const s = getAdminSession();
+  if (!s) return null;
+  try {
+    const res = await fetch(`${BASE}${path}`, { headers: { Authorization: `Bearer ${s.token}` }, signal: AbortSignal.timeout(20000) });
+    if (!res.ok) return null;
+    return URL.createObjectURL(await res.blob());
+  } catch {
+    return null;
+  }
+}
+
+/** Crop the chosen photo to a centred square and shrink it to 256×256 before upload. */
+export async function photoToAvatarDataUrl(file: File): Promise<string> {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error("Choose a JPG, PNG or WebP photo.");
+  if (file.size > 10 * 1024 * 1024) throw new Error("That photo is over 10 MB. Choose a smaller one.");
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("That photo couldn't be opened."));
+      i.src = url;
+    });
+    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 256;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 256, 256);
+    const webp = canvas.toDataURL("image/webp", 0.85);
+    return webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/jpeg", 0.85);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+// ---- Password changes (every change needs a System Administrator's approval) ----
+export type PasswordRequestStatus = "pending" | "approved" | "rejected";
+export type MyPasswordRequest = {
+  request_id: string;
+  reason: "first_login" | "voluntary" | "forgot_password";
+  status: PasswordRequestStatus;
+  requested_at: string;
+  decided_at: string | null;
+  decision_note: string | null;
+};
+export type PasswordRequestRow = MyPasswordRequest & { user_id: string; username: string; role_name: RoleName; decided_by: string | null };
+
+export const getMyPasswordRequest = () => request<{ must_change_password: boolean; request: MyPasswordRequest | null }>("/api/auth/password-request");
+export const requestPasswordChange = (current_password: string, new_password: string) =>
+  request<{ request: MyPasswordRequest; applied: boolean }>("/api/auth/password-request", { method: "POST", body: json({ current_password, new_password }) });
+export const cancelPasswordRequest = () => request<void>("/api/auth/password-request", { method: "DELETE" });
+export const listPasswordRequests = (status: PasswordRequestStatus | "all" = "pending") =>
+  request<PasswordRequestRow[]>(`/api/admin-users/password-requests?status=${status}`);
+export const approvePasswordRequest = (id: string, note?: string) =>
+  request<{ status: string }>(`/api/admin-users/password-requests/${id}/approve`, { method: "POST", body: json({ note: note ?? null }) });
+// Viewing a requested password needs the System Administrator's own 4-digit PIN.
+export const getRevealPin = () => request<{ has_pin: boolean; locked_until: string | null }>("/api/admin-users/reveal-pin");
+export const setRevealPin = (current_password: string, pin: string) =>
+  request<{ has_pin: boolean }>("/api/admin-users/reveal-pin", { method: "PUT", body: json({ current_password, pin }) });
+export const revealRequestedPassword = (id: string, pin: string) =>
+  request<{ password: string }>(`/api/admin-users/password-requests/${id}/reveal`, { method: "POST", body: json({ pin }) });
+
+export const rejectPasswordRequest = (id: string, note: string) =>
+  request<{ status: string }>(`/api/admin-users/password-requests/${id}/reject`, { method: "POST", body: json({ note }) });
 export const listRoles = () => request<Role[]>("/api/roles");
-export const createStaff = (u: { username: string; password: string; role_name: RoleName; office_id: string | null }) =>
+export const createStaff = (u: { username: string; password: string; role_name: RoleName; office_id: string | null; full_name?: string | null }) =>
   request<StaffUser>("/api/admin-users", { method: "POST", body: json(u) });
-export const updateStaff = (userId: string, patch: { role_name?: RoleName; office_id?: string | null }) =>
+export const updateStaff = (userId: string, patch: { role_name?: RoleName; office_id?: string | null; full_name?: string | null }) =>
   request<StaffUser>(`/api/admin-users/${userId}`, { method: "PATCH", body: json(patch) });
 export const setStaffActive = (userId: string, active: boolean) =>
   request<void>(`/api/admin-users/${userId}/${active ? "activate" : "deactivate"}`, { method: "PATCH" });
@@ -248,6 +407,17 @@ export const getDemand = (months = 12) => request<DemandData>(`/api/analytics/de
 export type SmsMonth = { month: string; sent: number; failed: number };
 export type SmsLog = { sms_id: string; masked_recipient: string; program_id: string; program_name: string; delivery_status: string; sent_at: string };
 export const getSmsStats = (months = 12) => request<{ months: SmsMonth[]; recent: SmsLog[] }>(`/api/analytics/sms?months=${months}`);
+
+/** Checklist messages sent to citizens, by whichever channel is on (email while SMS is a future enhancement). */
+export type DeliveryLog = { log_id: string; masked_recipient: string; program_id: string; program_name: string; delivery_status: string; sent_at: string };
+export type DeliveryStats = { months: SmsMonth[]; recent: DeliveryLog[] };
+export const getDeliveryStats = async (months = 12): Promise<DeliveryStats> => {
+  if (SMS_ENABLED) {
+    const s = await getSmsStats(months);
+    return { months: s.months, recent: s.recent.map(({ sms_id, ...r }) => ({ log_id: sms_id, ...r })) };
+  }
+  return request<DeliveryStats>(`/api/analytics/email?months=${months}`);
+};
 
 export type Feedback = { feedback_id: string; sus_score: number; qualitative_feedback: string | null; submitted_at: string };
 export const getFeedback = (months = 12) => request<Feedback[]>(`/api/analytics/feedback?months=${months}`);
@@ -316,18 +486,51 @@ export type TableInfo = { table: string; module: string; rows: number; size_kb: 
 export type DatabaseInfo = { version: string; size_mb: number; pool_size: number; pool_idle: number; tables: TableInfo[] };
 export const getDatabaseInfo = () => request<DatabaseInfo>("/api/system/database");
 
+export type SmsProvider = "semaphore" | "android";
 export type SmsGatewayConfig = {
+  provider: SmsProvider;
   sender_name: string;
   enabled: boolean;
+  /** The selected provider has everything it needs. */
   configured: boolean;
+  semaphore_configured: boolean;
+  android_url: string;
+  android_username: string;
+  android_password_set: boolean;
   key_source: string | null;
   api_key_masked: string | null;
   key_updated_at: string | null;
   credits_remaining: number | null;
 };
 export const getSmsGateway = () => request<SmsGatewayConfig>("/api/system/sms-gateway");
-export const updateSmsGateway = (patch: { sender_name?: string; enabled?: boolean; api_key?: string }) =>
+export type SmsGatewayPatch = {
+  sender_name?: string;
+  enabled?: boolean;
+  api_key?: string;
+  provider?: SmsProvider;
+  android_url?: string;
+  android_username?: string;
+  android_password?: string;
+};
+export const updateSmsGateway = (patch: SmsGatewayPatch) =>
   request<SmsGatewayConfig>("/api/system/sms-gateway", { method: "PATCH", body: json(patch) });
+export type EmailLog = { email_id: string; masked_recipient: string; program_name: string; delivery_status: string; sent_at: string };
+export type EmailGatewayConfig = {
+  enabled: boolean;
+  configured: boolean;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_username: string;
+  password_set: boolean;
+  from_name: string;
+  sent_this_month: number;
+  failed_this_month: number;
+  recent: EmailLog[];
+};
+export type EmailGatewayPatch = { enabled?: boolean; smtp_host?: string; smtp_port?: number; smtp_username?: string; smtp_password?: string; from_name?: string };
+export const getEmailGateway = () => request<EmailGatewayConfig>("/api/system/email-gateway");
+export const updateEmailGateway = (patch: EmailGatewayPatch) => request<EmailGatewayConfig>("/api/system/email-gateway", { method: "PATCH", body: json(patch) });
+export const sendTestEmail = (email: string) => request<{ status: string }>("/api/system/email-gateway/test", { method: "POST", body: json({ email }) });
 export const sendTestSms = (number: string) => request<{ status: string }>("/api/system/sms-gateway/test", { method: "POST", body: json({ number }) });
 
 export type SecurityPolicy = {

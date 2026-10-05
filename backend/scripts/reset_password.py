@@ -11,7 +11,9 @@ async def reset_password(username: str, new_password: str):
     try:
         password_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         result = await conn.execute(
-            "UPDATE admin_users SET password_hash = $1 WHERE username = $2;",
+            # Treated as a temporary password: the user must set their own on next sign-in
+            # (and existing sessions are signed out).
+            "UPDATE admin_users SET password_hash = $1, must_change_password = TRUE, tokens_valid_after = NOW() WHERE username = $2;",
             password_hash, username,
         )
         if result == "UPDATE 0":

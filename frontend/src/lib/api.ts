@@ -104,5 +104,9 @@ export const sendDocumentChecks = (sessionId: string, checks: { doc_id: string; 
   request<{ recorded: number }>(`/api/sessions/${sessionId}/document-checks`, post({ checks }));
 export const sendSms = (sessionId: string, phone: string) =>
   request<{ status: string; masked_recipient: string; message: string }>(`/api/sessions/${sessionId}/sms`, post({ phone }));
+export const sendEmail = (sessionId: string, email: string) =>
+  request<{ status: string; masked_recipient: string }>(`/api/sessions/${sessionId}/email`, post({ email }));
+/** Which ways the checklist can be sent right now (set up by the System Administrator). */
+export const getChannels = () => request<{ sms: boolean; email: boolean }>("/api/channels");
 export const endSession = (sessionId: string) => request<{ purged: boolean }>(`/api/sessions/${sessionId}`, { method: "DELETE" });
 export const submitFeedback = (answers: number[], comment: string) => request<{ sus_score: number }>("/api/feedback", post({ answers, comment }));
