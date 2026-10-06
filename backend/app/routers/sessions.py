@@ -48,9 +48,14 @@ async def _save(request: Request, session_id: str, state: dict):
     await request.app.state.redis.set(_key(session_id), json.dumps(state), ex=_ttl(request))
 
 
+ROMAN = {"1": "i", "2": "ii"}  # "Sambag 2" = "Sambag II"
+
+
 def _norm(name: str) -> str:
     name = re.sub(r"^(brgy\.?|barangay|bgy\.?)\s+", "", name.strip(), flags=re.I)
-    return re.sub(r"[^a-z0-9]", "", name.lower())
+    name = re.sub(r"\b([12])\b", lambda m: ROMAN[m.group(1)], name.lower())
+    name = re.sub(r"[^a-z0-9]", "", name)
+    return re.sub(r"([b-df-hj-np-tv-z])\1+", r"\1", name)  # "Hipodromo" = "Hippodromo" (but keep "II")
 
 
 async def _resolve_barangay(request: Request, text: str) -> tuple[str, str | None]:
@@ -60,13 +65,16 @@ async def _resolve_barangay(request: Request, text: str) -> tuple[str, str | Non
     typed = _norm(text)
     if not typed:
         return text, None
-    for r in rows:
-        if _norm(r["barangay_name"]) == typed:
-            return r["barangay_name"], r["barangay_code"]
-    for r in rows:
-        n = _norm(r["barangay_name"])
-        if len(typed) >= 4 and (n.startswith(typed) or typed.startswith(n) or typed in n):
-            return r["barangay_name"], r["barangay_code"]
+    names = [(r, _norm(r["barangay_name"])) for r in rows]
+    # Best match first: exact, then "starts with" ("Sambag" -> Sambag I), then
+    # contains ("Padilla" -> T. Padilla). Among several, the shortest name wins.
+    tests = [lambda n: n == typed]
+    if len(typed) >= 4:
+        tests += [lambda n: n.startswith(typed) or typed.startswith(n), lambda n: typed in n]
+    for test in tests:
+        hits = sorted((r for r, n in names if test(n)), key=lambda r: len(r["barangay_name"]))
+        if hits:
+            return hits[0]["barangay_name"], hits[0]["barangay_code"]
     return text.strip(), None
 
 
@@ -121,6 +129,25 @@ async def get_session(session_id: str, request: Request):
     state = await _load(request, session_id)
     await request.app.state.redis.expire(_key(session_id), _ttl(request))
     return {"session_id": session_id, "language": state.get("lang", "en"), **_progress(state), "assessment": state.get("assessment")}
+
+
+@router.get("/api/sessions/{session_id}/messages")
+async def session_history(session_id: str, request: Request):
+    """The conversation so far ("View Interview Sequence History"), so the chat
+    screen can be restored after a page refresh. Lives only as long as the session."""
+    state = await _load(request, session_id)
+    await request.app.state.redis.expire(_key(session_id), _ttl(request))
+    lang = state.get("lang", "en")
+    asking = state.get("asking")
+    progress = _progress(state)
+    return {
+        "session_id": session_id,
+        "language": lang,
+        "messages": state.get("messages", []),
+        "asking": asking,
+        "quick_replies": chatflow.quick_replies(asking, lang) if asking else [],
+        "is_complete": progress["profile_complete"],
+    }
 
 
 @router.delete("/api/sessions/{session_id}")
