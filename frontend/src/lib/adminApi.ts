@@ -160,7 +160,16 @@ export async function logout() {
 // ===========================================================================
 export type AdminProgram = { program_id: string; program_name: string; agency: string; scope: string; is_active: boolean };
 export type Criterion = { criteria_id: string; attribute: string; operator: string; threshold_value: string; weight: number };
-export type DocumentReq = { doc_id: string; document_name: string; is_mandatory: boolean; notes: string | null };
+/** for_crisis: show only when the citizen's crisis is this type (null = always). */
+export type DocumentReq = { doc_id: string; document_name: string; is_mandatory: boolean; notes: string | null; for_crisis: CrisisType | null };
+export type CrisisType = "medical" | "death" | "fire" | "calamity" | "job_loss";
+export const CRISIS_LABELS: Record<CrisisType, string> = {
+  medical: "Medical / hospital",
+  death: "Death in the family",
+  fire: "Fire",
+  calamity: "Flood / typhoon / calamity",
+  job_loss: "Sudden loss of income",
+};
 export type AttributeMeta = { attribute: string; label: string; computed: boolean };
 
 export const OPERATORS = ["<=", ">=", "<", ">", "=", "!=", "in"];
