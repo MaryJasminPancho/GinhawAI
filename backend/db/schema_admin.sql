@@ -239,3 +239,12 @@ INSERT INTO system_config (key, value) VALUES
 ('smtp_password',   'null'),
 ('email_from_name', '"GinhawAI"')
 ON CONFLICT (key) DO NOTHING;
+
+-- ---------------------------------------------------------------------------
+-- A document can apply to one crisis type only (e.g. AICS: death certificate
+-- only for a death in the family). NULL = always shown.
+-- ---------------------------------------------------------------------------
+ALTER TABLE document_requirements ADD COLUMN IF NOT EXISTS for_crisis VARCHAR(20);
+ALTER TABLE document_requirements DROP CONSTRAINT IF EXISTS document_requirements_for_crisis_check;
+ALTER TABLE document_requirements ADD CONSTRAINT document_requirements_for_crisis_check
+    CHECK (for_crisis IS NULL OR for_crisis IN ('medical', 'death', 'fire', 'calamity', 'job_loss'));

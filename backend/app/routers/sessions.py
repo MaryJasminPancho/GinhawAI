@@ -268,7 +268,7 @@ async def assess(session_id: str, request: Request):
     async with request.app.state.db_pool.acquire() as conn:
         programs = await conn.fetch("SELECT program_id, program_name, agency, scope FROM programs WHERE is_active ORDER BY program_name;")
         criteria = await conn.fetch("SELECT program_id, attribute, operator, threshold_value, weight FROM eligibility_criteria;")
-        docs = await conn.fetch("SELECT doc_id, program_id, document_name, is_mandatory, notes FROM document_requirements ORDER BY is_mandatory DESC, document_name;")
+        docs = await conn.fetch("SELECT doc_id, program_id, document_name, is_mandatory, notes, for_crisis FROM document_requirements ORDER BY is_mandatory DESC, document_name;")
         offices = await conn.fetch(
             "SELECT office_id, office_name, address, barangay_code, contact_number, operating_hours FROM lgu_offices ORDER BY office_name;"
         )
@@ -285,7 +285,10 @@ async def assess(session_id: str, request: Request):
         evaluations = rank_programs([evaluate_program(dict(p), by_program.get(str(p["program_id"]), []), profile) for p in programs])
 
         docs_by_program: dict[str, list] = {}
+        crisis = profile.get("crisis_type")
         for d in docs:
+            if d["for_crisis"] and d["for_crisis"] != crisis:
+                continue  # e.g. AICS burial papers only when there was a death
             docs_by_program.setdefault(str(d["program_id"]), []).append(
                 {"doc_id": str(d["doc_id"]), "document_name": d["document_name"], "is_mandatory": d["is_mandatory"], "notes": d["notes"]}
             )

@@ -9,6 +9,8 @@ import {
   Criterion,
   deleteCriterion,
   deleteDocument,
+  CRISIS_LABELS,
+  CrisisType,
   DocumentReq,
   listAttributes,
   listCriteria,
@@ -245,6 +247,7 @@ function ProgramDetail({ program }: { program: AdminProgram }) {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-[13px] font-semibold text-gray-900 dark:text-white">{d.document_name}</p>
                       {d.is_mandatory ? <Badge tone="brand">Required</Badge> : <Badge>Optional</Badge>}
+                      {d.for_crisis && <Badge tone="amber">Only for: {CRISIS_LABELS[d.for_crisis]}</Badge>}
                     </div>
                     {d.notes && <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{d.notes}</p>}
                   </div>
@@ -441,7 +444,7 @@ function CriterionModal({ programId, attributes, value, onClose, onSaved }: { pr
 }
 
 function DocumentModal({ programId, value, onClose, onSaved }: { programId: string; value: Partial<DocumentReq> | null; onClose: () => void; onSaved: (d: DocumentReq) => void }) {
-  const [form, setForm] = useState({ document_name: "", is_mandatory: true, notes: "" });
+  const [form, setForm] = useState<{ document_name: string; is_mandatory: boolean; notes: string; for_crisis: CrisisType | "" }>({ document_name: "", is_mandatory: true, notes: "", for_crisis: "" });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [lastValue, setLastValue] = useState(value);
@@ -449,7 +452,7 @@ function DocumentModal({ programId, value, onClose, onSaved }: { programId: stri
   if (value !== lastValue) {
     setLastValue(value);
     if (value) {
-      setForm({ document_name: value.document_name ?? "", is_mandatory: value.is_mandatory ?? true, notes: value.notes ?? "" });
+      setForm({ document_name: value.document_name ?? "", is_mandatory: value.is_mandatory ?? true, notes: value.notes ?? "", for_crisis: value.for_crisis ?? "" });
       setError(null);
     }
   }
@@ -458,7 +461,7 @@ function DocumentModal({ programId, value, onClose, onSaved }: { programId: stri
     e.preventDefault();
     setBusy(true);
     try {
-      onSaved(await saveDocument(programId, { ...form, notes: form.notes || null, doc_id: value?.doc_id }));
+      onSaved(await saveDocument(programId, { ...form, notes: form.notes || null, for_crisis: form.for_crisis || null, doc_id: value?.doc_id }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save");
     } finally {
@@ -482,6 +485,16 @@ function DocumentModal({ programId, value, onClose, onSaved }: { programId: stri
         <Field label="Document name">{(id) => <input id={id} required className={inputClass} value={form.document_name} onChange={(e) => setForm({ ...form, document_name: e.target.value })} placeholder="e.g. Certificate of Indigency" />}</Field>
         <Field label="Notes for citizens" hint="Plain language — this is shown in the checklist citizens see and receive.">
           {(id) => <textarea id={id} rows={3} className={inputClass} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Where to get it, what to bring…" />}
+        </Field>
+        <Field label="Show this document" hint="E.g. AICS: a death certificate only matters when there was a death in the family.">
+          {(id) => (
+            <select id={id} className={inputClass} value={form.for_crisis} onChange={(e) => setForm({ ...form, for_crisis: e.target.value as CrisisType | "" })}>
+              <option value="">To everyone</option>
+              {(Object.keys(CRISIS_LABELS) as CrisisType[]).map((c) => (
+                <option key={c} value={c}>Only if the crisis is: {CRISIS_LABELS[c]}</option>
+              ))}
+            </select>
+          )}
         </Field>
         <label className="flex items-center justify-between gap-3 text-sm">
           <span>Required (missing it disqualifies the applicant)</span>

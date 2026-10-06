@@ -20,7 +20,7 @@ welfare = require_roles(WELFARE_ROLES)
 
 PROGRAM_COLS = "program_id, program_name, agency, scope, is_active"
 CRITERIA_COLS = "criteria_id, program_id, attribute, operator, threshold_value, weight"
-DOC_COLS = "doc_id, program_id, document_name, is_mandatory, notes"
+DOC_COLS = "doc_id, program_id, document_name, is_mandatory, notes, for_crisis"
 
 
 def _rule_text(r) -> str:
@@ -149,8 +149,8 @@ async def create_document_requirement(program_id: UUID, document: DocumentRequir
             if name is None:
                 raise HTTPException(status_code=404, detail="Program not found")
             row = await conn.fetchrow(
-                f"INSERT INTO document_requirements (program_id, document_name, is_mandatory, notes) VALUES ($1, $2, $3, $4) RETURNING {DOC_COLS};",
-                program_id, document.document_name.strip(), document.is_mandatory, (document.notes or "").strip() or None,
+                f"INSERT INTO document_requirements (program_id, document_name, is_mandatory, notes, for_crisis) VALUES ($1, $2, $3, $4, $5) RETURNING {DOC_COLS};",
+                program_id, document.document_name.strip(), document.is_mandatory, (document.notes or "").strip() or None, document.for_crisis,
             )
             await write_audit(conn, current_admin["sub"], "INSERT", "document_requirements", None, f"{name}: {row['document_name']}")
     return dict(row)
@@ -164,8 +164,8 @@ async def update_document_requirement(program_id: UUID, doc_id: UUID, document: 
             if before is None:
                 raise HTTPException(status_code=404, detail="Document not found")
             row = await conn.fetchrow(
-                f"UPDATE document_requirements SET document_name = $2, is_mandatory = $3, notes = $4 WHERE doc_id = $1 RETURNING {DOC_COLS};",
-                doc_id, document.document_name.strip(), document.is_mandatory, (document.notes or "").strip() or None,
+                f"UPDATE document_requirements SET document_name = $2, is_mandatory = $3, notes = $4, for_crisis = $5 WHERE doc_id = $1 RETURNING {DOC_COLS};",
+                doc_id, document.document_name.strip(), document.is_mandatory, (document.notes or "").strip() or None, document.for_crisis,
             )
             await write_audit(conn, current_admin["sub"], "UPDATE", "document_requirements",
                               f"{before['document_name']} (required={before['is_mandatory']})", f"{row['document_name']} (required={row['is_mandatory']})")
