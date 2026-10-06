@@ -92,6 +92,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 const post = (body: unknown) => ({ method: "POST", body: JSON.stringify(body) });
 
 export const startSession = (language: string) => request<StartResponse>("/api/sessions", post({ language }));
+export type HistoryResponse = {
+  session_id: string;
+  language: Lang;
+  messages: { from: "assistant" | "citizen"; text: string }[];
+  asking: string | null;
+  quick_replies: QuickReply[];
+  is_complete: boolean;
+};
+/** The conversation so far, used to restore the chat after a page refresh. */
+export const getHistory = (sessionId: string) => request<HistoryResponse>(`/api/sessions/${sessionId}/messages`);
 export const sendMessage = (sessionId: string, message: string) => request<MessageResponse>(`/api/sessions/${sessionId}/messages`, post({ message }));
 export const getSession = (sessionId: string) => request<SessionState>(`/api/sessions/${sessionId}`);
 export const editEntities = (sessionId: string, values: Record<string, unknown>) =>
