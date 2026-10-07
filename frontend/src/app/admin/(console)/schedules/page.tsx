@@ -61,7 +61,7 @@ export default function SchedulesPage() {
     <>
       <PageTitle
         title="Barangay Aid Schedules"
-        description="Local distribution and registration dates. Active schedules appear in citizens' recommendations and SMS checklists for the matching program."
+        description="Local distribution and registration dates. Active schedules appear in citizens' recommendations and checklists for the matching program."
         actions={<Btn onClick={() => setEditing({})}>+ Add schedule</Btn>}
       />
       {error && <div className="mb-4"><ErrorText>{error}</ErrorText></div>}
@@ -217,7 +217,7 @@ function ScheduleModal({ value, programs, offices, onClose, onSaved }: { value: 
           <Field label="Start date">{(id) => <input id={id} type="date" required className={inputClass} value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />}</Field>
           <Field label="End date">{(id) => <input id={id} type="date" required className={inputClass} value={form.end_date} min={form.start_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />}</Field>
         </div>
-        <Field label="Notes for citizens" hint="Time, who can join, what to bring. Keep it short — this may be sent by SMS.">
+        <Field label="Notes for citizens" hint="Time, who can join, what to bring. Keep it short — citizens read this on their phones.">
           {(id) => <textarea id={id} rows={3} maxLength={300} className={inputClass} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />}
         </Field>
         {error && <ErrorText>{error}</ErrorText>}

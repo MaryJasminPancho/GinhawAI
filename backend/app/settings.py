@@ -8,7 +8,7 @@ from fastapi import Request
 
 DEFAULTS = {
     "jwt_expire_minutes": 60,
-    "password_min_length": 10,
+    "password_min_length": 8,
     "max_failed_logins": 5,
     "lockout_minutes": 15,
     "rate_limit_per_minute": 60,
@@ -16,9 +16,22 @@ DEFAULTS = {
     "purge_on_session_end": True,
     "allowed_origins": ["http://localhost:3000"],
     "sms_enabled": True,
-    "sms_sender_name": "GINHAWAI",
+    "sms_sender_name": "",  # blank = Semaphore's default sender (custom names need Semaphore's approval)
     "sms_api_key": None,
     "sms_api_key_updated_at": None,
+    # "semaphore" (paid API) or "android" (an Android phone on the same Wi-Fi
+    # running the "SMS Gateway for Android" app, sending from its own SIM).
+    "sms_provider": "semaphore",
+    "android_gateway_url": None,
+    "android_gateway_username": None,
+    "android_gateway_password": None,  # encrypted with secretbox (purpose "sms-gateway")
+    # Email (SMTP, normally a Gmail account with an app password).
+    "email_enabled": True,
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 465,
+    "smtp_username": None,
+    "smtp_password": None,  # encrypted with secretbox (purpose "email-gateway")
+    "email_from_name": "GinhawAI",
 }
 
 

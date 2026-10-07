@@ -6,7 +6,7 @@ import { Barangay, deleteOffice, listBarangays, listOffices, Office, saveBaranga
 
 // "Update Municipal Office Directories" (Fig. 9). Offices appear on the
 // citizen's Document Checklist & Office Directory screen (Fig. 21) and in the
-// SMS sent through Semaphore. Barangays are the geographic reference for the
+// checklist message citizens receive. Barangays are the geographic reference for the
 // chat (citizens name their barangay) and for the heatmap (map coordinates).
 
 type Tab = "offices" | "barangays";
@@ -48,7 +48,7 @@ export default function OfficesPage() {
     <>
       <PageTitle
         title="Office Directory"
-        description="Where citizens go to apply, and the barangays they can choose from. Offices are shown on the checklist screen and included in the SMS citizens receive."
+        description="Where citizens go to apply, and the barangays they can choose from. Offices are shown on the checklist screen and included in the checklist citizens can have emailed."
         actions={
           tab === "offices" ? (
             <Btn onClick={() => setEditing({})}>+ Add office</Btn>
@@ -250,7 +250,7 @@ function OfficeModal({ value, barangays, onClose, onSaved }: { value: Partial<Of
         </div>
         <Field label="Operating hours">{(id) => <input id={id} className={inputClass} value={form.operating_hours} onChange={(e) => setForm({ ...form, operating_hours: e.target.value })} />}</Field>
         <div>
-          <p className="mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">How it appears in the SMS</p>
+          <p className="mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">How it appears in the checklist message</p>
           <p className="rounded-2xl rounded-bl-sm bg-gray-100 px-4 py-3 text-[13px] leading-relaxed text-gray-800 dark:bg-white/[0.06] dark:text-gray-100">{smsPreview}</p>
         </div>
         {error && <ErrorText>{error}</ErrorText>}

@@ -53,6 +53,17 @@ const T = {
     en: "No programs match right now. You can still ask your barangay office for other help.",
   },
   otherPrograms: { fil: "Iba pang programa na nasuri", ceb: "Ubang programa nga gisusi", en: "Other programs we checked" },
+  sendTitle: { fil: "Ipadala ang aking listahan", ceb: "Ipadala ang akong lista", en: "Send my checklist" },
+  emailHint: {
+    fil: "Opsyonal. Ii-email namin ang listahan ng dokumento at address ng opisina. Hindi namin itatago ang inyong email.",
+    ceb: "Opsyonal. I-email namo ang lista sa dokumento ug address sa opisina. Dili namo tipigan ang imong email.",
+    en: "Optional. We'll email the document checklist and office address. We don't keep your email.",
+  },
+  checkSpam: {
+    fil: "Tingnan din ang spam folder kung hindi ninyo makita.",
+    ceb: "Tan-awa usab ang spam folder kung dili nimo makita.",
+    en: "Check your spam folder if you don't see it.",
+  },
   smsTitle: { fil: "Ipadala via SMS", ceb: "Ipadala pinaagi sa SMS", en: "Send via SMS" },
   smsHint: {
     fil: "Ipadadala namin ang listahan ng dokumento at address ng opisina sa inyong cellphone. Hindi namin itatago ang inyong numero.",

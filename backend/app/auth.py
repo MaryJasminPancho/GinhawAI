@@ -20,6 +20,9 @@ WELFARE_ROLES = {SYSTEM_ADMIN, LGU_ADMIN, SOCIAL_WORKER}  # rules, schedules, of
 ANALYTICS_ROLES = {SYSTEM_ADMIN, LGU_ADMIN, SOCIAL_WORKER, LGU_EXECUTIVE, PARTNER_ORG}  # anonymized dashboards
 SYSADMIN_ROLES = {SYSTEM_ADMIN}  # accounts, system health, SMS gateway, security policy
 
+# The only endpoints an account with a temporary password can use.
+PASSWORD_CHANGE_PATHS = {"/api/auth/me", "/api/auth/logout", "/api/auth/password-request"}
+
 
 def hash_password(plain_password: str) -> str:
     return bcrypt.hashpw(plain_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -55,7 +58,7 @@ async def get_current_admin(request: Request, credentials: HTTPAuthorizationCred
     # password reset or a "revoke all sessions".
     async with request.app.state.db_pool.acquire() as conn:
         user = await conn.fetchrow(
-            "SELECT au.is_active, au.tokens_valid_after, au.username, r.role_name "
+            "SELECT au.is_active, au.tokens_valid_after, au.username, au.must_change_password, r.role_name "
             "FROM admin_users au JOIN roles r ON au.role_id = r.role_id WHERE au.user_id = $1::uuid;",
             claims["sub"],
         )
@@ -64,8 +67,12 @@ async def get_current_admin(request: Request, credentials: HTTPAuthorizationCred
     issued_ms = claims.get("iat_ms", claims.get("iat", 0) * 1000)
     if issued_ms < user["tokens_valid_after"].timestamp() * 1000:
         raise HTTPException(status_code=401, detail="Session was revoked. Please sign in again.")
+    # Accounts on a temporary password may only reach their own account endpoints
+    # until a new password has been requested and approved.
+    if user["must_change_password"] and request.url.path not in PASSWORD_CHANGE_PATHS:
+        raise HTTPException(status_code=403, detail="Please set a new password before using the console.")
     # Role changes take effect immediately (don't trust the role inside an old token).
-    return {**claims, "role": user["role_name"], "username": user["username"]}
+    return {**claims, "role": user["role_name"], "username": user["username"], "must_change_password": user["must_change_password"]}
 
 
 def require_roles(allowed: set[str]):
