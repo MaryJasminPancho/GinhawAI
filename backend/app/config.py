@@ -17,6 +17,13 @@ else:
 ENV = os.getenv("ENV", "development")
 PORT = int(os.getenv("PORT", 8000))
 
+# Comma-separated list of frontend origins allowed to call the API (CORS)
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+    if origin.strip()
+]
+
 # Core Persistence & Cache
 DATABASE_URL = os.getenv("DATABASE_URL")
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")

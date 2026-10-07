@@ -101,10 +101,10 @@ function ScoreInner() {
     <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
       <Backdrop />
 
-      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-lg sm:rounded-[32px] sm:bg-white/70 sm:p-8 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/[0.04] dark:sm:ring-white/10">
+      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-lg sm:rounded-4xl sm:bg-white/70 sm:p-8 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
         <PageHeader title={t(lang, "resultTitle")} step={4} totalSteps={4} />
 
-        <section className="relative z-10 mt-8 flex flex-col items-center gap-5 rounded-3xl bg-white p-7 text-center shadow-sm ring-1 ring-black/5 dark:bg-white/[0.04] dark:ring-white/10">
+        <section className="relative z-10 mt-8 flex flex-col items-center gap-5 rounded-3xl bg-white p-7 text-center shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10">
           {missingSession && <p className="text-sm text-red-600 dark:text-red-400">{t(lang, "sessionEnded")}</p>}
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           {!missingSession && !error && !v && <p className="text-sm text-gray-400 dark:text-gray-500">{t(lang, "checking")}</p>}
@@ -121,7 +121,7 @@ function ScoreInner() {
         </section>
 
         {v && v.top_factors.length > 0 && (
-          <section className="relative z-10 mt-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 dark:bg-white/[0.04] dark:ring-white/10">
+          <section className="relative z-10 mt-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10">
             <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">{t(lang, "whyThisScore")}</h2>
             <ol className="space-y-2.5">
               {v.top_factors.map((f, i) => (
