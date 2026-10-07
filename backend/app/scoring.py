@@ -46,6 +46,8 @@ ATTRIBUTE_LABELS = {
     "not_receiving_other_dswd_program": "Not receiving a similar DSWD program",
     "has_supporting_documents_for_assistance_type": "Has supporting documents for the type of help needed",
     "physically_fit_for_assigned_task": "Physically fit for the assigned work",
+    "not_receiving_other_pension": "Not receiving another pension (SSS, GSIS, AFP/PNP or veterans)",
+    "not_receiving_similar_assistance": "Not receiving similar government assistance at the same time",
 }
 
 # Attributes the evaluator can compute from the chat answers (shown in the admin rule form).

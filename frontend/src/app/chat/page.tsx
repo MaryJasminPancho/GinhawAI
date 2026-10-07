@@ -7,15 +7,19 @@ import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
 import ChatBubble, { Role, TypingBubble } from "@/components/ChatBubble";
 import { buttonClasses } from "@/components/Button";
-import { Lang, QuickReply, sendMessage, SessionExpiredError, startSession } from "@/lib/api";
+import { getHistory, Lang, QuickReply, sendMessage, SessionExpiredError, startSession } from "@/lib/api";
 import { LANG_LABELS, t } from "@/lib/i18n";
 
 type Msg = { id: number; role: Role; text: string };
 
 function ChatInner() {
-  // Language page should link here as /chat?lang=fil | /chat?lang=ceb | /chat?lang=en
-  const param = useSearchParams().get("lang");
-  const lang: Lang = param === "fil" || param === "ceb" ? param : "en";
+  // Language page should link here as /chat?lang=fil | /chat?lang=ceb | /chat?lang=en.
+  // Once a session starts its id is added (/chat?lang=fil&session=…), so a page
+  // refresh restores the conversation instead of starting over.
+  const params = useSearchParams();
+  const param = params.get("lang");
+  const savedSession = params.get("session");
+  const [lang, setLang] = useState<Lang>(param === "fil" || param === "ceb" ? param : "en");
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -33,18 +37,41 @@ function ChatInner() {
   const addMessage = (role: Role, text: string) =>
     setMessages((prev) => [...prev, { id: nextId.current++, role, text }]);
 
-  // Start a session once when the page opens.
+  // Restore the saved conversation (after a refresh), or start a new session.
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    startSession(lang)
-      .then((s) => {
+
+    const fresh = () =>
+      startSession(lang).then((s) => {
         setSessionId(s.session_id);
         s.messages.forEach((m) => addMessage("assistant", m));
         setChips(s.quick_replies);
+        // Remember the session in the address so a refresh can find it again.
+        const url = new URL(window.location.href);
+        url.searchParams.set("lang", s.language);
+        url.searchParams.set("session", s.session_id);
+        window.history.replaceState(null, "", url);
+      });
+
+    const restore = savedSession
+      ? getHistory(savedSession).then((h) => {
+          setLang(h.language);
+          setSessionId(h.session_id);
+          h.messages.forEach((m) => addMessage(m.from === "citizen" ? "user" : "assistant", m.text));
+          setChips(h.quick_replies);
+          setComplete(h.is_complete);
+        })
+      : Promise.reject(new SessionExpiredError());
+
+    // An expired or unknown session simply starts over.
+    restore
+      .catch((e) => {
+        if (!(e instanceof SessionExpiredError)) throw e;
+        return fresh();
       })
       .catch((e) => setError(e.message));
-  }, [lang]);
+  }, [lang, savedSession]);
 
   // Keep the newest message in view. Scrolls only the message list itself
   // (via scrollTop), not scrollIntoView — that call also "scrolls" ancestors

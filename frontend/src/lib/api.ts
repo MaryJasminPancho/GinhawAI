@@ -92,6 +92,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 const post = (body: unknown) => ({ method: "POST", body: JSON.stringify(body) });
 
 export const startSession = (language: string) => request<StartResponse>("/api/sessions", post({ language }));
+export type HistoryResponse = {
+  session_id: string;
+  language: Lang;
+  messages: { from: "assistant" | "citizen"; text: string }[];
+  asking: string | null;
+  quick_replies: QuickReply[];
+  is_complete: boolean;
+};
+/** The conversation so far, used to restore the chat after a page refresh. */
+export const getHistory = (sessionId: string) => request<HistoryResponse>(`/api/sessions/${sessionId}/messages`);
 export const sendMessage = (sessionId: string, message: string) => request<MessageResponse>(`/api/sessions/${sessionId}/messages`, post({ message }));
 export const getSession = (sessionId: string) => request<SessionState>(`/api/sessions/${sessionId}`);
 export const editEntities = (sessionId: string, values: Record<string, unknown>) =>
@@ -104,5 +114,9 @@ export const sendDocumentChecks = (sessionId: string, checks: { doc_id: string; 
   request<{ recorded: number }>(`/api/sessions/${sessionId}/document-checks`, post({ checks }));
 export const sendSms = (sessionId: string, phone: string) =>
   request<{ status: string; masked_recipient: string; message: string }>(`/api/sessions/${sessionId}/sms`, post({ phone }));
+export const sendEmail = (sessionId: string, email: string) =>
+  request<{ status: string; masked_recipient: string }>(`/api/sessions/${sessionId}/email`, post({ email }));
+/** Which ways the checklist can be sent right now (set up by the System Administrator). */
+export const getChannels = () => request<{ sms: boolean; email: boolean }>("/api/channels");
 export const endSession = (sessionId: string) => request<{ purged: boolean }>(`/api/sessions/${sessionId}`, { method: "DELETE" });
 export const submitFeedback = (answers: number[], comment: string) => request<{ sus_score: number }>("/api/feedback", post({ answers, comment }));

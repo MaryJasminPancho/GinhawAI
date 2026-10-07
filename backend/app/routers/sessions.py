@@ -7,6 +7,7 @@ programs), document_checks, sms_logs (masked number) and feedback_logs.
 """
 
 import json
+import math
 import re
 import secrets
 import uuid
@@ -15,9 +16,11 @@ from fastapi import APIRouter, HTTPException, Request
 
 from app import chatflow
 from app.ai.ai_parser import extract_entities
-from app.schemas import AssessmentFeedbackIn, DocumentChecksIn, EntityPatch, MessageIn, SessionStart, SmsRequest
+from app.schemas import AssessmentFeedbackIn, DocumentChecksIn, EmailChecklistRequest, EntityPatch, MessageIn, SessionStart, SmsRequest
 from app.scoring import derive_profile, evaluate_program, rank_programs, score_vulnerability, today_iso
 from app.settings import get_settings
+from app import mailer, sms
+from app.mailer import build_checklist_email, mask_email, normalize_email, send_email
 from app.sms import build_checklist_sms, mask_number, normalize_ph_number, send_sms
 
 router = APIRouter()
@@ -45,9 +48,14 @@ async def _save(request: Request, session_id: str, state: dict):
     await request.app.state.redis.set(_key(session_id), json.dumps(state), ex=_ttl(request))
 
 
+ROMAN = {"1": "i", "2": "ii"}  # "Sambag 2" = "Sambag II"
+
+
 def _norm(name: str) -> str:
     name = re.sub(r"^(brgy\.?|barangay|bgy\.?)\s+", "", name.strip(), flags=re.I)
-    return re.sub(r"[^a-z0-9]", "", name.lower())
+    name = re.sub(r"\b([12])\b", lambda m: ROMAN[m.group(1)], name.lower())
+    name = re.sub(r"[^a-z0-9]", "", name)
+    return re.sub(r"([b-df-hj-np-tv-z])\1+", r"\1", name)  # "Hipodromo" = "Hippodromo" (but keep "II")
 
 
 async def _resolve_barangay(request: Request, text: str) -> tuple[str, str | None]:
@@ -57,13 +65,16 @@ async def _resolve_barangay(request: Request, text: str) -> tuple[str, str | Non
     typed = _norm(text)
     if not typed:
         return text, None
-    for r in rows:
-        if _norm(r["barangay_name"]) == typed:
-            return r["barangay_name"], r["barangay_code"]
-    for r in rows:
-        n = _norm(r["barangay_name"])
-        if len(typed) >= 4 and (n.startswith(typed) or typed.startswith(n) or typed in n):
-            return r["barangay_name"], r["barangay_code"]
+    names = [(r, _norm(r["barangay_name"])) for r in rows]
+    # Best match first: exact, then "starts with" ("Sambag" -> Sambag I), then
+    # contains ("Padilla" -> T. Padilla). Among several, the shortest name wins.
+    tests = [lambda n: n == typed]
+    if len(typed) >= 4:
+        tests += [lambda n: n.startswith(typed) or typed.startswith(n), lambda n: typed in n]
+    for test in tests:
+        hits = sorted((r for r, n in names if test(n)), key=lambda r: len(r["barangay_name"]))
+        if hits:
+            return hits[0]["barangay_name"], hits[0]["barangay_code"]
     return text.strip(), None
 
 
@@ -118,6 +129,25 @@ async def get_session(session_id: str, request: Request):
     state = await _load(request, session_id)
     await request.app.state.redis.expire(_key(session_id), _ttl(request))
     return {"session_id": session_id, "language": state.get("lang", "en"), **_progress(state), "assessment": state.get("assessment")}
+
+
+@router.get("/api/sessions/{session_id}/messages")
+async def session_history(session_id: str, request: Request):
+    """The conversation so far ("View Interview Sequence History"), so the chat
+    screen can be restored after a page refresh. Lives only as long as the session."""
+    state = await _load(request, session_id)
+    await request.app.state.redis.expire(_key(session_id), _ttl(request))
+    lang = state.get("lang", "en")
+    asking = state.get("asking")
+    progress = _progress(state)
+    return {
+        "session_id": session_id,
+        "language": lang,
+        "messages": state.get("messages", []),
+        "asking": asking,
+        "quick_replies": chatflow.quick_replies(asking, lang) if asking else [],
+        "is_complete": progress["profile_complete"],
+    }
 
 
 @router.delete("/api/sessions/{session_id}")
@@ -238,15 +268,16 @@ async def assess(session_id: str, request: Request):
     async with request.app.state.db_pool.acquire() as conn:
         programs = await conn.fetch("SELECT program_id, program_name, agency, scope FROM programs WHERE is_active ORDER BY program_name;")
         criteria = await conn.fetch("SELECT program_id, attribute, operator, threshold_value, weight FROM eligibility_criteria;")
-        docs = await conn.fetch("SELECT doc_id, program_id, document_name, is_mandatory, notes FROM document_requirements ORDER BY is_mandatory DESC, document_name;")
+        docs = await conn.fetch("SELECT doc_id, program_id, document_name, is_mandatory, notes, for_crisis FROM document_requirements ORDER BY is_mandatory DESC, document_name;")
         offices = await conn.fetch(
             "SELECT office_id, office_name, address, barangay_code, contact_number, operating_hours FROM lgu_offices ORDER BY office_name;"
         )
         schedules = await conn.fetch(
-            "SELECT s.schedule_id, s.program_id, s.start_date, s.end_date, s.notes, o.office_name, o.address "
+            "SELECT s.schedule_id, s.program_id, s.office_id, s.start_date, s.end_date, s.notes, o.office_name, o.address "
             "FROM barangay_schedules s JOIN lgu_offices o ON o.office_id = s.office_id "
             "WHERE s.end_date >= CURRENT_DATE ORDER BY s.start_date;"
         )
+        coords = {r["barangay_code"]: (r["latitude"], r["longitude"]) for r in await conn.fetch("SELECT barangay_code, latitude, longitude FROM barangays;")}
 
         by_program: dict[str, list] = {}
         for c in criteria:
@@ -254,7 +285,10 @@ async def assess(session_id: str, request: Request):
         evaluations = rank_programs([evaluate_program(dict(p), by_program.get(str(p["program_id"]), []), profile) for p in programs])
 
         docs_by_program: dict[str, list] = {}
+        crisis = profile.get("crisis_type")
         for d in docs:
+            if d["for_crisis"] and d["for_crisis"] != crisis:
+                continue  # e.g. AICS burial papers only when there was a death
             docs_by_program.setdefault(str(d["program_id"]), []).append(
                 {"doc_id": str(d["doc_id"]), "document_name": d["document_name"], "is_mandatory": d["is_mandatory"], "notes": d["notes"]}
             )
@@ -266,13 +300,34 @@ async def assess(session_id: str, request: Request):
                 for s in schedules if str(s["program_id"]) == e["program_id"]
             ]
 
-        # Offices in the citizen's barangay first, then the rest.
+        # "Where to go" (Fig. 21): the nearest relevant offices.
+        #   1. offices in the citizen's own barangay
+        #   2. offices running a current schedule for a program the citizen matched
+        #   3. everything else, nearest first (by barangay map coordinates)
+        # Other barangays' halls are skipped — they only serve their own residents.
         code = state["entities"].get("barangay_code")
-        office_list = sorted((dict(o) for o in offices), key=lambda o: 0 if code and o["barangay_code"] == code else 1)
+        matched = [e for e in evaluations if e["status"] in ("qualified", "partial")]
+        matched_ids = {e["program_id"] for e in matched}
+        hosting = {str(s["office_id"]) for s in schedules if str(s["program_id"]) in matched_ids}
+        here = coords.get(code)
+
+        def other_barangay_hall(o):
+            return o["barangay_code"] and o["barangay_code"] != code and re.match(r"(barangay|brgy\.?)\s", o["office_name"], re.I)
+
+        def distance(o):
+            there = coords.get(o["barangay_code"])
+            if not here or not there or None in here or None in there:
+                return float("inf")
+            return math.hypot(here[0] - there[0], here[1] - there[1])
+
+        def rank(o):
+            tier = 0 if code and o["barangay_code"] == code else 1 if str(o["office_id"]) in hosting else 2
+            return (tier, distance(o), o["office_name"])
+
+        office_list = sorted((dict(o) for o in offices if not other_barangay_hall(o)), key=rank)
         office_list = [{**o, "office_id": str(o["office_id"])} for o in office_list[:3]]
 
         # Anonymized demand log — once per session (Fig. 22 / Table 16).
-        matched = [e for e in evaluations if e["status"] in ("qualified", "partial")]
         if not state.get("demand_logged"):
             assessment_id = uuid.uuid4()
             async with conn.transaction():
@@ -319,6 +374,59 @@ async def document_checks(session_id: str, payload: DocumentChecksIn, request: R
 
 
 # ---------------------------------------------------------------------------
+# Which ways the checklist can be sent (the results page only shows these)
+# ---------------------------------------------------------------------------
+@router.get("/api/channels")
+async def delivery_channels(request: Request):
+    s = get_settings(request)
+    return {
+        "sms": sms.SMS_FEATURE_ENABLED and sms.is_configured(s) and bool(s.get("sms_enabled", True)),
+        "email": mailer.is_configured(s) and bool(s.get("email_enabled", True)),
+    }
+
+
+def _chosen_programs(assessment: dict, program_ids: list[str] | None) -> list[dict]:
+    chosen = [p for p in assessment["programs"] if p["status"] in ("qualified", "partial")]
+    if program_ids:
+        chosen = [p for p in assessment["programs"] if p["program_id"] in program_ids]
+    if not chosen:
+        raise HTTPException(status_code=422, detail="There are no matched programs to send.")
+    return chosen
+
+
+# ---------------------------------------------------------------------------
+# Email checklist (optional; free alternative to SMS). The address is used once
+# and never stored; only a masked form is logged.
+# ---------------------------------------------------------------------------
+@router.post("/api/sessions/{session_id}/email")
+async def send_checklist_email(session_id: str, payload: EmailChecklistRequest, request: Request):
+    state = await _load(request, session_id)
+    assessment = state.get("assessment")
+    if not assessment:
+        raise HTTPException(status_code=409, detail="Please finish the assessment first.")
+    email = normalize_email(payload.email)
+    if email is None:
+        raise HTTPException(status_code=422, detail="Enter a valid email address, like name@gmail.com.")
+    if state.get("emails_sent", 0) >= 3:
+        raise HTTPException(status_code=429, detail="You've already emailed this checklist 3 times.")
+
+    chosen = _chosen_programs(assessment, payload.program_ids)
+    subject, body = build_checklist_email(chosen, assessment.get("offices", []))
+    result = await send_email(get_settings(request), email, subject, body)
+
+    async with request.app.state.db_pool.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO email_logs (masked_recipient, program_id, delivery_status) VALUES ($1, $2::uuid, $3);",
+            mask_email(email), chosen[0]["program_id"], result["status"],
+        )
+    state["emails_sent"] = state.get("emails_sent", 0) + (1 if result["status"] != "FAILED" else 0)
+    await _save(request, session_id, state)
+    if result["status"] == "FAILED":
+        raise HTTPException(status_code=502, detail=f"{result['detail']} Please save or screenshot your checklist instead.")
+    return {"status": result["status"], "masked_recipient": mask_email(email)}
+
+
+# ---------------------------------------------------------------------------
 # SMS checklist (Figs. 21–22)
 # ---------------------------------------------------------------------------
 @router.post("/api/sessions/{session_id}/sms")
@@ -350,7 +458,7 @@ async def send_checklist_sms(session_id: str, payload: SmsRequest, request: Requ
     state["sms_sent"] = state.get("sms_sent", 0) + (1 if result["status"] != "FAILED" else 0)
     await _save(request, session_id, state)
     if result["status"] == "FAILED":
-        raise HTTPException(status_code=502, detail=result["detail"])
+        raise HTTPException(status_code=502, detail=f"{result['detail']} Please save or screenshot your checklist instead.")
     return {"status": result["status"], "masked_recipient": mask_number(number), "message": message}
 
 

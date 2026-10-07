@@ -2,12 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { FormEvent, Suspense, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Backdrop from "@/components/Backdrop";
 import Button from "@/components/Button";
 import ThemeToggle from "@/components/ThemeToggle";
-import { login } from "@/lib/adminApi";
+import { login, takeSignInNotice } from "@/lib/adminApi";
 import { inputClass } from "@/components/admin/ui";
 
 // Staff sign-in ("Log into Administrative Console / Executive Dashboard / System
@@ -22,6 +22,12 @@ function LoginInner() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // Why the previous session ended (e.g. an approved password change). Read once on the client.
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    const n = takeSignInNotice();
+    if (n) queueMicrotask(() => setNotice(n));
+  }, []);
 
   async function handlePassword(e: FormEvent) {
     e.preventDefault();
@@ -61,6 +67,9 @@ function LoginInner() {
           </div>
         </div>
 
+          {notice && (
+            <p className="rounded-xl bg-brand-50 px-3 py-2 text-[13px] text-brand-900 ring-1 ring-brand-100 dark:bg-brand-500/10 dark:text-brand-200 dark:ring-brand-500/20">{notice}</p>
+          )}
           <form onSubmit={handlePassword} className="space-y-4">
             <div className="space-y-1.5">
               <label htmlFor="username" className="block text-xs font-semibold text-gray-600 dark:text-gray-300">
@@ -97,7 +106,9 @@ function LoginInner() {
             <Button type="submit" disabled={busy} className="w-full">
               {busy ? "Signing in…" : "Sign in"}
             </Button>
-            <p className="text-center text-xs text-gray-400 dark:text-gray-500">Forgot your password? Ask your System Administrator to reset it.</p>
+            <p className="text-center text-xs text-gray-400 dark:text-gray-500">
+              <Link href="/admin/forgot-password" className="font-semibold text-brand-700 hover:underline dark:text-brand-300">Forgot your password?</Link>
+            </p>
           </form>
 
 

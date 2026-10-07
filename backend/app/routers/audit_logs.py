@@ -5,10 +5,9 @@ from datetime import timedelta, timezone
 
 from fastapi import APIRouter, Depends, Request
 
-from app.auth import WELFARE_ROLES, require_roles
+from app.auth import SYSTEM_ADMIN, get_current_admin
 
 router = APIRouter()
-welfare = require_roles(WELFARE_ROLES)
 
 MANILA = timezone(timedelta(hours=8))
 BURST_WINDOW = timedelta(minutes=15)
@@ -16,14 +15,18 @@ BURST_COUNT = 3
 
 
 @router.get("/api/audit-logs")
-async def list_audit_logs(request: Request, limit: int = 1000, current_admin: dict = Depends(welfare)):
+async def list_audit_logs(request: Request, limit: int = 1000, current_admin: dict = Depends(get_current_admin)):
+    """System Administrators see everyone's activity; every other staff member
+    sees only the actions they performed themselves."""
     limit = max(1, min(limit, 5000))
+    see_all = current_admin["role"] == SYSTEM_ADMIN
     async with request.app.state.db_pool.acquire() as conn:
         rows = await conn.fetch(
             "SELECT a.audit_id, a.user_id, au.username, a.action_type, a.target_table, a.old_value, a.new_value, a.timestamp "
             "FROM audit_logs a JOIN admin_users au ON au.user_id = a.user_id "
+            "WHERE $2::boolean OR a.user_id = $3::uuid "
             "ORDER BY a.timestamp DESC LIMIT $1;",
-            limit,
+            limit, see_all, current_admin["sub"],
         )
     logs = [dict(r) for r in rows]
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Badge, Btn, Card, downloadCsv, EmptyState, ErrorText, fmtDateTime, inputClass, Loading, PageTitle, Table, td, th, Toggle } from "@/components/admin/ui";
+import { useAdmin } from "@/components/admin/AdminShell";
 import { AuditLog, getAuditLogs } from "@/lib/adminApi";
 
 // "View Administrative Audit Logs" (Fig. 9) + System Audit & Compliance Trail
@@ -21,6 +22,9 @@ const ACTION_TONE: Record<string, "green" | "amber" | "red" | "blue" | "gray" | 
 const PAGE = 25;
 
 export default function AuditLogsPage() {
+  // System Administrators see everyone's activity; everyone else gets only
+  // their own (the API filters it — this flag only changes the wording).
+  const seeAll = useAdmin().group === "sysadmin";
   const [logs, setLogs] = useState<AuditLog[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -55,23 +59,31 @@ export default function AuditLogsPage() {
   return (
     <>
       <PageTitle
-        title="Audit Logs"
-        description="Every change to rules, schedules, offices and accounts — who made it, when, and what it was before. Entries can't be edited or deleted."
-        actions={<Btn variant="secondary" onClick={exportCsv} disabled={!logs}>Export compliance CSV</Btn>}
+        title={seeAll ? "Audit Logs" : "My activity"}
+        description={
+          seeAll
+            ? "Every change to rules, schedules, offices and accounts — who made it, when, and what it was before. Entries can't be edited or deleted."
+            : "Everything you've done in the console: sign-ins, changes you made and password requests. Only you and the System Administrator can see this. Entries can't be edited or deleted."
+        }
+        actions={<Btn variant="secondary" onClick={exportCsv} disabled={!logs}>{seeAll ? "Export compliance CSV" : "Download CSV"}</Btn>}
       />
       {error && <div className="mb-4"><ErrorText>{error}</ErrorText></div>}
 
       {flaggedCount > 0 && (
         <div className="mb-4 flex flex-col gap-2 rounded-2xl bg-red-50 px-4 py-3 text-[13px] text-red-800 ring-1 ring-red-200 sm:flex-row sm:items-center sm:justify-between dark:bg-red-500/10 dark:text-red-200 dark:ring-red-500/20">
           <span>
-            <strong>{flaggedCount} events flagged</strong> — repeated failed sign-ins or activity outside office hours. Review them with the account owners.
+            {seeAll ? (
+              <><strong>{flaggedCount} events flagged</strong> — repeated failed sign-ins or activity outside office hours. Review them with the account owners.</>
+            ) : (
+              <><strong>{flaggedCount} unusual events on your account</strong> — repeated failed sign-ins or activity outside office hours. If that wasn&apos;t you, tell your System Administrator.</>
+            )}
           </span>
           <Btn variant="danger" onClick={() => setFlaggedOnly(true)}>Review flagged</Btn>
         </div>
       )}
 
       <Card>
-        <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_150px_190px_150px_auto]">
+        <div className={`mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 ${seeAll ? "lg:grid-cols-[1fr_150px_190px_150px_auto]" : "lg:grid-cols-[1fr_150px_190px_auto]"}`}>
           <input type="search" aria-label="Search" placeholder="Search values…" className={inputClass} value={q} onChange={(e) => setQ(e.target.value)} />
           <select aria-label="Action" className={inputClass} value={action} onChange={(e) => setAction(e.target.value)}>
             <option value="all">All actions</option>
@@ -81,10 +93,12 @@ export default function AuditLogsPage() {
             <option value="all">All tables</option>
             {uniq("target_table").map((a) => <option key={a}>{a}</option>)}
           </select>
-          <select aria-label="User" className={inputClass} value={user} onChange={(e) => setUser(e.target.value)}>
-            <option value="all">All users</option>
-            {uniq("username").map((a) => <option key={a}>{a}</option>)}
-          </select>
+          {seeAll && (
+            <select aria-label="User" className={inputClass} value={user} onChange={(e) => setUser(e.target.value)}>
+              <option value="all">All users</option>
+              {uniq("username").map((a) => <option key={a}>{a}</option>)}
+            </select>
+          )}
           <label className="flex items-center gap-2 whitespace-nowrap px-1 text-[13px] text-gray-600 dark:text-gray-300">
             <Toggle checked={flaggedOnly} onChange={setFlaggedOnly} label="Flagged only" />
             Flagged only

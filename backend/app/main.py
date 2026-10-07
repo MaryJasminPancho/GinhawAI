@@ -40,7 +40,7 @@ async def redis_unavailable(request: Request, exc: Exception):
 
 
 # Public endpoints get a per-IP rate limit (Security Policy: requests per minute).
-RATE_LIMITED = ("/api/sessions", "/api/feedback", "/api/auth/login")
+RATE_LIMITED = ("/api/sessions", "/api/feedback", "/api/auth/login", "/api/auth/forgot-password")
 
 
 @app.middleware("http")
