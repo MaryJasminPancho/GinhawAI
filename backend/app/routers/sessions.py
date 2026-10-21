@@ -282,7 +282,7 @@ async def assess(session_id: str, request: Request):
         by_program: dict[str, list] = {}
         for c in criteria:
             by_program.setdefault(str(c["program_id"]), []).append(dict(c))
-        evaluations = rank_programs([evaluate_program(dict(p), by_program.get(str(p["program_id"]), []), profile) for p in programs])
+        evaluations = rank_programs([evaluate_program(dict(p), by_program.get(str(p["program_id"]), []), profile, lang) for p in programs])
 
         docs_by_program: dict[str, list] = {}
         crisis = profile.get("crisis_type")
