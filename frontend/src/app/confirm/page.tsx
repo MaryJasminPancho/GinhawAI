@@ -35,7 +35,7 @@ function Editor({ field, value, lang, onSave, onCancel }: { field: string; value
     control = (
       <div className="flex gap-2">
         {[true, false].map((b) => (
-          <button key={String(b)} type="button" onClick={() => onSave(b)} className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold ring-1 ${value === b ? "bg-brand-700 text-white ring-brand-700" : "bg-white text-gray-700 ring-gray-200 dark:bg-white/[0.04] dark:text-gray-200 dark:ring-white/10"}`}>
+          <button key={String(b)} type="button" onClick={() => onSave(b)} className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold ring-1 ${value === b ? "bg-brand-700 text-white ring-brand-700" : "bg-white text-gray-700 ring-gray-200 dark:bg-white/4 dark:text-gray-200 dark:ring-white/10"}`}>
             {t(lang, b ? "yes" : "no")}
           </button>
         ))}
@@ -126,11 +126,11 @@ function ConfirmInner() {
     <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
       <Backdrop />
 
-      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-lg sm:rounded-[32px] sm:bg-white/70 sm:p-8 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/[0.04] dark:sm:ring-white/10">
+      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-lg sm:rounded-4xl sm:bg-white/70 sm:p-8 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
         <PageHeader title={t(lang, "confirmTitle")} step={3} totalSteps={4} />
         <p className="relative z-10 mt-4 text-[13px] text-gray-500 dark:text-gray-400">{t(lang, "confirmHint")}</p>
 
-        <section className="relative z-10 mt-3 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5 dark:bg-white/[0.04] dark:ring-white/10">
+        <section className="relative z-10 mt-3 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10">
           {missingSession && <ErrorNotice>{t(lang, "sessionEnded")}</ErrorNotice>}
           {error && <ErrorNotice>{error}</ErrorNotice>}
           {!missingSession && !error && data === null && <p className="p-4 text-sm text-gray-400 dark:text-gray-500">{t(lang, "loading")}</p>}
