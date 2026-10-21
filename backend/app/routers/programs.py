@@ -8,6 +8,8 @@ written to the audit trail.
 
 from uuid import UUID
 
+import asyncpg
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.audit import write_audit
@@ -16,6 +18,8 @@ from app.schemas import DocumentRequirementCreate, EligibilityCriteriaCreate, Pr
 from app.scoring import ATTRIBUTE_LABELS, COMPUTED_ATTRIBUTES
 
 router = APIRouter()
+
+DUPLICATE_NAME = "A program with this name already exists."
 welfare = require_roles(WELFARE_ROLES)
 
 PROGRAM_COLS = "program_id, program_name, agency, scope, is_active"
@@ -68,10 +72,13 @@ async def list_attributes():
 async def create_program(program: ProgramCreate, request: Request, current_admin: dict = Depends(welfare)):
     async with request.app.state.db_pool.acquire() as conn:
         async with conn.transaction():
-            row = await conn.fetchrow(
-                f"INSERT INTO programs (program_name, agency, scope, is_active) VALUES ($1, $2, $3, $4) RETURNING {PROGRAM_COLS};",
-                program.program_name.strip(), program.agency.strip(), program.scope, program.is_active,
-            )
+            try:
+                row = await conn.fetchrow(
+                    f"INSERT INTO programs (program_name, agency, scope, is_active) VALUES ($1, $2, $3, $4) RETURNING {PROGRAM_COLS};",
+                    program.program_name.strip(), program.agency.strip(), program.scope, program.is_active,
+                )
+            except asyncpg.UniqueViolationError:
+                raise HTTPException(status_code=409, detail=DUPLICATE_NAME)
             await write_audit(conn, current_admin["sub"], "INSERT", "programs", None, f"{row['program_name']} ({row['agency']}, {row['scope']})")
     return dict(row)
 
@@ -87,7 +94,10 @@ async def update_program(program_id: UUID, body: ProgramUpdate, request: Request
             if before is None:
                 raise HTTPException(status_code=404, detail="Program not found")
             sets = ", ".join(f"{k} = ${i + 2}" for i, k in enumerate(changes))
-            row = await conn.fetchrow(f"UPDATE programs SET {sets} WHERE program_id = $1 RETURNING {PROGRAM_COLS};", program_id, *changes.values())
+            try:
+                row = await conn.fetchrow(f"UPDATE programs SET {sets} WHERE program_id = $1 RETURNING {PROGRAM_COLS};", program_id, *changes.values())
+            except asyncpg.UniqueViolationError:
+                raise HTTPException(status_code=409, detail=DUPLICATE_NAME)
             await write_audit(conn, current_admin["sub"], "UPDATE", "programs",
                               {k: before[k] for k in changes} | {"program": before["program_name"]}, changes)
     return dict(row)
