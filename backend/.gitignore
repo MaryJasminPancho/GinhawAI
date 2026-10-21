@@ -16,3 +16,5 @@ __pycache__/
 # IDE & OS Files
 .vscode/
 .DS_Store
+# Synthetic training data (regenerate with: python -m ml.generate_dataset)
+ml/data/

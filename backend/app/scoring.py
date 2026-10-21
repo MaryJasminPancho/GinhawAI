@@ -1,10 +1,9 @@
 """Vulnerability scoring + explainable eligibility evaluation.
 
-PLACEHOLDER SCORING: the XGBoost classifier described in the manuscript isn't
-trained yet, so `score_vulnerability` uses transparent, documented points based
-on PSA poverty indicators. It returns the same shape the model will
-(score 0–100, tier, top contributing factors), so swapping in the model later
-only changes this one function.
+Vulnerability scoring uses the trained XGBoost classifier (app/ml_scoring.py,
+trained by `python -m ml.train`); its top contributing factors come from the
+model's exact Tree SHAP contributions. If no trained model is installed,
+`rule_based_score` (transparent points based on PSA poverty indicators) is used.
 
 Eligibility is evaluated directly against the rules stored in
 eligibility_criteria — the same rows LGU staff edit in the admin console.
@@ -237,6 +236,7 @@ FACTOR_TEXT = {
     "solo": {"en": "Solo parent household.", "fil": "Solo parent ang nag-aalaga.", "ceb": "Solo parent ang nag-atiman."},
     "children": {"en": "There are children or a pregnant member to support.", "fil": "May mga anak o buntis na sinusuportahan.", "ceb": "Adunay mga bata o mabdos nga gisuportahan."},
     "size": {"en": "Large household of {v} people.", "fil": "Malaking pamilya na may {v} katao.", "ceb": "Dako nga pamilya nga adunay {v} ka tawo."},
+    "age": {"en": "The applicant is {v} years old.", "fil": "Ang aplikante ay {v} taong gulang.", "ceb": "Ang aplikante {v} anyos na."},
 }
 
 REL = {
@@ -264,7 +264,76 @@ TIER_MESSAGE = {
 }
 
 
+def _income_text(profile: dict, lang: str) -> str | None:
+    pc = profile.get("per_capita_income")
+    if pc is None:
+        return None
+    rel = "below" if pc <= POVERTY_THRESHOLD_MONTHLY else "near" if pc <= POVERTY_THRESHOLD_MONTHLY * 1.5 else "above"
+    return FACTOR_TEXT["income"][lang].format(v=f"₱{pc:,.0f}", rel=REL[lang][rel], line=POVERTY_THRESHOLD_MONTHLY)
+
+
+def _model_factor_text(field: str, profile: dict, lang: str) -> str | None:
+    """Plain-language sentence for one answer that raised the model's high-risk score (None = not worth saying)."""
+    if field in ("per_capita_income", "monthly_income"):
+        return _income_text(profile, lang)
+    if field == "employment_status" and profile.get("employment_status"):
+        return FACTOR_TEXT["employment"][lang].format(v=value_label(profile["employment_status"], lang))
+    if field == "housing_type" and profile.get("housing_type"):
+        return FACTOR_TEXT["housing"][lang].format(v=value_label(profile["housing_type"], lang))
+    if field == "crisis_type" and profile.get("has_crisis"):
+        return FACTOR_TEXT["crisis"][lang].format(v=value_label(profile["crisis_type"], lang))
+    if field == "has_pwd" and profile.get("has_pwd"):
+        return FACTOR_TEXT["pwd"][lang]
+    if field == "is_solo_parent" and profile.get("is_solo_parent"):
+        return FACTOR_TEXT["solo"][lang]
+    if field == "has_children_0_18" and profile.get("has_children_0_18"):
+        return FACTOR_TEXT["children"][lang]
+    if field == "age" and profile.get("age"):
+        return FACTOR_TEXT["age"][lang].format(v=int(profile["age"]))
+    return None
+
+
+def _score_with_model(profile: dict, lang: str) -> dict | None:
+    """XGBoost tier and score; the top three factors come from its exact Tree SHAP contributions."""
+    from app import ml_scoring
+
+    result = ml_scoring.predict(profile)
+    if result is None:
+        return None
+    # Income per person, total income and household size are one idea for a citizen
+    # ("how much money is there per person"), so their exact contributions are added
+    # together before ranking (Tree SHAP values are additive, so the sum is exact).
+    grouped: dict[str, float] = {}
+    for field, value in result["contributions"].items():
+        key = "per_capita_income" if field in ("per_capita_income", "monthly_income", "household_size") else field
+        grouped[key] = grouped.get(key, 0.0) + value
+    top: list[str] = []
+    for field, value in sorted(grouped.items(), key=lambda kv: -kv[1]):
+        if value <= 0 or len(top) == 3:
+            break
+        text = _model_factor_text(field, profile, lang)
+        if text:
+            top.append(text)
+    if not top:
+        top = [t for t in [_income_text(profile, lang)] if t]
+    return {
+        "score": result["score"],
+        "tier": result["tier"],
+        "message": TIER_MESSAGE[result["tier"]][lang],
+        "top_factors": top,
+        "probabilities": result["probabilities"],
+        "engine": ml_scoring.describe(),
+    }
+
+
 def score_vulnerability(profile: dict, lang: str = "en") -> dict:
+    lang = lang if lang in ("en", "fil", "ceb") else "en"
+    return _score_with_model(profile, lang) or rule_based_score(profile, lang)
+
+
+def rule_based_score(profile: dict, lang: str = "en") -> dict:
+    """Transparent points-based score: the fallback when no trained model is installed,
+    and the baseline the training report compares the model against."""
     lang = lang if lang in ("en", "fil", "ceb") else "en"
     factors: list[tuple[int, str]] = []
 
@@ -311,7 +380,7 @@ def score_vulnerability(profile: dict, lang: str = "en") -> dict:
         "tier": tier,
         "message": TIER_MESSAGE[tier][lang],
         "top_factors": top,
-        "engine": "rule-based placeholder (XGBoost pending)",
+        "engine": "Rule-based score (trained model not found)",
     }
 
 
