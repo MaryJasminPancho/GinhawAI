@@ -210,8 +210,11 @@ def _parse_bool(text: str):
     return None
 
 
-def parse_for_slot(slot: str, text: str, lang: str):
-    """Parse a direct answer to `slot`. Returns None when it can't tell."""
+def parse_for_slot(slot: str, text: str, lang: str, synonyms: dict | None = None):
+    """Parse a direct answer to `slot`. Returns None when it can't tell.
+
+    `synonyms` is the staff-managed word list (app.jargon); defaults to the built-in one."""
+    synonyms = synonyms or ENUM_SYNONYMS
     raw = text.strip()
     low = raw.lower()
     if not low:
@@ -231,12 +234,14 @@ def parse_for_slot(slot: str, text: str, lang: str):
         if n is None:
             return None
         return coerce(slot, n)
-    if slot in ENUM_SYNONYMS:
-        for value, words in ENUM_SYNONYMS[slot].items():
-            if value == "none":
-                continue  # checked last, as whole words only ("no" is inside "nasunog")
-            if any(w in low for w in words):
+    if slot in synonyms:
+        # Longest (most specific) word first, so "nawalan ng kita" beats a shorter word inside it.
+        pairs = sorted(((w.lower(), v) for v, ws in synonyms[slot].items() if v != "none" for w in ws), key=lambda p: -len(p[0]))
+        for word, value in pairs:  # "none" is checked last, as whole words only ("no" is inside "nasunog")
+            if word and word in low:
                 return value
+        if slot == "crisis_type" and any(re.search(rf"{re.escape(w.lower())}", low) for w in synonyms[slot].get("none", [])):
+            return "none"
         if slot == "crisis_type" and _parse_bool(low) is False:
             return "none"
         return None

@@ -8,7 +8,8 @@ from redis.exceptions import ConnectionError as RedisConnectionError, TimeoutErr
 
 from app.cache import create_redis_client
 from app.database import create_db_pool
-from app.routers import admin_users, analytics, audit_logs, auth, feedback, health, localization, programs, sessions, system, validation
+from app import jargon
+from app.routers import admin_users, analytics, audit_logs, auth, catalog, feedback, health, jargon_terms, localization, partners, programs, sessions, system, validation
 from app.settings import DEFAULTS, load_settings
 
 # Shared list object: the CORS middleware reads it on every request, so the
@@ -21,6 +22,7 @@ async def lifespan(app: FastAPI):
     app.state.db_pool = await create_db_pool()
     app.state.redis = create_redis_client()
     app.state.settings = await load_settings(app.state.db_pool)
+    await jargon.load(app.state.db_pool)
     app.state.cors_origins = CORS_ORIGINS
     CORS_ORIGINS[:] = app.state.settings.get("allowed_origins") or DEFAULTS["allowed_origins"]
     yield
@@ -40,7 +42,7 @@ async def redis_unavailable(request: Request, exc: Exception):
 
 
 # Public endpoints get a per-IP rate limit (Security Policy: requests per minute).
-RATE_LIMITED = ("/api/sessions", "/api/feedback", "/api/auth/login", "/api/auth/forgot-password")
+RATE_LIMITED = ("/api/sessions", "/api/feedback", "/api/catalog", "/api/auth/login", "/api/auth/forgot-password")
 
 
 @app.middleware("http")
@@ -72,6 +74,9 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(admin_users.router)
 app.include_router(programs.router)
+app.include_router(jargon_terms.router)
+app.include_router(catalog.router)
+app.include_router(partners.router)
 app.include_router(localization.router)
 app.include_router(sessions.router)
 app.include_router(feedback.router)

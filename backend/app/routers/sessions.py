@@ -14,7 +14,7 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, Request
 
-from app import chatflow
+from app import chatflow, jargon
 from app.ai.ai_parser import extract_entities
 from app.schemas import AssessmentFeedbackIn, DocumentChecksIn, EmailChecklistRequest, EntityPatch, MessageIn, SessionStart, SmsRequest
 from app.scoring import derive_profile, evaluate_program, rank_programs, score_vulnerability, today_iso
@@ -179,7 +179,7 @@ async def send_message(session_id: str, payload: MessageIn, request: Request):
     understood = False
     # 1) A direct answer to the question just asked (chip tap, "oo", "5", "8k"…).
     if asking:
-        direct = chatflow.parse_for_slot(asking, text, lang)
+        direct = chatflow.parse_for_slot(asking, text, lang, jargon.synonyms())
         if direct is not None and asking == "barangay":
             # Free text could be a greeting — only take it as-is if it matches a
             # known barangay, or if we've already asked once.

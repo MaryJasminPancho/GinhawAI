@@ -100,8 +100,9 @@ async def feedback(request: Request, months: int = 12, current_admin: dict = Dep
     ms = month_list(_months(months))
     async with request.app.state.db_pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT feedback_id, sus_score, qualitative_feedback, submitted_at FROM feedback_logs "
-            f"WHERE to_char(submitted_at AT TIME ZONE '{TZ}', 'YYYY-MM') >= $1 ORDER BY submitted_at DESC LIMIT 5000;",
+            "SELECT f.feedback_id, f.sus_score, f.qualitative_feedback, f.submitted_at, f.status, f.staff_note, f.status_updated_at, "
+            "COALESCE(u.full_name, u.username) AS status_updated_by FROM feedback_logs f LEFT JOIN admin_users u ON u.user_id = f.status_updated_by "
+            f"WHERE to_char(f.submitted_at AT TIME ZONE '{TZ}', 'YYYY-MM') >= $1 ORDER BY f.submitted_at DESC LIMIT 5000;",
             ms[0],
         )
     return [dict(r) for r in rows]
