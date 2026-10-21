@@ -118,5 +118,30 @@ export const sendEmail = (sessionId: string, email: string) =>
   request<{ status: string; masked_recipient: string }>(`/api/sessions/${sessionId}/email`, post({ email }));
 /** Which ways the checklist can be sent right now (set up by the System Administrator). */
 export const getChannels = () => request<{ sms: boolean; email: boolean }>("/api/channels");
+/** Every active program, for browsing without the chat ("Search Hyperlocal Assistance Programs"). */
+export type CatalogProgram = {
+  program_id: string;
+  program_name: string;
+  agency: string;
+  scope: string | null;
+  who_can_apply: { label: string; requirement: string }[];
+  documents: { document_name: string; is_mandatory: boolean; notes: string | null; only_if: string | null }[];
+  schedules: Omit<ScheduleItem, "schedule_id">[];
+};
+export type Catalog = {
+  programs: CatalogProgram[];
+  offices: { office_name: string; address: string | null; contact_number: string | null; operating_hours: string | null; barangay_name: string | null }[];
+  /** Verified NGOs / civil society groups and the help they currently offer. */
+  partners: {
+    name: string;
+    org_type: string;
+    services: string | null;
+    address: string | null;
+    barangay_name: string | null;
+    contact: string | null;
+    resources: { title: string; details: string | null; barangay_name: string | null; starts_on: string | null; ends_on: string | null }[];
+  }[];
+};
+export const getCatalog = (lang: Lang) => request<Catalog>(`/api/catalog?lang=${lang}`);
 export const endSession = (sessionId: string) => request<{ purged: boolean }>(`/api/sessions/${sessionId}`, { method: "DELETE" });
 export const submitFeedback = (answers: number[], comment: string) => request<{ sus_score: number }>("/api/feedback", post({ answers, comment }));

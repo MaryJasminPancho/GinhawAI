@@ -51,6 +51,9 @@ export default function SplashScreen() {
             <Link href="/language" className={buttonClasses("primary", "w-full")}>
               Get started
             </Link>
+            <Link href="/programs" className="text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300">
+              Or browse all programs first
+            </Link>
             <p className="text-xs text-gray-400 dark:text-gray-500">
               Takes about 3 minutes · Fil · Bisaya · English
             </p>

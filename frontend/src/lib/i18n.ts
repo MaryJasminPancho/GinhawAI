@@ -51,6 +51,23 @@ const T = {
   required: { fil: "Kailangan", ceb: "Kinahanglan", en: "Required" },
   optional: { fil: "Opsyonal", ceb: "Opsyonal", en: "Optional" },
   schedulesTitle: { fil: "Mga iskedyul", ceb: "Mga iskedyul", en: "Schedules" },
+  browseTitle: { fil: "Mga programa ng tulong", ceb: "Mga programa sa tabang", en: "Assistance programs" },
+  browseHint: {
+    fil: "Tingnan ang lahat ng programa, kung sino ang puwedeng mag-apply at ang mga dokumentong dadalhin. Hindi namin kailangan ang inyong impormasyon dito.",
+    ceb: "Tan-awa ang tanang programa, kinsa ang mahimong mo-apply ug ang mga dokumento nga dad-on. Dili namo kinahanglan ang imong impormasyon dinhi.",
+    en: "See every program, who can apply and which documents to bring. We don't ask for any of your details here.",
+  },
+  searchPrograms: { fil: "Hanapin ang programa…", ceb: "Pangitaa ang programa…", en: "Search programs…" },
+  whoCanApply: { fil: "Sino ang puwedeng mag-apply", ceb: "Kinsa ang mahimong mo-apply", en: "Who can apply" },
+  onlyIf: { fil: "Kung", ceb: "Kung", en: "Only if" },
+  noMatch: { fil: "Walang programang tugma sa hinanap.", ceb: "Walay programa nga mohaum sa gipangita.", en: "No programs match your search." },
+  checkIfQualify: { fil: "Alamin kung kwalipikado ako", ceb: "Susiha kung kwalipikado ko", en: "Check if I qualify" },
+  communityTitle: { fil: "Tulong mula sa komunidad", ceb: "Tabang gikan sa komunidad", en: "Community help" },
+  communityHint: {
+    fil: "Mga NGO at grupo sa Cebu City na beripikado ng LGU, at ang tulong na iniaalok nila ngayon.",
+    ceb: "Mga NGO ug grupo sa Cebu City nga gi-verify sa LGU, ug ang tabang nga ilang gitanyag karon.",
+    en: "NGOs and community groups in Cebu City, verified by the LGU, and the help they offer right now.",
+  },
   officesTitle: { fil: "Saan pupunta", ceb: "Asa moadto", en: "Where to go" },
   noPrograms: {
     fil: "Walang programang tugma ngayon. Maaari pa ring magtanong sa opisina ng inyong barangay.",
