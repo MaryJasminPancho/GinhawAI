@@ -416,3 +416,53 @@ CREATE TABLE IF NOT EXISTS partner_resources (
     CHECK (starts_on IS NULL OR ends_on IS NULL OR ends_on >= starts_on)
 );
 CREATE INDEX IF NOT EXISTS idx_partner_resources_org ON partner_resources (org_id);
+
+-- ---------------------------------------------------------------------------
+-- Merge duplicate programs. Running seed.sql more than once used to insert the
+-- starter programs again (without their rules). For each program name, the copy
+-- with the most rules is kept; anything only the other copies had (documents,
+-- rules, schedules, assessment records, delivery logs) is moved onto it, then the
+-- copies are removed and duplicate names are blocked from now on.
+-- ---------------------------------------------------------------------------
+DROP TABLE IF EXISTS program_merge;
+CREATE TEMP TABLE program_merge AS
+WITH ranked AS (
+    SELECT p.program_id, lower(btrim(p.program_name)) AS name_key,
+           row_number() OVER (
+               PARTITION BY lower(btrim(p.program_name))
+               ORDER BY (SELECT COUNT(*) FROM eligibility_criteria c WHERE c.program_id = p.program_id) DESC,
+                        (SELECT COUNT(*) FROM document_requirements d WHERE d.program_id = p.program_id) DESC,
+                        p.is_active DESC, p.program_id
+           ) AS rn
+    FROM programs p
+)
+SELECT dup.program_id AS dup_id, keep.program_id AS keep_id
+FROM ranked dup JOIN ranked keep ON keep.name_key = dup.name_key AND keep.rn = 1
+WHERE dup.rn > 1;
+
+-- Documents: move the ones the kept program doesn't have; point "do you have it?" answers at the kept copy.
+UPDATE document_requirements d SET program_id = m.keep_id
+FROM program_merge m
+WHERE d.program_id = m.dup_id
+  AND NOT EXISTS (SELECT 1 FROM document_requirements k WHERE k.program_id = m.keep_id AND lower(k.document_name) = lower(d.document_name));
+UPDATE document_checks dc SET doc_id = k.doc_id
+FROM document_requirements d JOIN program_merge m ON d.program_id = m.dup_id
+JOIN document_requirements k ON k.program_id = m.keep_id AND lower(k.document_name) = lower(d.document_name)
+WHERE dc.doc_id = d.doc_id;
+
+-- Rules the kept program doesn't have.
+UPDATE eligibility_criteria c SET program_id = m.keep_id
+FROM program_merge m
+WHERE c.program_id = m.dup_id
+  AND NOT EXISTS (SELECT 1 FROM eligibility_criteria k WHERE k.program_id = m.keep_id AND k.attribute = c.attribute);
+
+-- Everything else that points at a program.
+UPDATE barangay_schedules s SET program_id = m.keep_id FROM program_merge m WHERE s.program_id = m.dup_id;
+UPDATE demand_logs l SET program_id = m.keep_id FROM program_merge m WHERE l.program_id = m.dup_id;
+UPDATE sms_logs l SET program_id = m.keep_id FROM program_merge m WHERE l.program_id = m.dup_id;
+UPDATE email_logs l SET program_id = m.keep_id FROM program_merge m WHERE l.program_id = m.dup_id;
+
+DELETE FROM programs p USING program_merge m WHERE p.program_id = m.dup_id;
+DROP TABLE program_merge;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_program_name ON programs (lower(btrim(program_name)));
