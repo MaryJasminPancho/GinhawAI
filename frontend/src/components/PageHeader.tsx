@@ -1,3 +1,4 @@
+import type React from "react";
 import Image from "next/image";
 
 type Props = {
@@ -6,11 +7,13 @@ type Props = {
   /** Current step and total, e.g. step={2} totalSteps={4}. Omit for pages with no progress bar. */
   step?: number;
   totalSteps?: number;
+  /** Optional small control shown at the top right (e.g. the chat's "Start over"). */
+  action?: React.ReactNode;
 };
 
 /** Small top bar used on every screen after the splash: logo tile, title, and
  * an optional step progress bar for the assessment flow. */
-export default function PageHeader({ title, subtitle, step, totalSteps }: Props) {
+export default function PageHeader({ title, subtitle, step, totalSteps, action }: Props) {
   const showProgress = !!step && !!totalSteps;
 
   return (
@@ -34,11 +37,14 @@ export default function PageHeader({ title, subtitle, step, totalSteps }: Props)
             )}
           </div>
         </div>
-        {showProgress && (
-          <span className="shrink-0 whitespace-nowrap text-xs font-medium text-gray-400 dark:text-gray-500">
-            Step {step} of {totalSteps}
-          </span>
-        )}
+        <div className="flex shrink-0 items-center gap-3">
+          {action}
+          {showProgress && (
+            <span className="whitespace-nowrap text-xs font-medium text-gray-400 dark:text-gray-500">
+              Step {step} of {totalSteps}
+            </span>
+          )}
+        </div>
       </div>
 
       {showProgress && (

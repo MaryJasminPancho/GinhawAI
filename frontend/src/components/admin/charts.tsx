@@ -11,12 +11,20 @@ import { TIER_META, fmtNum } from "./ui";
 type Point = { label: string; value: number; sub?: string };
 
 /** Vertical columns over time (single series) with a hover tooltip. */
+/** Smallest "round" whole number (1, 2, 5, 10, 20, 50…) that is >= n. */
+function niceStep(n: number): number {
+  const mag = 10 ** Math.floor(Math.log10(Math.max(1, n)));
+  return [1, 2, 5, 10].map((m) => m * mag).find((s) => s >= n) ?? 10 * mag;
+}
+
 export function ColumnChart({ data, height = 180, format = fmtNum, ariaLabel }: { data: Point[]; height?: number; format?: (n: number) => string; ariaLabel: string }) {
   const [hover, setHover] = useState<number | null>(null);
-  const max = Math.max(1, ...data.map((d) => d.value));
-  // Counts get whole-number ticks (no "0.5 assessments"); rates keep fractions.
+  const top = Math.max(...data.map((d) => d.value), 0);
+  // Counts get evenly spaced whole-number ticks on a rounded axis (9 -> 0, 5, 10),
+  // so each gridline sits exactly at its label; rates keep fractions.
   const counts = data.every((d) => Number.isInteger(d.value));
-  const ticks = counts ? [...new Set([0, Math.round(max / 2), max])] : [0, max / 2, max];
+  const max = counts ? 2 * niceStep(Math.max(1, top) / 2) : Math.max(1, top);
+  const ticks = [0, max / 2, max];
 
   return (
     <div className="relative" role="img" aria-label={ariaLabel}>

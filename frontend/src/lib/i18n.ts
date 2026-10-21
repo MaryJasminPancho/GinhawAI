@@ -10,6 +10,12 @@ const T = {
   loading: { fil: "Naglo-load…", ceb: "Nagkarga…", en: "Loading…" },
   sessionEnded: { fil: "Natapos na ang session. Magsimula muli.", ceb: "Nahuman na ang session. Sugod pag-usab.", en: "Your session has ended. Please start again." },
   typeMessage: { fil: "I-type ang sagot…", ceb: "I-type ang tubag…", en: "Type your answer…" },
+  startOver: { fil: "Magsimula muli", ceb: "Sugod pag-usab", en: "Start over" },
+  startOverConfirm: {
+    fil: "Buburahin ang inyong mga sagot at magsisimula ng bagong usapan. Ituloy?",
+    ceb: "Papason ang imong mga tubag ug magsugod og bag-ong istorya. Padayon?",
+    en: "This erases your answers and starts a new chat. Continue?",
+  },
   reviewAnswers: { fil: "Tingnan ang mga sagot", ceb: "Tan-awa ang mga tubag", en: "Review your answers" },
   assessment: { fil: "Pagtatasa", ceb: "Pagsusi", en: "Assessment" },
 
