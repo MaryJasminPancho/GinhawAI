@@ -72,7 +72,7 @@ INSERT INTO eligibility_criteria (program_id, attribute, operator, threshold_val
 SELECT p.program_id, v.attribute, v.op, v.threshold, v.weight
 FROM programs p JOIN (VALUES
     -- [CC p. 371] "Indigent senior citizens"; cross-matched with SSS, GSIS, PVAO, AFPSLAI.
-    ('Social Pension for Indigent Senior Citizens', 'age',                         '>=', '60',   0.40),
+    ('Social Pension for Indigent Senior Citizens', 'has_senior_member',           '=',  'true', 0.40),
     ('Social Pension for Indigent Senior Citizens', 'per_capita_income',           '<=', '2790', 0.30),
     ('Social Pension for Indigent Senior Citizens', 'not_receiving_other_pension', '=',  'true', 0.30),
     -- [CC p. 344] Solo parents with income at or below the poverty threshold.
