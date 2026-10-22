@@ -29,7 +29,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from xgboost import XGBClassifier
 
-from ml.features import BINARY, CATEGORICAL, COLUMNS, NUMERIC, TIERS, source_field
+from ml.features import BINARY, CATEGORICAL, COLUMNS, HAZARDS, NUMERIC, TIERS, source_field
 
 HERE = Path(__file__).parent
 CONFIG = json.loads((HERE / "config.json").read_text(encoding="utf-8"))
@@ -38,7 +38,7 @@ CONFIG = json.loads((HERE / "config.json").read_text(encoding="utf-8"))
 def build_pipeline(seed: int) -> Pipeline:
     pre = ColumnTransformer(
         [
-            ("num", "passthrough", NUMERIC + BINARY),
+            ("num", "passthrough", NUMERIC + HAZARDS + BINARY),
             ("cat", OneHotEncoder(categories=[CATEGORICAL[c] for c in CATEGORICAL], handle_unknown="ignore", sparse_output=False), list(CATEGORICAL)),
         ],
         verbose_feature_names_out=True,

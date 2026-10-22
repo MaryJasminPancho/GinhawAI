@@ -204,6 +204,10 @@ def derive_profile(entities: dict) -> dict:
         "crisis_type": crisis,
         "has_crisis": (crisis not in (None, "none")) if crisis is not None else None,
         "is_unemployed": (employment in ("unemployed", "displaced")) if employment else None,
+        # Barangay hazard exposure (filled in by the assessment from the barangays table).
+        "flood_level": entities.get("flood_level"),
+        "landslide_level": entities.get("landslide_level"),
+        "storm_surge_level": entities.get("storm_surge_level"),
     }
     if per_capita is not None:
         p["is_indigent_or_vulnerable"] = bool(
@@ -237,7 +241,30 @@ FACTOR_TEXT = {
     "children": {"en": "There are children or a pregnant member to support.", "fil": "May mga anak o buntis na sinusuportahan.", "ceb": "Adunay mga bata o mabdos nga gisuportahan."},
     "size": {"en": "Large household of {v} people.", "fil": "Malaking pamilya na may {v} katao.", "ceb": "Dako nga pamilya nga adunay {v} ka tawo."},
     "age": {"en": "The applicant is {v} years old.", "fil": "Ang aplikante ay {v} taong gulang.", "ceb": "Ang aplikante {v} anyos na."},
+    "hazard": {
+        "en": "Your barangay has a {level} risk of {hazard}.",
+        "fil": "May {level} panganib ng {hazard} sa inyong barangay.",
+        "ceb": "Adunay {level} nga peligro sa {hazard} sa inyong barangay.",
+    },
 }
+
+HAZARD_NAMES = {
+    "flood_level": {"en": "flooding", "fil": "pagbaha", "ceb": "baha"},
+    "landslide_level": {"en": "landslides", "fil": "pagguho ng lupa", "ceb": "pagdahili sa yuta"},
+    "storm_surge_level": {"en": "storm surge", "fil": "daluyong ng bagyo (storm surge)", "ceb": "storm surge"},
+}
+# Filipino level words already carry their linker ("mababang", "mataas na").
+LEVEL_WORDS = {
+    "low": {"en": "low", "fil": "mababang", "ceb": "ubos"},
+    "moderate": {"en": "moderate", "fil": "katamtamang", "ceb": "kasarangan"},
+    "high": {"en": "high", "fil": "mataas na", "ceb": "taas"},
+}
+
+
+def hazard_text(field: str, level: str | None, lang: str) -> str | None:
+    if level not in LEVEL_WORDS:
+        return None  # none / not assessed: nothing to say
+    return FACTOR_TEXT["hazard"][lang].format(level=LEVEL_WORDS[level][lang], hazard=HAZARD_NAMES[field][lang])
 
 REL = {
     "en": {"below": "below", "near": "just above", "above": "above"},
@@ -290,6 +317,8 @@ def _model_factor_text(field: str, profile: dict, lang: str) -> str | None:
         return FACTOR_TEXT["children"][lang]
     if field == "age" and profile.get("age"):
         return FACTOR_TEXT["age"][lang].format(v=int(profile["age"]))
+    if field in HAZARD_NAMES:
+        return hazard_text(field, profile.get(field), lang)
     return None
 
 
@@ -359,6 +388,11 @@ def rule_based_score(profile: dict, lang: str = "en") -> dict:
     if housing:
         factors.append((h_pts, FACTOR_TEXT["housing"][lang].format(v=value_label(housing, lang))))
 
+    worst = max((["none", "low", "moderate", "high"].index(profile[h]) for h in HAZARD_NAMES if profile.get(h) in ("none", "low", "moderate", "high")), default=0)
+    if worst >= 2:
+        field = max((h for h in HAZARD_NAMES if profile.get(h)), key=lambda h: ["none", "low", "moderate", "high"].index(profile[h]))
+        mult = 1.5 if profile.get("housing_type") == "informal_settler" else 1.0
+        factors.append((round((6 if worst == 3 else 3) * mult), hazard_text(field, profile[field], lang)))
     if profile.get("has_crisis"):
         factors.append((15, FACTOR_TEXT["crisis"][lang].format(v=value_label(profile["crisis_type"], lang))))
     if profile.get("has_pwd"):

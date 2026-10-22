@@ -237,7 +237,9 @@ export function Modal({ open, onClose, title, children, footer }: { open: boolea
 // ---------------------------------------------------------------------------
 export function Table({ children }: { children: ReactNode }) {
   return (
-    <div className="-mx-5 overflow-x-auto">
+    // `relative` keeps absolutely positioned bits (e.g. sr-only headers) inside the scroll box,
+    // so a wide table scrolls on its own instead of widening the whole page.
+    <div className="relative -mx-5 overflow-x-auto">
       <table className="w-full min-w-[560px] border-collapse text-left text-[13px]">{children}</table>
     </div>
   );

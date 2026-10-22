@@ -1,0 +1,101 @@
+-- Read this file as UTF-8 even when psql runs in a Windows console (which defaults to WIN1252).
+SET client_encoding = 'UTF8';
+
+-- Hazard exposure for all 80 Cebu City barangays, gathered by the team in October 2026:
+--   flood and rain-induced landslide from HazardHunterPH (DOST-PHIVOLCS, https://hazardhunter.georisk.gov.ph),
+--   storm surge from Project NOAH (https://noah.up.edu.ph).
+-- Ratings were read at each barangay's centre point. Staff can correct any of them
+-- in Office Directory > Barangays.
+--
+-- Run AFTER schema_admin.sql and seed_cebu_city_barangays.sql:
+--   psql -U postgres -d ginhawai -f backend/db/seed_barangay_hazards.sql
+-- Safe to run more than once. It only fills barangays that have no hazard data yet,
+-- so corrections made by staff are kept.
+
+UPDATE barangays b SET
+    flood_level = v.flood, landslide_level = v.landslide, storm_surge_level = v.storm_surge,
+    hazard_source = 'HazardHunterPH (DOST-PHIVOLCS): flood, rain-induced landslide; Project NOAH: storm surge', hazard_checked_on = v.checked::date
+FROM (VALUES
+('0730600001', 'none', 'moderate', 'none', '2026-10-21'),
+('0730600002', 'none', 'moderate', 'none', '2026-10-21'),
+('0730600003', 'none', 'low', 'none', '2026-10-21'),
+('0730600004', 'moderate', 'high', 'none', '2026-10-21'),
+('0730600006', 'none', 'moderate', 'none', '2026-10-21'),
+('0730600007', 'none', 'low', 'none', '2026-10-21'),
+('0730600005', 'none', 'low', 'none', '2026-10-21'),
+('0730600008', 'moderate', 'none', 'none', '2026-10-21'),
+('0730600010', 'none', 'moderate', 'none', '2026-10-21'),
+('0730600011', 'none', 'moderate', 'none', '2026-10-21'),
+('0730600013', 'none', 'moderate', 'none', '2026-10-21'),
+('0730600014', 'none', 'high', 'none', '2026-10-21'),
+('0730600015', 'low', 'none', 'none', '2026-10-21'),
+('0730600016', 'high', 'moderate', 'none', '2026-10-21'),
+('0730600017', 'moderate', 'none', 'none', '2026-10-21'),
+('0730600018', 'low', 'none', 'none', '2026-10-21'),
+('0730600019', 'moderate', 'low', 'none', '2026-10-21'),
+('0730600036', 'high', 'none', 'none', '2026-10-21'),
+('0730600020', 'none', 'low', 'none', '2026-10-21'),
+('0730600021', 'low', 'none', 'moderate', '2026-10-21'),
+('0730600022', 'low', 'none', 'moderate', '2026-10-21'),
+('0730600024', 'moderate', 'none', 'none', '2026-10-21'),
+('0730600023', 'low', 'none', 'none', '2026-10-21'),
+('0730600025', 'moderate', 'none', 'none', '2026-10-21'),
+('0730600027', 'low', 'none', 'low', '2026-10-21'),
+('0730600028', 'high', 'none', 'high', '2026-10-21'),
+('0730600029', 'none', 'low', 'none', '2026-10-21'),
+('0730600030', 'none', 'moderate', 'none', '2026-10-21'),
+('0730600031', 'low', 'none', 'none', '2026-10-21'),
+('0730600032', 'low', 'none', 'none', '2026-10-21'),
+('0730600033', 'low', 'none', 'none', '2026-10-21'),
+('0730600034', 'moderate', 'high', 'none', '2026-10-21'),
+('0730600035', 'low', 'none', 'none', '2026-10-21'),
+('0730600037', 'low', 'none', 'none', '2026-10-21'),
+('0730600038', 'moderate', 'none', 'none', '2026-10-21'),
+('0730600040', 'low', 'none', 'none', '2026-10-21'),
+('0730600041', 'none', 'low', 'none', '2026-10-21'),
+('0730600042', 'moderate', 'none', 'none', '2026-10-21'),
+('0730600043', 'high', 'high', 'none', '2026-10-21'),
+('0730600044', 'none', 'low', 'none', '2026-10-21'),
+('0730600045', 'none', 'high', 'none', '2026-10-22'),
+('0730600046', 'moderate', 'none', 'none', '2026-10-22'),
+('0730600048', 'none', 'high', 'none', '2026-10-22'),
+('0730600049', 'moderate', 'none', 'none', '2026-10-22'),
+('0730600050', 'moderate', 'none', 'none', '2026-10-22'),
+('0730600051', 'moderate', 'none', 'none', '2026-10-22'),
+('0730600052', 'none', 'high', 'none', '2026-10-22'),
+('0730600053', 'low', 'none', 'none', '2026-10-22'),
+('0730600054', 'low', 'none', 'moderate', '2026-10-22'),
+('0730600055', 'moderate', 'none', 'none', '2026-10-22'),
+('0730600056', 'moderate', 'none', 'high', '2026-10-22'),
+('0730600057', 'low', 'none', 'none', '2026-10-22'),
+('0730600059', 'moderate', 'none', 'none', '2026-10-22'),
+('0730600060', 'none', 'moderate', 'none', '2026-10-22'),
+('0730600062', 'low', 'none', 'none', '2026-10-22'),
+('0730600063', 'none', 'moderate', 'none', '2026-10-22'),
+('0730600064', 'low', 'none', 'none', '2026-10-22'),
+('0730600065', 'low', 'none', 'none', '2026-10-22'),
+('0730600066', 'low', 'none', 'none', '2026-10-22'),
+('0730600067', 'high', 'none', 'none', '2026-10-22'),
+('0730600068', 'low', 'none', 'none', '2026-10-22'),
+('0730600069', 'moderate', 'none', 'high', '2026-10-22'),
+('0730600070', 'low', 'none', 'none', '2026-10-22'),
+('0730600077', 'none', 'high', 'none', '2026-10-22'),
+('0730600071', 'moderate', 'none', 'low', '2026-10-22'),
+('0730600073', 'none', 'moderate', 'none', '2026-10-22'),
+('0730600074', 'none', 'moderate', 'none', '2026-10-22'),
+('0730600075', 'moderate', 'none', 'high', '2026-10-22'),
+('0730600076', 'none', 'moderate', 'none', '2026-10-22'),
+('0730600088', 'none', 'moderate', 'none', '2026-10-22'),
+('0730600078', 'moderate', 'none', 'low', '2026-10-22'),
+('0730600079', 'none', 'moderate', 'none', '2026-10-22'),
+('0730600080', 'none', 'moderate', 'none', '2026-10-22'),
+('0730600081', 'none', 'low', 'none', '2026-10-22'),
+('0730600082', 'none', 'moderate', 'none', '2026-10-22'),
+('0730600083', 'moderate', 'none', 'high', '2026-10-22'),
+('0730600084', 'high', 'none', 'high', '2026-10-22'),
+('0730600085', 'low', 'none', 'none', '2026-10-22'),
+('0730600086', 'none', 'high', 'none', '2026-10-22'),
+('0730600087', 'moderate', 'none', 'none', '2026-10-22')
+) AS v(code, flood, landslide, storm_surge, checked)
+WHERE b.barangay_code = v.code
+  AND b.flood_level IS NULL AND b.landslide_level IS NULL AND b.storm_surge_level IS NULL;

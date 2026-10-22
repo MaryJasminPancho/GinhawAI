@@ -45,6 +45,10 @@ class BarangayCreate(BaseModel):
     city_municipality: str = Field(default="Cebu City", max_length=255)
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
+    # Hazard exposure (none / low / moderate / high; null = not assessed). Only changed when sent.
+    flood_level: str | None = Field(default=None, pattern=r"^(none|low|moderate|high)$")
+    landslide_level: str | None = Field(default=None, pattern=r"^(none|low|moderate|high)$")
+    storm_surge_level: str | None = Field(default=None, pattern=r"^(none|low|moderate|high)$")
 
 
 class LguOfficeCreate(BaseModel):
