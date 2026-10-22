@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { Badge, Btn, Card, EmptyState, ErrorText, Field, inputClass, Loading, Modal, PageTitle, Segmented, Table, td, th } from "@/components/admin/ui";
-import { Barangay, deleteOffice, listBarangays, listOffices, Office, saveBarangay, saveOffice } from "@/lib/adminApi";
+import { Barangay, deleteOffice, HAZARD_FIELDS, HazardLevel, listBarangays, listOffices, Office, saveBarangay, saveOffice } from "@/lib/adminApi";
 
 // "Update Municipal Office Directories" (Fig. 9). Offices appear on the
 // citizen's Document Checklist & Office Directory screen (Fig. 21) and in the
@@ -118,6 +118,7 @@ export default function OfficesPage() {
                   <th className={th}>PSA code</th>
                   <th className={th}>City / municipality</th>
                   <th className={th}>Map location</th>
+                  <th className={th}>Hazard exposure</th>
                   <th className={`${th} text-right`}><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
@@ -133,6 +134,7 @@ export default function OfficesPage() {
                     <td className={`${td} tabular-nums text-gray-500`}>
                       {b.latitude != null && b.longitude != null ? `${b.latitude.toFixed(4)}, ${b.longitude.toFixed(4)}` : <Badge tone="amber">Not on map</Badge>}
                     </td>
+                    <td className={td}><HazardBadges b={b} /></td>
                     <td className={`${td} text-right`}>
                       <Btn variant="ghost" onClick={() => setEditingBrgy({ value: b, isNew: false })}>Edit</Btn>
                     </td>
@@ -259,8 +261,28 @@ function OfficeModal({ value, barangays, onClose, onSaved }: { value: Partial<Of
   );
 }
 
+const HAZARD_TONE: Record<HazardLevel, "gray" | "green" | "amber" | "red"> = { none: "gray", low: "green", moderate: "amber", high: "red" };
+const LEVEL_LABEL: Record<HazardLevel, string> = { none: "None", low: "Low", moderate: "Moderate", high: "High" };
+
+/** Flood / landslide / storm surge levels as small badges; only levels above "none" are shown. */
+function HazardBadges({ b }: { b: Barangay }) {
+  const shown = HAZARD_FIELDS.filter((h) => b[h.key] && b[h.key] !== "none");
+  if (HAZARD_FIELDS.every((h) => !b[h.key])) return <span className="text-xs text-gray-400">Not assessed</span>;
+  if (shown.length === 0) return <span className="text-xs text-gray-500">None</span>;
+  return (
+    <span className="flex flex-wrap gap-1">
+      {shown.map((h) => (
+        <Badge key={h.key} tone={HAZARD_TONE[b[h.key] as HazardLevel]}>{h.label}: {LEVEL_LABEL[b[h.key] as HazardLevel]}</Badge>
+      ))}
+    </span>
+  );
+}
+
 function BarangayModal({ value, onClose, onSaved }: { value: { value: Barangay; isNew: boolean } | null; onClose: () => void; onSaved: (b: Barangay) => void }) {
-  const [form, setForm] = useState({ barangay_code: "", barangay_name: "", city_municipality: "Cebu City", latitude: "", longitude: "" });
+  const [form, setForm] = useState({
+    barangay_code: "", barangay_name: "", city_municipality: "Cebu City", latitude: "", longitude: "",
+    flood_level: "", landslide_level: "", storm_surge_level: "",
+  });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [lastValue, setLastValue] = useState(value);
@@ -269,7 +291,11 @@ function BarangayModal({ value, onClose, onSaved }: { value: { value: Barangay; 
     setLastValue(value);
     if (value) {
       const b = value.value;
-      setForm({ barangay_code: b.barangay_code, barangay_name: b.barangay_name, city_municipality: b.city_municipality, latitude: b.latitude?.toString() ?? "", longitude: b.longitude?.toString() ?? "" });
+      setForm({
+        barangay_code: b.barangay_code, barangay_name: b.barangay_name, city_municipality: b.city_municipality,
+        latitude: b.latitude?.toString() ?? "", longitude: b.longitude?.toString() ?? "",
+        flood_level: b.flood_level ?? "", landslide_level: b.landslide_level ?? "", storm_surge_level: b.storm_surge_level ?? "",
+      });
       setError(null);
     }
   }
@@ -284,7 +310,19 @@ function BarangayModal({ value, onClose, onSaved }: { value: { value: Barangay; 
     }
     setBusy(true);
     try {
-      onSaved(await saveBarangay({ ...form, latitude: lat, longitude: lng }, value!.isNew));
+      onSaved(
+        await saveBarangay(
+          {
+            ...form,
+            latitude: lat,
+            longitude: lng,
+            flood_level: (form.flood_level || null) as HazardLevel | null,
+            landslide_level: (form.landslide_level || null) as HazardLevel | null,
+            storm_surge_level: (form.storm_surge_level || null) as HazardLevel | null,
+          },
+          value!.isNew,
+        ),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save");
     } finally {
@@ -317,6 +355,28 @@ function BarangayModal({ value, onClose, onSaved }: { value: { value: Barangay; 
           <Field label="Longitude">{(id) => <input id={id} inputMode="decimal" className={`${inputClass} tabular-nums`} value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} placeholder="123.8854" />}</Field>
         </div>
         <p className="text-[11px] text-gray-400">Coordinates place the barangay on the vulnerability heatmap. Leave blank to keep it off the map.</p>
+        <div>
+          <p className="mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300">Hazard exposure</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {HAZARD_FIELDS.map((h) => (
+              <Field key={h.key} label={h.label}>
+                {(id) => (
+                  <select id={id} className={inputClass} value={form[h.key]} onChange={(e) => setForm({ ...form, [h.key]: e.target.value })}>
+                    <option value="">Not assessed</option>
+                    <option value="none">None</option>
+                    <option value="low">Low</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="high">High</option>
+                  </select>
+                )}
+              </Field>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[11px] text-gray-400">
+            From HazardHunterPH (flood, landslide) and Project NOAH (storm surge). Used in the vulnerability score.
+            {value?.value.hazard_source && ` Current source: ${value.value.hazard_source}${value.value.hazard_checked_on ? `, ${value.value.hazard_checked_on}` : ""}.`}
+          </p>
+        </div>
         {error && <ErrorText>{error}</ErrorText>}
       </form>
     </Modal>

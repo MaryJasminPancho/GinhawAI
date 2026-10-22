@@ -1,5 +1,5 @@
 {
-  "trained_at": "2026-10-21T17:19:43+00:00",
+  "trained_at": "2026-10-22T10:13:18+00:00",
   "rows": 12000,
   "train_rows": 9600,
   "test_rows": 2400,
@@ -10,40 +10,40 @@
   },
   "cv": {
     "kappa": {
-      "mean": 0.8698,
-      "std": 0.0087
+      "mean": 0.8472,
+      "std": 0.0142
     },
     "accuracy": {
-      "mean": 0.9137,
-      "std": 0.0058
+      "mean": 0.8986,
+      "std": 0.0094
     },
     "f1_macro": {
-      "mean": 0.9136,
-      "std": 0.0056
+      "mean": 0.9009,
+      "std": 0.009
     }
   },
   "test": {
-    "accuracy": 0.9167,
-    "cohen_kappa": 0.8741,
-    "f1_macro": 0.9167,
+    "accuracy": 0.8979,
+    "cohen_kappa": 0.846,
+    "f1_macro": 0.8998,
     "per_class": {
       "low": {
-        "precision": 0.9268,
-        "recall": 0.956,
-        "f1-score": 0.9412,
-        "support": 887.0
+        "precision": 0.9339,
+        "recall": 0.8988,
+        "f1-score": 0.9161,
+        "support": 692.0
       },
       "moderate": {
-        "precision": 0.8804,
-        "recall": 0.8794,
-        "f1-score": 0.8799,
-        "support": 829.0
+        "precision": 0.8462,
+        "recall": 0.8783,
+        "f1-score": 0.862,
+        "support": 871.0
       },
       "high": {
-        "precision": 0.9482,
-        "recall": 0.9108,
-        "f1-score": 0.9292,
-        "support": 684.0
+        "precision": 0.9253,
+        "recall": 0.9176,
+        "f1-score": 0.9214,
+        "support": 837.0
       }
     },
     "confusion_matrix": {
@@ -54,38 +54,41 @@
       ],
       "rows_true_cols_predicted": [
         [
-          848,
-          38,
-          1
+          622,
+          70,
+          0
         ],
         [
-          67,
-          729,
-          33
+          44,
+          765,
+          62
         ],
         [
           0,
-          61,
-          623
+          69,
+          768
         ]
       ]
     }
   },
   "rule_based_baseline_on_test": {
-    "accuracy": 0.6592,
-    "cohen_kappa": 0.4762
+    "accuracy": 0.5471,
+    "cohen_kappa": 0.3355
   },
   "global_importance_mean_abs_contribution_to_high": {
-    "per_capita_income": 2.1559,
-    "employment_status": 0.9166,
-    "crisis_type": 0.8936,
-    "age": 0.5226,
-    "household_size": 0.521,
-    "housing_type": 0.4592,
-    "has_children_0_18": 0.3477,
-    "has_pwd": 0.2795,
-    "is_solo_parent": 0.1428,
-    "monthly_income": 0.0958
+    "per_capita_income": 1.8628,
+    "crisis_type": 0.8098,
+    "employment_status": 0.679,
+    "housing_type": 0.6512,
+    "age": 0.5009,
+    "household_size": 0.3655,
+    "landslide_level": 0.2656,
+    "flood_level": 0.2639,
+    "has_children_0_18": 0.2351,
+    "has_pwd": 0.2331,
+    "is_solo_parent": 0.0983,
+    "storm_surge_level": 0.0899,
+    "monthly_income": 0.0588
   },
   "kappa_target": 0.6,
   "versions": {
@@ -94,9 +97,9 @@
     "scikit-learn": "1.9.1"
   },
   "tier_shares": {
-    "low": 0.3694,
-    "moderate": 0.3455,
-    "high": 0.2851
+    "low": 0.2884,
+    "moderate": 0.3628,
+    "high": 0.3488
   },
   "config_seed": 2026
 }

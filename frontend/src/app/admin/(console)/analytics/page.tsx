@@ -4,8 +4,8 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { BarList, ColumnChart, TierStack } from "@/components/admin/charts";
 import { Badge, Card, EmptyState, ErrorText, fmtMonth, fmtNum, fmtPct, inputClass, Loading, PageTitle, PrivacyChip, Segmented, Table, td, th } from "@/components/admin/ui";
-import { RAMP, type MapPoint } from "@/components/admin/VulnerabilityMap";
-import { AdminProgram, Barangay, DemandData, getDemand, listBarangays, listPrograms } from "@/lib/adminApi";
+import { HAZARD_RAMP, RAMP, type HazardPoint, type MapPoint } from "@/components/admin/VulnerabilityMap";
+import { AdminProgram, Barangay, DemandData, getDemand, HAZARD_FIELDS, HazardLevel, listBarangays, listPrograms } from "@/lib/adminApi";
 import { BarangayAgg, BarangayTrend, barangayTrends, byBarangay, byMonth, byProgram, byTier, filterDemand, monthsFor, programLabel, Range, RANGE_OPTIONS, sum, UNTAGGED } from "@/lib/adminAnalytics";
 
 // "View Geographic Vulnerability Heatmap" (Fig. 10). Built only from
@@ -23,6 +23,30 @@ const METRICS: { value: Metric; label: string; legend: string }[] = [
   { value: "gap", label: "Eligibility gap", legend: "households that matched no program" },
 ];
 
+type HazardLayer = "off" | "worst" | "flood_level" | "landslide_level" | "storm_surge_level";
+const HAZARD_LAYERS: { value: HazardLayer; label: string }[] = [
+  { value: "off", label: "Off" },
+  { value: "worst", label: "Worst hazard" },
+  ...HAZARD_FIELDS.map((h) => ({ value: h.key as HazardLayer, label: h.label })),
+];
+const LEVEL_NUM: Record<HazardLevel, number> = { none: 0, low: 1, moderate: 2, high: 3 };
+const LEVEL_NAME = ["None", "Low", "Moderate", "High"];
+
+/** "Map Housing and Infrastructure Exposure" (Appendix R #26): hazard triangles per barangay. */
+function hazardPoints(barangays: Barangay[], layer: HazardLayer): HazardPoint[] {
+  if (layer === "off") return [];
+  const out: HazardPoint[] = [];
+  for (const b of barangays) {
+    if (b.latitude == null || b.longitude == null) continue;
+    const levels = HAZARD_FIELDS.map((h) => (b[h.key] ? LEVEL_NUM[b[h.key] as HazardLevel] : null));
+    const level = layer === "worst" ? Math.max(...levels.map((v) => v ?? 0)) : levels[HAZARD_FIELDS.findIndex((h) => h.key === layer)] ?? 0;
+    if (level <= 0) continue;
+    const label = HAZARD_FIELDS.map((h, i) => `${h.label}: ${levels[i] == null ? "not assessed" : LEVEL_NAME[levels[i]!]}`).join(" · ");
+    out.push({ code: b.barangay_code, name: b.barangay_name, lat: b.latitude, lng: b.longitude, level: level as 1 | 2 | 3, label });
+  }
+  return out;
+}
+
 export default function AnalyticsPage() {
   const [demand, setDemand] = useState<DemandData | null>(null);
   const [barangays, setBarangays] = useState<Barangay[]>([]);
@@ -33,6 +57,7 @@ export default function AnalyticsPage() {
   const [metric, setMetric] = useState<Metric>("high_share");
   const [focus, setFocus] = useState<string | null>(null);
   const [showTable, setShowTable] = useState(false);
+  const [hazardLayer, setHazardLayer] = useState<HazardLayer>("off");
 
   useEffect(() => {
     Promise.all([getDemand(12), listBarangays(), listPrograms()])
@@ -90,6 +115,9 @@ export default function AnalyticsPage() {
         <div className="flex flex-wrap gap-2">
           <Segmented label="Time range" value={range} onChange={setRange} options={RANGE_OPTIONS} />
           <Segmented label="Map metric" value={metric} onChange={setMetric} options={METRICS} />
+          <select aria-label="Hazard overlay" className={`${inputClass} w-auto`} value={hazardLayer} onChange={(e) => setHazardLayer(e.target.value as HazardLayer)}>
+            {HAZARD_LAYERS.map((h) => <option key={h.value} value={h.value}>Hazard overlay: {h.label}</option>)}
+          </select>
         </div>
         <select aria-label="Program" className={`${inputClass} lg:w-64`} value={program} onChange={(e) => setProgram(e.target.value)}>
           <option value="all">All assessments</option>
@@ -141,7 +169,7 @@ export default function AnalyticsPage() {
                 </Table>
               ) : (
                 <>
-                  <VulnerabilityMap points={points} maxValue={maxValue} onSelect={setFocus} />
+                  <VulnerabilityMap points={points} maxValue={maxValue} onSelect={setFocus} hazards={hazardPoints(barangays, hazardLayer)} />
                   <div className="mt-3 flex flex-col gap-2 text-[11px] text-gray-500 sm:flex-row sm:items-center sm:justify-between dark:text-gray-400">
                     <div className="flex items-center gap-2">
                       <span>Low</span>
@@ -152,6 +180,18 @@ export default function AnalyticsPage() {
                     </div>
                     <span>Circle size = number of assessments</span>
                   </div>
+                  {hazardLayer !== "off" && (
+                    <div className="mt-2 flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+                      <span>{HAZARD_LAYERS.find((h) => h.value === hazardLayer)?.label}:</span>
+                      {(["Low", "Moderate", "High"] as const).map((l, i) => (
+                        <span key={l} className="inline-flex items-center gap-1">
+                          <svg width="12" height="12" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2 L19 18 L1 18 Z" fill={HAZARD_RAMP[i]} /></svg>
+                          {l}
+                        </span>
+                      ))}
+                      <span>· HazardHunterPH / Project NOAH, by barangay</span>
+                    </div>
+                  )}
                   {offMap > 0 && (
                     <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-300">
                       {fmtNum(offMap)} assessments are from barangays without map coordinates — add them in Office Directory → Barangays. They still count in the table and charts.

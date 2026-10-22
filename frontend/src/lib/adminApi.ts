@@ -229,7 +229,25 @@ export const deleteDocument = (programId: string, docId: string) => request<void
 // ===========================================================================
 // LOCALIZATION — barangays, LGU offices, barangay schedules
 // ===========================================================================
-export type Barangay = { barangay_code: string; barangay_name: string; city_municipality: string; latitude: number | null; longitude: number | null };
+export type HazardLevel = "none" | "low" | "moderate" | "high";
+export type Barangay = {
+  barangay_code: string;
+  barangay_name: string;
+  city_municipality: string;
+  latitude: number | null;
+  longitude: number | null;
+  /** Hazard exposure (Appendix R #26); null = not assessed. */
+  flood_level?: HazardLevel | null;
+  landslide_level?: HazardLevel | null;
+  storm_surge_level?: HazardLevel | null;
+  hazard_source?: string | null;
+  hazard_checked_on?: string | null;
+};
+export const HAZARD_FIELDS = [
+  { key: "flood_level", label: "Flood" },
+  { key: "landslide_level", label: "Landslide" },
+  { key: "storm_surge_level", label: "Storm surge" },
+] as const;
 export type Office = { office_id: string; office_name: string; address: string | null; barangay_code: string | null; contact_number: string | null; operating_hours: string | null };
 export type Schedule = { schedule_id: string; office_id: string; program_id: string; start_date: string; end_date: string; notes: string | null };
 
