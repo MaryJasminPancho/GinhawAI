@@ -11,10 +11,12 @@ import math
 import re
 import secrets
 import uuid
+import asyncio
 
 from fastapi import APIRouter, HTTPException, Request
 
 from app import chatflow, jargon
+from app.ai.slot_classifier import classify
 from app.ai.ai_parser import extract_entities
 from app.schemas import AssessmentFeedbackIn, DocumentChecksIn, EmailChecklistRequest, EntityPatch, MessageIn, SessionStart, SmsRequest
 from app.scoring import derive_profile, evaluate_program, rank_programs, score_vulnerability, today_iso
@@ -28,6 +30,8 @@ router = APIRouter()
 # Kept for reference by other modules/tests; the real list lives in chatflow.SLOTS.
 REQUIRED_FIELDS = chatflow.SLOTS
 
+# Minimum confidence before we trust the fine-tuned model's answer (below this we fall back to Gemini)
+EMPLOYMENT_MIN_CONF = 0.5
 
 def _key(session_id: str) -> str:
     return f"session:{session_id}"
@@ -177,6 +181,8 @@ async def send_message(session_id: str, payload: MessageIn, request: Request):
     state.setdefault("messages", []).append({"from": "citizen", "text": text})
 
     understood = False
+    model_used = False  # becomes True when the XLM-R classifier answered this question
+
     # 1) A direct answer to the question just asked (chip tap, "oo", "5", "8k"…).
     if asking:
         direct = chatflow.parse_for_slot(asking, text, lang, jargon.synonyms())
@@ -190,9 +196,24 @@ async def send_message(session_id: str, payload: MessageIn, request: Request):
         elif direct is not None:
             understood = await _apply(request, entities, asking, direct)
 
+    # 1b) Fine-tuned XLM-RoBERTa classifier. Only runs for the employment question,
+    #     and only if the rule parser above did not understand the answer.
+    #     Low confidence or "unclear" -> we fall through to Gemini below.
+    if asking == "employment_status" and not understood:
+        try:
+            label, conf = await asyncio.to_thread(classify, text)  # to_thread: keeps the server responsive while the model runs
+            print(f"[classifier] {text!r} -> {label} ({conf})")      # debug line: shows what the model decided
+            if label != "unclear" and conf >= EMPLOYMENT_MIN_CONF:
+                understood = await _apply(request, entities, asking, label)
+                model_used = understood
+        except Exception as e:  # never let the model break the chat
+            print(f"Classifier error: {e}")
+
     # 2) Free text may contain several answers at once — let the AI extract them.
     #    Skipped for short replies the parser already handled.
-    if not (understood and len(text.split()) <= 3):
+
+    # Skip Gemini when the answer is short, or when the XLM-R model already answered the question.
+    if not (understood and (len(text.split()) <= 3 or model_used)):
         try:
             ai = await extract_entities(text, chatflow.question(asking, "en") if asking else "(done)")
         except Exception as e:  # never let the AI break the chat
@@ -200,7 +221,8 @@ async def send_message(session_id: str, payload: MessageIn, request: Request):
             ai = {}
         if isinstance(ai, dict):
             for slot in chatflow.SLOTS:
-                if ai.get(slot) is not None and (entities.get(slot) is None or slot == asking):
+                # don't let Gemini overwrite an answer the XLM-R model already gave
+                if ai.get(slot) is not None and (entities.get(slot) is None or (slot == asking and not model_used)):
                     if await _apply(request, entities, slot, ai[slot]):
                         understood = True
 
