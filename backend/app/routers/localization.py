@@ -4,6 +4,7 @@
 (Fig. 9) — Authorized Welfare Personnel. Reads of barangays/offices are public.
 """
 
+from datetime import date
 from uuid import UUID
 
 import asyncpg
@@ -16,7 +17,9 @@ from app.schemas import BarangayCreate, LguOfficeCreate, ScheduleCreate
 router = APIRouter()
 welfare = require_roles(WELFARE_ROLES)
 
-BARANGAY_COLS = "barangay_code, barangay_name, city_municipality, latitude, longitude"
+BARANGAY_COLS = ("barangay_code, barangay_name, city_municipality, latitude, longitude, "
+                 "flood_level, landslide_level, storm_surge_level, hazard_source, hazard_checked_on")
+HAZARD_FIELDS = ("flood_level", "landslide_level", "storm_surge_level")
 OFFICE_COLS = "office_id, office_name, address, barangay_code, contact_number, operating_hours"
 SCHEDULE_COLS = "schedule_id, office_id, program_id, start_date, end_date, notes"
 
@@ -40,9 +43,14 @@ async def create_barangay(body: BarangayCreate, request: Request, current_admin:
     async with request.app.state.db_pool.acquire() as conn:
         try:
             async with conn.transaction():
+                has_hazard = any(getattr(body, f) for f in HAZARD_FIELDS)
                 row = await conn.fetchrow(
-                    f"INSERT INTO barangays ({BARANGAY_COLS}) VALUES ($1, $2, $3, $4, $5) RETURNING {BARANGAY_COLS};",
+                    "INSERT INTO barangays (barangay_code, barangay_name, city_municipality, latitude, longitude, "
+                    "flood_level, landslide_level, storm_surge_level, hazard_source, hazard_checked_on) "
+                    f"VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING {BARANGAY_COLS};",
                     body.barangay_code.strip(), body.barangay_name.strip(), body.city_municipality.strip(), body.latitude, body.longitude,
+                    body.flood_level, body.landslide_level, body.storm_surge_level,
+                    "Entered by LGU staff" if has_hazard else None, date.today() if has_hazard else None,
                 )
                 await write_audit(conn, current_admin["sub"], "INSERT", "barangays", None, f"{row['barangay_name']} ({row['barangay_code']})")
         except asyncpg.UniqueViolationError:
@@ -63,6 +71,15 @@ async def update_barangay(code: str, body: BarangayCreate, request: Request, cur
                 f"UPDATE barangays SET barangay_name = $2, city_municipality = $3, latitude = $4, longitude = $5 WHERE barangay_code = $1 RETURNING {BARANGAY_COLS};",
                 code, body.barangay_name.strip(), body.city_municipality.strip(), body.latitude, body.longitude,
             )
+            # Hazard levels change only when the form sends them; a change records who/when.
+            sent = [f for f in HAZARD_FIELDS if f in body.model_fields_set]
+            if sent and any(getattr(body, f) != before[f] for f in sent):
+                sets = ", ".join(f"{f} = ${i + 2}" for i, f in enumerate(sent))
+                row = await conn.fetchrow(
+                    f"UPDATE barangays SET {sets}, hazard_source = 'Updated by LGU staff', hazard_checked_on = CURRENT_DATE "
+                    f"WHERE barangay_code = $1 RETURNING {BARANGAY_COLS};",
+                    code, *[getattr(body, f) for f in sent],
+                )
             await write_audit(conn, current_admin["sub"], "UPDATE", "barangays", dict(before), dict(row))
     return dict(row)
 

@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from app.audit import write_audit
 from app.auth import SYSTEM_ADMIN, WELFARE_ROLES, require_roles
 from app.schemas import RatingIn
+from app.routers.sessions import barangay_hazards
 from app.scoring import CRISIS_VALUES, EMPLOYMENT_VALUES, HOUSING_VALUES, derive_profile, score_vulnerability
 
 router = APIRouter()
@@ -115,4 +116,8 @@ async def model_results(request: Request, current_admin: dict = Depends(welfare)
         if current_admin["role"] != SYSTEM_ADMIN and not await _is_done(conn, current_admin["sub"]):
             raise HTTPException(status_code=403, detail="Finish rating every case first — results stay hidden to keep the test blind.")
         rows = await conn.fetch("SELECT case_id, profile FROM validation_cases;")
-    return {r["case_id"]: score_vulnerability(derive_profile(r["profile"]))["tier"] for r in rows}
+        out = {}
+        for r in rows:
+            hazards = await barangay_hazards(conn, name=r["profile"].get("barangay"))
+            out[r["case_id"]] = score_vulnerability(derive_profile({**r["profile"], **hazards}))["tier"]
+    return out

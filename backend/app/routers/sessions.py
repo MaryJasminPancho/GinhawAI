@@ -255,6 +255,18 @@ async def edit_entities(session_id: str, payload: EntityPatch, request: Request)
 # ---------------------------------------------------------------------------
 # Scoring + explainable eligibility (Figs. 18–21)
 # ---------------------------------------------------------------------------
+async def barangay_hazards(conn, code: str | None = None, name: str | None = None) -> dict:
+    """Flood / landslide / storm surge level of a barangay (Appendix R #26); {} if unknown."""
+    if not code and not name:
+        return {}
+    row = await conn.fetchrow(
+        "SELECT flood_level, landslide_level, storm_surge_level FROM barangays "
+        "WHERE barangay_code = $1 OR ($1::text IS NULL AND lower(barangay_name) = lower($2));",
+        code, name,
+    )
+    return {k: v for k, v in dict(row).items() if v} if row else {}
+
+
 @router.post("/api/sessions/{session_id}/assess")
 async def assess(session_id: str, request: Request):
     state = await _load(request, session_id)
@@ -262,10 +274,11 @@ async def assess(session_id: str, request: Request):
     if not progress["profile_complete"]:
         raise HTTPException(status_code=409, detail=f"Some answers are missing: {', '.join(progress['missing_fields'])}")
     lang = state.get("lang", "en")
-    profile = derive_profile(state["entities"])
-    vulnerability = score_vulnerability(profile, lang)
 
     async with request.app.state.db_pool.acquire() as conn:
+        hazards = await barangay_hazards(conn, state["entities"].get("barangay_code"))
+        profile = derive_profile({**state["entities"], **hazards})
+        vulnerability = score_vulnerability(profile, lang)
         programs = await conn.fetch("SELECT program_id, program_name, agency, scope FROM programs WHERE is_active ORDER BY program_name;")
         criteria = await conn.fetch("SELECT program_id, attribute, operator, threshold_value, weight FROM eligibility_criteria;")
         docs = await conn.fetch("SELECT doc_id, program_id, document_name, is_mandatory, notes, for_crisis FROM document_requirements ORDER BY is_mandatory DESC, document_name;")

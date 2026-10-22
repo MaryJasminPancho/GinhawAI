@@ -466,3 +466,21 @@ DELETE FROM programs p USING program_merge m WHERE p.program_id = m.dup_id;
 DROP TABLE program_merge;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_program_name ON programs (lower(btrim(program_name)));
+
+-- ---------------------------------------------------------------------------
+-- Hazard exposure per barangay (Appendix R #26 "Map Housing and Infrastructure
+-- Exposure"). Levels from HazardHunterPH (DOST-PHIVOLCS: flood, rain-induced
+-- landslide) and Project NOAH (storm surge); editable in Office Directory.
+-- NULL = not assessed.
+-- ---------------------------------------------------------------------------
+ALTER TABLE barangays ADD COLUMN IF NOT EXISTS flood_level VARCHAR(10);
+ALTER TABLE barangays ADD COLUMN IF NOT EXISTS landslide_level VARCHAR(10);
+ALTER TABLE barangays ADD COLUMN IF NOT EXISTS storm_surge_level VARCHAR(10);
+ALTER TABLE barangays ADD COLUMN IF NOT EXISTS hazard_source TEXT;
+ALTER TABLE barangays ADD COLUMN IF NOT EXISTS hazard_checked_on DATE;
+ALTER TABLE barangays DROP CONSTRAINT IF EXISTS barangays_hazard_levels_check;
+ALTER TABLE barangays ADD CONSTRAINT barangays_hazard_levels_check CHECK (
+    (flood_level IS NULL OR flood_level IN ('none', 'low', 'moderate', 'high')) AND
+    (landslide_level IS NULL OR landslide_level IN ('none', 'low', 'moderate', 'high')) AND
+    (storm_surge_level IS NULL OR storm_surge_level IN ('none', 'low', 'moderate', 'high'))
+);
