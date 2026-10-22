@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from ml.features import COLUMNS, TIERS, row_from_answers
+from ml.features import COLUMNS, HAZARD_LEVELS, HAZARDS, TIERS, row_from_answers
 
 HERE = Path(__file__).parent
 CONFIG = json.loads((HERE / "config.json").read_text(encoding="utf-8"))
@@ -50,6 +50,15 @@ def generate(n: int, seed: int, cfg: dict = CONFIG) -> pd.DataFrame:
             "crisis_type": None,
         }))
     df = pd.DataFrame(rows, columns=COLUMNS)
+    # Place each household in a real Cebu City barangay (its actual hazard levels);
+    # a few get no barangay at all, like a citizen typing one that isn't listed.
+    haz = pd.read_csv(HERE / "barangay_hazards.csv", dtype=str).fillna("")
+    pick = rng.integers(0, len(haz), n)
+    unlisted = rng.random(n) < cfg["barangay_hazards"]["unlisted_barangay_share"]
+    for h in HAZARDS:
+        levels = haz[h].map(lambda v: HAZARD_LEVELS.get(v, np.nan)).to_numpy(dtype=float)[pick]
+        levels[unlisted] = np.nan
+        df[h] = levels
     df["housing_type"] = _pick(rng, cfg["housing_type"], n)
     df["crisis_type"] = _pick(rng, cfg["crisis_type"], n)
     # A sudden loss of income is far more likely when the earner just lost their job.
@@ -86,6 +95,11 @@ def rubric_points(r, cfg: dict = CONFIG) -> float:
         pts += lr["senior_applicant_60_plus"]
     if r["household_size"] >= 7:
         pts += lr["household_7_plus"]
+    # Hazard exposure: worst of flood / landslide / storm surge, scaled by how exposed the housing is.
+    known = [r[h] for h in HAZARDS if r[h] == r[h]]  # skip NaN (unlisted barangay)
+    if known:
+        worst = {v: k for k, v in HAZARD_LEVELS.items()}[int(max(known))]
+        pts += lr["hazard"]["points_by_worst_level"][worst] * lr["hazard"]["housing_multiplier"].get(r["housing_type"], 1.0)
     return round(pts, 2)
 
 
