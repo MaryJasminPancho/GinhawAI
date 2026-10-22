@@ -32,6 +32,7 @@ ATTRIBUTE_LABELS = {
     "has_member_age_0_18_or_pregnant": "Has children 0–18 or a pregnant member",
     "children_0_18": "Has children 0–18",
     "has_pwd": "Has a household member with disability (PWD)",
+    "has_senior_member": "Has a household member aged 60 or older (senior citizen)",
     "is_pwd": "Has a household member with disability (PWD)",
     "is_solo_parent": "Solo parent",
     "crisis_type": "Current crisis",
@@ -63,6 +64,7 @@ ATTRIBUTE_LABELS_LOCAL = {
         "has_member_age_0_18_or_pregnant": "May anak na 0–18 taong gulang o buntis",
         "children_0_18": "May anak na 0–18 taong gulang",
         "has_pwd": "May miyembrong may kapansanan (PWD)",
+        "has_senior_member": "May miyembrong 60 taong gulang pataas (senior citizen)",
         "is_pwd": "May miyembrong may kapansanan (PWD)",
         "is_solo_parent": "Solo parent",
         "crisis_type": "Kasalukuyang krisis",
@@ -90,6 +92,7 @@ ATTRIBUTE_LABELS_LOCAL = {
         "has_member_age_0_18_or_pregnant": "Adunay anak nga 0–18 anyos o mabdos",
         "children_0_18": "Adunay anak nga 0–18 anyos",
         "has_pwd": "Adunay miyembro nga may kakulangan (PWD)",
+        "has_senior_member": "Adunay miyembro nga 60 anyos pataas (senior citizen)",
         "is_pwd": "Adunay miyembro nga may kakulangan (PWD)",
         "is_solo_parent": "Solo parent",
         "crisis_type": "Krisis karon",
@@ -159,7 +162,7 @@ def value_label(v: str, lang: str = "en") -> str:
 # Attributes the evaluator can compute from the chat answers (shown in the admin rule form).
 COMPUTED_ATTRIBUTES = [
     "monthly_income", "household_size", "per_capita_income", "age", "employment_status", "housing_type",
-    "barangay_code", "has_children_0_18", "has_pwd", "is_solo_parent", "crisis_type", "has_crisis",
+    "barangay_code", "has_children_0_18", "has_pwd", "has_senior_member", "is_solo_parent", "crisis_type", "has_crisis",
     "is_unemployed", "is_indigent_or_vulnerable", "belongs_to_priority_worker_group",
 ]
 
@@ -174,6 +177,15 @@ VALUE_LABELS = {
     "none": "none", "medical": "medical emergency", "death": "death in the family", "fire": "fire", "calamity": "flood / typhoon / calamity",
     "job_loss": "sudden loss of income",
 }
+
+
+def _has_senior(entities: dict):
+    age = _num(entities.get("age"))
+    if entities.get("has_senior") is True or (age is not None and age >= 60):
+        return True
+    if entities.get("has_senior") is False:
+        return False
+    return None
 
 
 def derive_profile(entities: dict) -> dict:
@@ -200,6 +212,8 @@ def derive_profile(entities: dict) -> dict:
         "children_0_18": (1 if kids else 0) if kids is not None else None,
         "has_pwd": has_pwd,
         "is_pwd": has_pwd,
+        # A senior in the household: the applicant (age 60+) or anyone else (the has_senior question).
+        "has_senior_member": _has_senior(entities),
         "is_solo_parent": solo,
         "crisis_type": crisis,
         "has_crisis": (crisis not in (None, "none")) if crisis is not None else None,
@@ -237,6 +251,7 @@ FACTOR_TEXT = {
     "housing": {"en": "Housing: {v}.", "fil": "Tirahan: {v}.", "ceb": "Puy-anan: {v}."},
     "crisis": {"en": "Currently facing a crisis: {v}.", "fil": "May kinakaharap na krisis: {v}.", "ceb": "Adunay krisis karon: {v}."},
     "pwd": {"en": "A household member has a disability.", "fil": "May miyembrong may kapansanan.", "ceb": "Adunay miyembro nga may kakulangan."},
+    "senior": {"en": "There is a senior citizen (60+) in the household.", "fil": "May senior citizen (60 pataas) sa pamilya.", "ceb": "Adunay senior citizen (60 pataas) sa pamilya."},
     "solo": {"en": "Solo parent household.", "fil": "Solo parent ang nag-aalaga.", "ceb": "Solo parent ang nag-atiman."},
     "children": {"en": "There are children or a pregnant member to support.", "fil": "May mga anak o buntis na sinusuportahan.", "ceb": "Adunay mga bata o mabdos nga gisuportahan."},
     "size": {"en": "Large household of {v} people.", "fil": "Malaking pamilya na may {v} katao.", "ceb": "Dako nga pamilya nga adunay {v} ka tawo."},
@@ -311,6 +326,8 @@ def _model_factor_text(field: str, profile: dict, lang: str) -> str | None:
         return FACTOR_TEXT["crisis"][lang].format(v=value_label(profile["crisis_type"], lang))
     if field == "has_pwd" and profile.get("has_pwd"):
         return FACTOR_TEXT["pwd"][lang]
+    if field == "has_senior_member" and profile.get("has_senior_member"):
+        return FACTOR_TEXT["senior"][lang]
     if field == "is_solo_parent" and profile.get("is_solo_parent"):
         return FACTOR_TEXT["solo"][lang]
     if field == "has_children_0_18" and profile.get("has_children_0_18"):
@@ -397,6 +414,8 @@ def rule_based_score(profile: dict, lang: str = "en") -> dict:
         factors.append((15, FACTOR_TEXT["crisis"][lang].format(v=value_label(profile["crisis_type"], lang))))
     if profile.get("has_pwd"):
         factors.append((6, FACTOR_TEXT["pwd"][lang]))
+    if profile.get("has_senior_member"):
+        factors.append((4, FACTOR_TEXT["senior"][lang]))
     if profile.get("is_solo_parent"):
         factors.append((6, FACTOR_TEXT["solo"][lang]))
     if profile.get("has_children_0_18"):

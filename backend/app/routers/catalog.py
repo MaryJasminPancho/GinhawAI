@@ -6,12 +6,19 @@ schedules, and where to go. Public and read-only; nothing about the citizen is
 asked or stored.
 """
 
+import re
+
 from fastapi import APIRouter, Request
 
 from app.routers.partners import public_partners
 from app.scoring import CRISIS_VALUES, _fmt_requirement, _lang, attribute_label, value_label
 
 router = APIRouter()
+
+
+def is_barangay_hall(office_name: str) -> bool:
+    """A barangay hall only serves its own residents, so it is listed only for its barangay."""
+    return bool(re.match(r"(barangay|brgy\.?)\s", office_name, re.I))
 
 
 @router.get("/api/catalog")
@@ -29,8 +36,9 @@ async def program_catalog(request: Request, lang: str = "en"):
             "WHERE s.end_date >= CURRENT_DATE ORDER BY s.start_date;"
         )
         partners = await public_partners(conn)
+        barangays = await conn.fetch("SELECT barangay_code, barangay_name FROM barangays ORDER BY barangay_name;")
         offices = await conn.fetch(
-            "SELECT o.office_name, o.address, o.contact_number, o.operating_hours, b.barangay_name "
+            "SELECT o.office_name, o.address, o.contact_number, o.operating_hours, o.barangay_code, b.barangay_name "
             "FROM lgu_offices o LEFT JOIN barangays b ON b.barangay_code = o.barangay_code ORDER BY o.office_name;"
         )
 
@@ -61,6 +69,8 @@ async def program_catalog(request: Request, lang: str = "en"):
             }
             for p in programs
         ],
-        "offices": [dict(o) for o in offices],
+        "offices": [{**dict(o), "is_barangay_hall": is_barangay_hall(o["office_name"])} for o in offices],
+        # For the "Where to go" barangay picker.
+        "barangays": [dict(b) for b in barangays],
         "partners": partners,
     }

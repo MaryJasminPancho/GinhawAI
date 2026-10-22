@@ -26,11 +26,12 @@ SLOTS = [
     "housing_type",
     "has_children_0_18",
     "has_pwd",
+    "has_senior",
     "is_solo_parent",
     "crisis_type",
 ]
 
-BOOL_SLOTS = {"has_children_0_18", "has_pwd", "is_solo_parent"}
+BOOL_SLOTS = {"has_children_0_18", "has_pwd", "has_senior", "is_solo_parent"}
 INT_SLOTS = {"household_size", "age"}
 ENUMS = {"employment_status": EMPLOYMENT_VALUES, "housing_type": HOUSING_VALUES, "crisis_type": CRISIS_VALUES}
 
@@ -75,6 +76,11 @@ QUESTIONS = {
         "ceb": "Aduna bay miyembro sa pamilya nga may kakulangan (PWD)?",
         "en": "Does anyone in your household have a disability (PWD)?",
     },
+    "has_senior": {
+        "fil": "May miyembro po ba ng pamilya na 60 taong gulang pataas (senior citizen)?",
+        "ceb": "Aduna bay miyembro sa pamilya nga 60 anyos pataas (senior citizen)?",
+        "en": "Is anyone in your household 60 or older?",
+    },
     "is_solo_parent": {
         "fil": "Kayo po ba ay solo parent?",
         "ceb": "Solo parent ba ka?",
@@ -118,6 +124,7 @@ CHIPS = {
     },
     "has_children_0_18": YES_NO,
     "has_pwd": YES_NO,
+    "has_senior": YES_NO,
     "is_solo_parent": YES_NO,
 }
 
@@ -177,6 +184,18 @@ def quick_replies(slot: str | None, lang: str) -> list[dict]:
     if slot is None or slot not in CHIPS:
         return []
     return [{"value": v, "label": label} for v, label in CHIPS[slot][lang]]
+
+
+def auto_answer(entities: dict) -> None:
+    """Fill in answers that follow from earlier ones, so the citizen isn't asked the obvious:
+    an applicant aged 60+ means there is a senior in the household; someone under 60 who
+    lives alone means there isn't."""
+    if entities.get("has_senior") is not None or entities.get("age") is None:
+        return
+    if entities["age"] >= 60:
+        entities["has_senior"] = True
+    elif entities.get("household_size") == 1:
+        entities["has_senior"] = False
 
 
 def next_slot(entities: dict) -> str | None:

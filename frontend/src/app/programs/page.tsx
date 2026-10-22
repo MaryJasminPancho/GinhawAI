@@ -21,6 +21,7 @@ function BrowseInner() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [barangay, setBarangay] = useState("");
 
   useEffect(() => {
     getCatalog(lang).then(setCatalog).catch((e) => setError(e.message));
@@ -44,6 +45,16 @@ function BrowseInner() {
         .includes(q),
     );
   }, [catalog, query]);
+
+  // "Where to go": city-wide offices for everyone; a barangay hall only once the citizen
+  // picks that barangay (other barangays' halls only serve their own residents).
+  const offices = useMemo(() => {
+    if (!catalog) return [];
+    return catalog.offices
+      .filter((o) => !o.is_barangay_hall || (barangay && o.barangay_code === barangay))
+      .sort((a, b) => Number(b.barangay_code === barangay && !!barangay) - Number(a.barangay_code === barangay && !!barangay));
+  }, [catalog, barangay]);
+  const hallListed = !!barangay && offices.some((o) => o.is_barangay_hall);
 
   return (
     <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
@@ -114,11 +125,28 @@ function BrowseInner() {
           </section>
         )}
 
-        {catalog && catalog.offices.length > 0 && (
+        {catalog && (
           <section className="relative z-10 mt-6">
             <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">{t(lang, "officesTitle")}</h2>
+            <label htmlFor="where-barangay" className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">
+              {t(lang, "yourBarangay")}
+            </label>
+            <select
+              id="where-barangay"
+              value={barangay}
+              onChange={(e) => setBarangay(e.target.value)}
+              className="mb-2 w-full rounded-xl bg-white px-3 py-2.5 text-sm text-gray-900 ring-1 ring-black/10 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-white/5 dark:text-white dark:ring-white/15"
+            >
+              <option value="">{t(lang, "chooseBarangay")}</option>
+              {catalog.barangays.map((b) => (
+                <option key={b.barangay_code} value={b.barangay_code}>
+                  {b.barangay_name}
+                </option>
+              ))}
+            </select>
+            {!hallListed && <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">{t(lang, barangay ? "hallNotListed" : "pickBarangayHint")}</p>}
             <ul className="space-y-2">
-              {catalog.offices.map((o) => (
+              {offices.map((o) => (
                 <li key={o.office_name} className="rounded-2xl bg-white p-3.5 text-[13px] shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10">
                   <p className="font-semibold text-gray-900 dark:text-white">{o.office_name}</p>
                   {o.address && <p className="mt-0.5 text-gray-600 dark:text-gray-300">{o.address}</p>}

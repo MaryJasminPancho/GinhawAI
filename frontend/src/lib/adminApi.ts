@@ -522,6 +522,7 @@ export type SyntheticCase = {
   housing_type: string;
   has_children_0_18: boolean;
   has_pwd: boolean;
+  has_senior?: boolean;
   is_solo_parent: boolean;
   crisis_type: string;
 };

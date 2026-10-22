@@ -205,6 +205,7 @@ async def send_message(session_id: str, payload: MessageIn, request: Request):
                         understood = True
 
     state.pop("assessment", None)  # answers changed -> recompute later
+    chatflow.auto_answer(entities)
     nxt = chatflow.next_slot(entities)
     state["asking"] = nxt
     if nxt is None:
@@ -247,6 +248,7 @@ async def edit_entities(session_id: str, payload: EntityPatch, request: Request)
         if not await _apply(request, entities, field, value):
             errors[field] = "Invalid value"
     state.pop("assessment", None)
+    chatflow.auto_answer(entities)
     state["asking"] = chatflow.next_slot(entities)
     await _save(request, session_id, state)
     return {**_progress(state), "errors": errors}

@@ -69,6 +69,18 @@ const T = {
     en: "NGOs and community groups in Cebu City, verified by the LGU, and the help they offer right now.",
   },
   officesTitle: { fil: "Saan pupunta", ceb: "Asa moadto", en: "Where to go" },
+  yourBarangay: { fil: "Inyong barangay", ceb: "Inyong barangay", en: "Your barangay" },
+  chooseBarangay: { fil: "Piliin ang barangay", ceb: "Pilia ang barangay", en: "Choose your barangay" },
+  pickBarangayHint: {
+    fil: "Piliin ang inyong barangay para makita rin ang inyong barangay hall.",
+    ceb: "Pilia ang inyong barangay aron makita usab ang inyong barangay hall.",
+    en: "Choose your barangay to also see your barangay hall.",
+  },
+  hallNotListed: {
+    fil: "Wala pang nakalistang barangay hall para dito. Maaari pa ring magtanong mismo sa inyong barangay hall.",
+    ceb: "Wala pay nakalista nga barangay hall para niini. Mahimo gihapon mangutana direkta sa inyong barangay hall.",
+    en: "Your barangay hall isn't listed yet. You can still ask at your barangay hall directly.",
+  },
   noPrograms: {
     fil: "Walang programang tugma ngayon. Maaari pa ring magtanong sa opisina ng inyong barangay.",
     ceb: "Walay programa nga mohaum karon. Mahimo gihapon mangutana sa opisina sa inyong barangay.",
@@ -132,6 +144,7 @@ export const FIELD_LABELS: Record<keyof Omit<Entities, "barangay_code">, Record<
   housing_type: { fil: "Tirahan", ceb: "Puy-anan", en: "Housing" },
   has_children_0_18: { fil: "May anak 0–18 / buntis", ceb: "Naay anak 0–18 / mabdos", en: "Children 0–18 / pregnant" },
   has_pwd: { fil: "May PWD sa pamilya", ceb: "Naay PWD sa pamilya", en: "PWD in household" },
+  has_senior: { fil: "May 60 pataas sa pamilya", ceb: "Naay 60 pataas sa pamilya", en: "Someone 60+ in household" },
   is_solo_parent: { fil: "Solo parent", ceb: "Solo parent", en: "Solo parent" },
   crisis_type: { fil: "Krisis ngayon", ceb: "Krisis karon", en: "Current crisis" },
 };
@@ -164,7 +177,7 @@ export const CHOICES: Record<string, { value: string; label: Record<Lang, string
   ],
 };
 
-export const BOOL_FIELDS = new Set(["has_children_0_18", "has_pwd", "is_solo_parent"]);
+export const BOOL_FIELDS = new Set(["has_children_0_18", "has_pwd", "has_senior", "is_solo_parent"]);
 export const NUMBER_FIELDS = new Set(["household_size", "monthly_income", "age"]);
 
 export function displayValue(field: string, value: unknown, lang: Lang): string {
