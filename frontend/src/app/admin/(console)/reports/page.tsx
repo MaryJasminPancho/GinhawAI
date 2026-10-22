@@ -59,7 +59,7 @@ export default function ReportsPage() {
       <PageTitle title="Reports & Exports" description="Planning reports built from anonymized, aggregated data. Download a spreadsheet for analysis or print a summary for meetings." actions={<PrivacyChip />} />
       {error && <div className="mb-4"><ErrorText>{error}</ErrorText></div>}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
         <nav aria-label="Reports" className="h-fit print:hidden">
           <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-1">
             {REPORTS.map((r) => (

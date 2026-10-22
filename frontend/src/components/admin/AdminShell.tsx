@@ -110,13 +110,14 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   const sidebar = (
     <nav aria-label="Admin" className="flex h-full flex-col">
-      <Link href="/admin" className="flex items-center gap-2.5 px-2 py-1" onClick={() => setMenuOpen(false)}>
-        <div className="shrink-0 rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-black/5">
-          <Image src="/logo.png" alt="" width={243} height={313} priority className="h-7 w-auto" />
+      {/* Brand block: the logo is shown large so it's clearly visible in every staff console. */}
+      <Link href="/admin" className="flex flex-col items-center gap-2 rounded-2xl px-2 py-1 text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500" onClick={() => setMenuOpen(false)}>
+        <div className="rounded-2xl bg-white p-2.5 shadow-sm ring-1 ring-black/5">
+          <Image src="/logo.png" alt="GinhawAI logo" width={243} height={313} priority className="h-16 w-auto" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-bold text-brand-800 dark:text-brand-300">GinhawAI</p>
-          <p className="truncate text-[11px] text-gray-500 dark:text-gray-400">{CONSOLE_NAME[group]}</p>
+          <p className="text-lg font-bold leading-tight text-brand-800 dark:text-brand-300">GinhawAI</p>
+          <p className="truncate text-xs text-gray-500 dark:text-gray-400">{CONSOLE_NAME[group]}</p>
         </div>
       </Link>
 
@@ -204,6 +205,13 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                   <path d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
+              {/* On small screens the sidebar is hidden, so the logo sits in the top bar instead. */}
+              <Link href="/admin" className="flex shrink-0 items-center gap-2 lg:hidden">
+                <span className="rounded-xl bg-white p-1 shadow-sm ring-1 ring-black/5">
+                  <Image src="/logo.png" alt="GinhawAI logo" width={243} height={313} className="h-9 w-auto" />
+                </span>
+                <span className="text-sm font-bold text-brand-800 dark:text-brand-300">GinhawAI</span>
+              </Link>
               <div className="flex min-w-0 items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                 <span className="hidden sm:inline">Cebu City</span>
                 <span className="hidden text-gray-300 sm:inline dark:text-gray-600">/</span>
