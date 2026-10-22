@@ -69,7 +69,7 @@ export default function ProgramsPage() {
       {!programs && !error && <Loading />}
 
       {programs && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
           <Card className="h-fit !p-3">
             <input type="search" placeholder="Search programs…" aria-label="Search programs" value={query} onChange={(e) => setQuery(e.target.value)} className={`${inputClass} mb-2`} />
             <ul className="space-y-1">
@@ -80,8 +80,8 @@ export default function ProgramsPage() {
                   >
                     <button type="button" onClick={() => setSelected(p.program_id)} className="min-w-0 flex-1 text-left focus:outline-none focus-visible:underline">
                       <p className={`text-[13px] font-semibold leading-snug ${p.is_active ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500"}`}>{p.program_name}</p>
+                      <p className="mt-1 text-xs leading-snug text-gray-500 dark:text-gray-400">{p.agency}</p>
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        <Badge tone="gray">{p.agency}</Badge>
                         <Badge tone={p.scope === "National" ? "blue" : "brand"}>{p.scope}</Badge>
                       </div>
                     </button>
@@ -195,8 +195,8 @@ function ProgramDetail({ program }: { program: AdminProgram }) {
                   <tr key={c.criteria_id} className="hover:bg-gray-50/60 dark:hover:bg-white/[0.02]">
                     <td className={td}>
                       <p className="text-[13px] text-gray-900 dark:text-gray-100">{attributes.find((a) => a.attribute === c.attribute)?.label ?? c.attribute}</p>
-                      <div className="mt-0.5 flex items-center gap-1.5">
-                        <code className="font-mono text-[11px] text-gray-400">{c.attribute}</code>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                        <code className="break-all font-mono text-[11px] text-gray-400">{c.attribute}</code>
                         {attributes.length > 0 && !attributes.find((a) => a.attribute === c.attribute)?.computed && <Badge tone="amber">Verified at office</Badge>}
                       </div>
                     </td>
@@ -417,7 +417,7 @@ function CriterionModal({ programId, attributes, value, onClose, onSaved }: { pr
             </select>
           )}
         </Field>
-        <div className="grid grid-cols-[110px_1fr] gap-3">
+        <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-3">
           <Field label="Operator">
             {(id) => (
               <select id={id} className={`${inputClass} font-mono`} value={form.operator} onChange={(e) => setForm({ ...form, operator: e.target.value })}>

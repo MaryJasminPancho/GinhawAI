@@ -93,7 +93,7 @@ export default function AccountPage() {
         </div>
       )}
 
-      <div className={showPassword ? "grid grid-cols-1 gap-4 lg:grid-cols-[360px_1fr]" : "max-w-xl"}>
+      <div className={showPassword ? "grid grid-cols-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]" : "max-w-xl"}>
         {mustChange ? (
           <Card title="Your account" className="h-fit">
             <dl className="space-y-3 text-[13px]">
