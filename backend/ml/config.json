@@ -1,0 +1,118 @@
+{
+  "_about": "Settings for the synthetic household dataset and its reference labels (Socioeconomic Vulnerability Scoring Engine). Distributions follow public statistics (Distributional Fidelity); label weights are meant to be reviewed and adjusted by the licensed social workers before the final training run. Every value marked VERIFY is an approximation that the team must check against the cited source and update. After changing anything here, run: python -m ml.generate_dataset && python -m ml.train",
+
+  "random_seed": 2026,
+  "rows": 12000,
+
+  "thresholds": {
+    "_source": "PSA 2023 Full-Year Official Poverty Statistics, per-capita monthly thresholds (approximate). VERIFY against the PSA release for Region VII.",
+    "food_per_capita_monthly": 1950,
+    "poverty_per_capita_monthly": 2790
+  },
+
+  "household_size": {
+    "_source": "Shape of the household-size distribution, average about 4 members (PSA 2020 Census of Population and Housing, Central Visayas). VERIFY the shares.",
+    "values":  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    "weights": [0.08, 0.13, 0.17, 0.19, 0.16, 0.11, 0.07, 0.04, 0.03, 0.02]
+  },
+
+  "employment_status": {
+    "_source": "Main earner's work situation. Shares are rough approximations of PSA Labor Force Survey patterns (employment, underemployment, informality). VERIFY.",
+    "values":  ["employed", "self_employed", "informal", "seasonal", "underemployed", "unemployed", "displaced"],
+    "weights": [0.34, 0.18, 0.20, 0.06, 0.09, 0.09, 0.04]
+  },
+
+  "monthly_income": {
+    "_source": "Monthly family income drawn from a log-normal distribution; the median per employment group is a rough reading of FIES 2023 income brackets. VERIFY the medians against FIES 2023 (Region VII) income deciles.",
+    "sigma": 0.6,
+    "median_by_employment": {
+      "employed": 26000,
+      "self_employed": 22000,
+      "informal": 11000,
+      "seasonal": 9000,
+      "underemployed": 9500,
+      "unemployed": 4000,
+      "displaced": 5000
+    },
+    "minimum": 0,
+    "maximum": 250000
+  },
+
+  "housing_type": {
+    "_source": "Tenure status shares, rough approximation of PSA census housing tenure data for urban Cebu. VERIFY.",
+    "values":  ["owned", "rented", "with_relatives", "informal_settler"],
+    "weights": [0.52, 0.22, 0.15, 0.11]
+  },
+
+  "crisis_type": {
+    "_source": "Share of households facing a recent shock. Assumed values (no single official source); ask the social workers to confirm.",
+    "values":  ["none", "medical", "death", "fire", "calamity", "job_loss"],
+    "weights": [0.74, 0.09, 0.03, 0.02, 0.08, 0.04]
+  },
+
+  "age": {
+    "_source": "Age of the person answering (household head or representative), uniform in this range. Assumption.",
+    "minimum": 18,
+    "maximum": 85
+  },
+
+  "probabilities": {
+    "_source": "Assumed prevalence. VERIFY: PWD share against PSA disability statistics; solo parents against DSWD / PSA estimates; children share against census household composition.",
+    "has_children_if_household_2_plus": 0.65,
+    "has_pwd": 0.12,
+    "is_solo_parent_if_children": 0.10
+  },
+
+  "label_rubric": {
+    "_about": "Reference labels for training, modelled on CBMS-style multidimensional deprivation: each deprivation adds points, the total decides the tier. These weights stand in for social-worker judgement and MUST be reviewed by the licensed social workers (manuscript: 'verified and weighted through peer review'). Changing them changes what the model learns.",
+    "income": {
+      "below_food_threshold": 4.0,
+      "below_poverty_threshold": 3.0,
+      "below_1_5x_poverty_threshold": 1.5
+    },
+    "employment": {
+      "unemployed": 2.0,
+      "displaced": 2.0,
+      "underemployed": 1.0,
+      "informal": 1.0,
+      "seasonal": 1.0
+    },
+    "housing": {
+      "informal_settler": 2.0,
+      "rented": 0.75,
+      "with_relatives": 0.75
+    },
+    "crisis": {
+      "medical": 2.0,
+      "death": 2.0,
+      "fire": 2.5,
+      "calamity": 2.0,
+      "job_loss": 1.5
+    },
+    "crisis_while_income_deprived_bonus": 1.0,
+    "has_pwd": 1.0,
+    "is_solo_parent": 1.0,
+    "children_in_household_of_5_plus": 1.0,
+    "senior_applicant_60_plus": 1.0,
+    "household_7_plus": 0.5,
+    "tier_cutoffs": {
+      "high_at_least": 6.0,
+      "moderate_at_least": 3.0
+    },
+    "label_noise": {
+      "_about": "Share of labels moved one tier up or down at random, to mimic honest disagreement between assessors, so the model does not learn an over-confident rule.",
+      "rate": 0.05
+    }
+  },
+
+  "training": {
+    "test_size": 0.2,
+    "cv_folds": 5,
+    "param_grid": {
+      "model__n_estimators": [150, 300],
+      "model__max_depth": [3, 4, 5],
+      "model__learning_rate": [0.05, 0.1]
+    },
+    "kappa_target": 0.6
+  }
+}

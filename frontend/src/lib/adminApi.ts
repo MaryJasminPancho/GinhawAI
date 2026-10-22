@@ -202,6 +202,18 @@ export async function saveCriterion(programId: string, c: Omit<Criterion, "crite
 export const deleteCriterion = (programId: string, criteriaId: string) =>
   request<void>(`/api/programs/${programId}/eligibility/${criteriaId}`, { method: "DELETE" });
 
+// Local words and slang the chat understands (Knowledge Base Manager > Local Terms).
+export type JargonSlot = "employment_status" | "housing_type" | "crisis_type";
+export type JargonTerm = { term_id: string; slot: JargonSlot; value: string; term: string; created_at: string };
+export type JargonData = { slots: { slot: JargonSlot; label: string; values: { value: string; label: string }[] }[]; terms: JargonTerm[] };
+export const listJargon = () => request<JargonData>("/api/jargon");
+export const addJargon = (t: { slot: JargonSlot; value: string; term: string }) => request<JargonTerm>("/api/jargon", { method: "POST", body: json(t) });
+export const updateJargon = (id: string, t: { slot: JargonSlot; value: string; term: string }) =>
+  request<JargonTerm>(`/api/jargon/${id}`, { method: "PATCH", body: json(t) });
+export const deleteJargon = (id: string) => request<void>(`/api/jargon/${id}`, { method: "DELETE" });
+export const tryJargon = (slot: JargonSlot, text: string) =>
+  request<{ value: string | null; label: string | null }>("/api/jargon/try", { method: "POST", body: json({ slot, text }) });
+
 export const listDocuments = (programId: string) => request<DocumentReq[]>(`/api/programs/${programId}/documents`);
 
 export function saveDocument(programId: string, d: Omit<DocumentReq, "doc_id"> & { doc_id?: string }): Promise<DocumentReq> {
@@ -428,7 +440,52 @@ export const getDeliveryStats = async (months = 12): Promise<DeliveryStats> => {
   return request<DeliveryStats>(`/api/analytics/email?months=${months}`);
 };
 
-export type Feedback = { feedback_id: string; sus_score: number; qualitative_feedback: string | null; submitted_at: string };
+// Partner registry: NGOs / civil society groups and what they offer (Appendix R #38, #40).
+export type PartnerResource = { resource_id: string; org_id: string; title: string; details: string | null; barangay_code: string | null; starts_on: string | null; ends_on: string | null };
+export type PartnerOrg = {
+  org_id: string;
+  name: string;
+  org_type: string;
+  org_type_label: string;
+  services: string | null;
+  address: string | null;
+  barangay_code: string | null;
+  barangay_name: string | null;
+  contact: string | null;
+  is_verified: boolean;
+  is_active: boolean;
+  managed_by: string | null;
+  can_edit: boolean;
+  resources: PartnerResource[];
+};
+export type PartnerRegistry = { org_types: { value: string; label: string }[]; can_create: boolean; can_verify: boolean; organizations: PartnerOrg[] };
+export type PartnerOrgIn = { name: string; org_type: string; services: string | null; address: string | null; barangay_code: string | null; contact: string | null; is_active: boolean };
+export type PartnerResourceIn = { title: string; details: string | null; barangay_code: string | null; starts_on: string | null; ends_on: string | null };
+export const listPartners = () => request<PartnerRegistry>("/api/admin/partners");
+export const savePartner = (o: PartnerOrgIn, id?: string) =>
+  request<PartnerOrg>(id ? `/api/admin/partners/${id}` : "/api/admin/partners", { method: id ? "PATCH" : "POST", body: json(o) });
+export const verifyPartner = (id: string, is_verified: boolean) => request<PartnerOrg>(`/api/admin/partners/${id}/verify`, { method: "POST", body: json({ is_verified }) });
+export const deletePartner = (id: string) => request<void>(`/api/admin/partners/${id}`, { method: "DELETE" });
+export const saveResource = (orgId: string, r: PartnerResourceIn, id?: string) =>
+  request<PartnerResource>(id ? `/api/admin/partner-resources/${id}` : `/api/admin/partners/${orgId}/resources`, { method: id ? "PATCH" : "POST", body: json(r) });
+export const deleteResource = (id: string) => request<void>(`/api/admin/partner-resources/${id}`, { method: "DELETE" });
+
+export type FeedbackStatus = "new" | "seen" | "acted_on";
+export type Feedback = {
+  feedback_id: string;
+  sus_score: number;
+  qualitative_feedback: string | null;
+  submitted_at: string;
+  status: FeedbackStatus;
+  staff_note: string | null;
+  status_updated_at: string | null;
+  status_updated_by: string | null;
+};
+export const updateFeedbackStatus = (id: string, status: FeedbackStatus, staff_note: string | null) =>
+  request<{ feedback_id: string; status: FeedbackStatus; staff_note: string | null; status_updated_at: string }>(`/api/feedback/${id}/status`, {
+    method: "PATCH",
+    body: json({ status, staff_note }),
+  });
 export const getFeedback = (months = 12) => request<Feedback[]>(`/api/analytics/feedback?months=${months}`);
 
 export type DocDeficiency = { doc_id: string; document_name: string; program_id: string; program_name: string; missing_count: number; checked_count: number };

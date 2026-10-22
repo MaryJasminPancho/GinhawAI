@@ -252,9 +252,6 @@ function RecommendationsInner() {
 
         {/* Figs. 21–22 — send the checklist by email (free, optional) or SMS */}
         {result && matched.length > 0 && (channels.email || channels.sms) && (
-          <section className="relative z-10 mt-6 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 print:hidden dark:bg-white/[0.04] dark:ring-white/10">
-        {/* Figs. 21–22 — SMS delivery */}
-        {result && matched.length > 0 && (
           <section className="relative z-10 mt-6 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 print:hidden dark:bg-white/4 dark:ring-white/10">
             {sms.state === "sent" ? (
               <div className="flex flex-col items-center gap-2 py-2 text-center">

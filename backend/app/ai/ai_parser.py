@@ -25,6 +25,9 @@ From the citizen's message below, extract these fields as JSON (use null for any
 - is_solo_parent (boolean)
 - crisis_type (one of: "none", "medical", "death", "fire", "calamity", "job_loss")
 
+Local words to recognise (from the LGU's own list; "word" -> field = value):
+{glossary}
+
 The assistant just asked about: {current_question}
 
 Respond with ONLY the JSON object, no other text.
@@ -35,7 +38,8 @@ Citizen message: {message}
 async def extract_entities(message: str, current_question: str = "(start of conversation)") -> dict:
     if client is None:
         return {}
-    prompt = EXTRACTION_PROMPT.format(message=message, current_question=current_question)
+    from app.jargon import glossary_text  # staff-managed local words (admin console > Local Terms)
+    prompt = EXTRACTION_PROMPT.format(message=message, current_question=current_question, glossary=glossary_text() or "(none)")
 
     last_error = None
     for attempt in range(5):

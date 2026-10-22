@@ -3,10 +3,10 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { BarList, ColumnChart, TierStack } from "@/components/admin/charts";
-import { Card, EmptyState, ErrorText, fmtMonth, fmtNum, fmtPct, inputClass, Loading, PageTitle, PrivacyChip, Segmented, Table, td, th } from "@/components/admin/ui";
+import { Badge, Card, EmptyState, ErrorText, fmtMonth, fmtNum, fmtPct, inputClass, Loading, PageTitle, PrivacyChip, Segmented, Table, td, th } from "@/components/admin/ui";
 import { RAMP, type MapPoint } from "@/components/admin/VulnerabilityMap";
 import { AdminProgram, Barangay, DemandData, getDemand, listBarangays, listPrograms } from "@/lib/adminApi";
-import { BarangayAgg, byBarangay, byMonth, byProgram, byTier, filterDemand, monthsFor, programLabel, Range, RANGE_OPTIONS, sum, UNTAGGED } from "@/lib/adminAnalytics";
+import { BarangayAgg, BarangayTrend, barangayTrends, byBarangay, byMonth, byProgram, byTier, filterDemand, monthsFor, programLabel, Range, RANGE_OPTIONS, sum, UNTAGGED } from "@/lib/adminAnalytics";
 
 // "View Geographic Vulnerability Heatmap" (Fig. 10). Built only from
 // anonymized demand_logs aggregates: barangay × program × vulnerability tier × month.
@@ -74,6 +74,11 @@ export default function AnalyticsPage() {
   const trend = byMonth(focusRows, months);
   const matched = demand ? byProgram(demand, months, focus ?? undefined) : [];
   const total = sum(rows);
+  const trends = useMemo(() => barangayTrends(rows, months), [rows, months]);
+  const trendOf = Object.fromEntries(trends.map((t) => [t.code, t]));
+  const moving = trends
+    .filter((t) => t.direction === "rising" || t.direction === "falling" || t.volatile)
+    .sort((a, b) => Math.abs(b.change ?? 0) - Math.abs(a.change ?? 0));
 
   return (
     <>
@@ -117,6 +122,7 @@ export default function AnalyticsPage() {
                       <th className={`${th} text-right`}>Moderate</th>
                       <th className={`${th} text-right`}>Low</th>
                       <th className={`${th} text-right`}>No match</th>
+                      <th className={th}>Trend</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -128,6 +134,7 @@ export default function AnalyticsPage() {
                         <td className={`${td} text-right tabular-nums`}>{fmtNum(a.moderate)}</td>
                         <td className={`${td} text-right tabular-nums`}>{fmtNum(a.low)}</td>
                         <td className={`${td} text-right tabular-nums`}>{fmtNum(a.gap)}</td>
+                        <td className={td}><TrendBadge t={trendOf[a.code]} /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -177,8 +184,55 @@ export default function AnalyticsPage() {
               />
             </Card>
           </div>
+
+          <Card
+            title="Rising and falling"
+            subtitle={months.length >= 2
+              ? `Change in the high-risk share from ${fmtMonth(months[months.length - 2])} to ${fmtMonth(months[months.length - 1])}. Months with fewer than 3 assessments are left out.`
+              : "Pick a longer time range to compare months."}
+          >
+            {moving.length === 0 ? (
+              <p className="text-xs text-gray-500 dark:text-gray-400">No barangay changed by 10 points or more, and none swung sharply month to month.</p>
+            ) : (
+              <Table>
+                <thead>
+                  <tr>
+                    <th className={th}>Barangay</th>
+                    <th className={`${th} text-right`}>Before</th>
+                    <th className={`${th} text-right`}>Latest</th>
+                    <th className={`${th} text-right`}>Change</th>
+                    <th className={th}>Trend</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {moving.map((t) => (
+                    <tr key={t.code}>
+                      <td className={td}>{bName(t.code)}</td>
+                      <td className={`${td} text-right tabular-nums`}>{t.prev === null ? "—" : fmtPct(t.prev, 0)}</td>
+                      <td className={`${td} text-right tabular-nums`}>{t.last === null ? "—" : fmtPct(t.last, 0)}</td>
+                      <td className={`${td} text-right tabular-nums`}>{t.change === null ? "—" : `${t.change > 0 ? "+" : ""}${Math.round(t.change * 100)} pts`}</td>
+                      <td className={td}><TrendBadge t={t} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            )}
+          </Card>
         </div>
       )}
     </>
+  );
+}
+
+function TrendBadge({ t }: { t?: BarangayTrend }) {
+  if (!t) return null;
+  return (
+    <span className="inline-flex flex-wrap gap-1">
+      {t.direction === "rising" && <Badge tone="red">▲ Rising</Badge>}
+      {t.direction === "falling" && <Badge tone="green">▼ Falling</Badge>}
+      {t.direction === "steady" && <Badge tone="gray">Steady</Badge>}
+      {t.direction === "unknown" && <span className="text-xs text-gray-400">Not enough data</span>}
+      {t.volatile && <Badge tone="amber">Volatile</Badge>}
+    </span>
   );
 }
