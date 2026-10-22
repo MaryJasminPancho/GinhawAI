@@ -7,7 +7,7 @@ import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
 import ChatBubble, { Role, TypingBubble } from "@/components/ChatBubble";
 import { buttonClasses } from "@/components/Button";
-import { getHistory, Lang, QuickReply, sendMessage, SessionExpiredError, startSession } from "@/lib/api";
+import { endSession, getHistory, Lang, QuickReply, sendMessage, SessionExpiredError, startSession } from "@/lib/api";
 import { LANG_LABELS, t } from "@/lib/i18n";
 
 type Msg = { id: number; role: Role; text: string };
@@ -103,6 +103,14 @@ function ChatInner() {
     }
   }
 
+  // "Manual Session Inactivity Reset": wipe this session now (not only after the
+  // idle timeout) and begin a fresh chat in the same language.
+  async function startOver() {
+    if (!window.confirm(t(lang, "startOverConfirm"))) return;
+    if (sessionId) await endSession(sessionId).catch(() => {});
+    window.location.replace(`/chat?lang=${lang}`);
+  }
+
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
     send(input.trim());
@@ -116,7 +124,24 @@ function ChatInner() {
       <Backdrop />
 
       <main className="relative mx-auto flex h-screen w-full max-w-md flex-col p-4 text-gray-900 dark:text-gray-100 sm:h-[min(760px,88vh)] sm:max-w-lg sm:rounded-4xl sm:bg-white/70 sm:p-6 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
-        <PageHeader title={t(lang, "assessment")} subtitle={LANG_LABELS[lang]} step={2} totalSteps={4} />
+        <PageHeader
+          title={t(lang, "assessment")}
+          subtitle={LANG_LABELS[lang]}
+          step={2}
+          totalSteps={4}
+          action={
+            sessionId && (
+              <button
+                type="button"
+                onClick={startOver}
+                disabled={sending}
+                className="whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold text-brand-700 ring-1 ring-brand-200 transition hover:bg-brand-50 disabled:opacity-50 dark:text-brand-300 dark:ring-brand-500/30 dark:hover:bg-white/5"
+              >
+                {t(lang, "startOver")}
+              </button>
+            )
+          }
+        />
 
         <div
           ref={scrollRef}

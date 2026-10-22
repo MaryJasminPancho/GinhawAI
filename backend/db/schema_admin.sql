@@ -248,3 +248,221 @@ ALTER TABLE document_requirements ADD COLUMN IF NOT EXISTS for_crisis VARCHAR(20
 ALTER TABLE document_requirements DROP CONSTRAINT IF EXISTS document_requirements_for_crisis_check;
 ALTER TABLE document_requirements ADD CONSTRAINT document_requirements_for_crisis_check
     CHECK (for_crisis IS NULL OR for_crisis IN ('medical', 'death', 'fire', 'calamity', 'job_loss'));
+
+-- ---------------------------------------------------------------------------
+-- Local words and slang the chat understands (admin console > Local Terms).
+-- The starting list (the words that used to be in the code) is copied in once;
+-- after that staff own it, so words they remove don't come back.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS jargon_terms (
+    term_id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    slot       VARCHAR(30) NOT NULL CHECK (slot IN ('employment_status', 'housing_type', 'crisis_type')),
+    value      VARCHAR(30) NOT NULL,
+    term       VARCHAR(60) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_jargon_term ON jargon_terms (slot, lower(term));
+
+INSERT INTO jargon_terms (slot, value, term)
+SELECT v.slot, v.value, v.term FROM (VALUES
+('employment_status', 'unemployed', 'walang trabaho'),
+('employment_status', 'unemployed', 'walay trabaho'),
+('employment_status', 'unemployed', 'no work'),
+('employment_status', 'unemployed', 'jobless'),
+('employment_status', 'unemployed', 'wala trabaho'),
+('employment_status', 'unemployed', 'unemployed'),
+('employment_status', 'displaced', 'natanggal'),
+('employment_status', 'displaced', 'tinanggal'),
+('employment_status', 'displaced', 'natangtang'),
+('employment_status', 'displaced', 'laid off'),
+('employment_status', 'displaced', 'lost my job'),
+('employment_status', 'displaced', 'lost job'),
+('employment_status', 'displaced', 'displaced'),
+('employment_status', 'informal', 'arawan'),
+('employment_status', 'informal', 'daily'),
+('employment_status', 'informal', 'extra'),
+('employment_status', 'informal', 'sideline'),
+('employment_status', 'informal', 'odd job'),
+('employment_status', 'informal', 'construction'),
+('employment_status', 'informal', 'tricycle'),
+('employment_status', 'informal', 'habal'),
+('employment_status', 'informal', 'labandera'),
+('employment_status', 'seasonal', 'seasonal'),
+('employment_status', 'seasonal', 'pana-panahon'),
+('employment_status', 'seasonal', 'harvest'),
+('employment_status', 'underemployed', 'kulang'),
+('employment_status', 'underemployed', 'part-time'),
+('employment_status', 'underemployed', 'part time'),
+('employment_status', 'underemployed', 'underemployed'),
+('employment_status', 'self_employed', 'negosyo'),
+('employment_status', 'self_employed', 'tindahan'),
+('employment_status', 'self_employed', 'sari-sari'),
+('employment_status', 'self_employed', 'business'),
+('employment_status', 'self_employed', 'vendor'),
+('employment_status', 'self_employed', 'tinda'),
+('employment_status', 'employed', 'regular'),
+('employment_status', 'employed', 'empleyado'),
+('employment_status', 'employed', 'employed'),
+('employment_status', 'employed', 'office'),
+('employment_status', 'employed', 'trabaho sa'),
+('employment_status', 'employed', 'may trabaho'),
+('employment_status', 'employed', 'naay trabaho'),
+('housing_type', 'informal_settler', 'informal'),
+('housing_type', 'informal_settler', 'squatter'),
+('housing_type', 'informal_settler', 'iskwater'),
+('housing_type', 'informal_settler', 'walang titulo'),
+('housing_type', 'rented', 'upa'),
+('housing_type', 'rented', 'abang'),
+('housing_type', 'rented', 'rent'),
+('housing_type', 'rented', 'boarding'),
+('housing_type', 'rented', 'bedspace'),
+('housing_type', 'with_relatives', 'kamag-anak'),
+('housing_type', 'with_relatives', 'paryente'),
+('housing_type', 'with_relatives', 'relatives'),
+('housing_type', 'with_relatives', 'kapatid'),
+('housing_type', 'with_relatives', 'parents'),
+('housing_type', 'with_relatives', 'magulang'),
+('housing_type', 'with_relatives', 'ginikanan'),
+('housing_type', 'with_relatives', 'nakikitira'),
+('housing_type', 'with_relatives', 'nakipuyo'),
+('housing_type', 'owned', 'sariling'),
+('housing_type', 'owned', 'kaugalingon'),
+('housing_type', 'owned', 'own'),
+('housing_type', 'owned', 'amin'),
+('housing_type', 'owned', 'amoa'),
+('crisis_type', 'none', 'wala'),
+('crisis_type', 'none', 'none'),
+('crisis_type', 'none', 'no'),
+('crisis_type', 'none', 'dili'),
+('crisis_type', 'none', 'hindi'),
+('crisis_type', 'none', 'okay'),
+('crisis_type', 'none', 'ok'),
+('crisis_type', 'medical', 'ospital'),
+('crisis_type', 'medical', 'hospital'),
+('crisis_type', 'medical', 'sakit'),
+('crisis_type', 'medical', 'medical'),
+('crisis_type', 'medical', 'gamot'),
+('crisis_type', 'medical', 'tambal'),
+('crisis_type', 'medical', 'operasyon'),
+('crisis_type', 'medical', 'dialysis'),
+('crisis_type', 'death', 'namatay'),
+('crisis_type', 'death', 'patay'),
+('crisis_type', 'death', 'death'),
+('crisis_type', 'death', 'died'),
+('crisis_type', 'death', 'lamay'),
+('crisis_type', 'death', 'burial'),
+('crisis_type', 'death', 'funeral'),
+('crisis_type', 'fire', 'sunog'),
+('crisis_type', 'fire', 'sunugan'),
+('crisis_type', 'fire', 'nasunog'),
+('crisis_type', 'fire', 'fire'),
+('crisis_type', 'calamity', 'baha'),
+('crisis_type', 'calamity', 'bagyo'),
+('crisis_type', 'calamity', 'flood'),
+('crisis_type', 'calamity', 'typhoon'),
+('crisis_type', 'calamity', 'lindol'),
+('crisis_type', 'calamity', 'earthquake'),
+('crisis_type', 'calamity', 'calamity'),
+('crisis_type', 'job_loss', 'nawalan ng kita'),
+('crisis_type', 'job_loss', 'nawad-an'),
+('crisis_type', 'job_loss', 'lost income'),
+('crisis_type', 'job_loss', 'job loss')
+) AS v(slot, value, term)
+WHERE NOT EXISTS (SELECT 1 FROM system_config WHERE key = 'jargon_seeded')
+ON CONFLICT DO NOTHING;
+INSERT INTO system_config (key, value) VALUES ('jargon_seeded', 'true') ON CONFLICT (key) DO NOTHING;
+
+-- ---------------------------------------------------------------------------
+-- Feedback resolution tracking (Appendix R #70). Feedback stays anonymous:
+-- only the staff side (status, note, who updated it) is added.
+-- ---------------------------------------------------------------------------
+ALTER TABLE feedback_logs ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'new';
+ALTER TABLE feedback_logs DROP CONSTRAINT IF EXISTS feedback_logs_status_check;
+ALTER TABLE feedback_logs ADD CONSTRAINT feedback_logs_status_check CHECK (status IN ('new', 'seen', 'acted_on'));
+ALTER TABLE feedback_logs ADD COLUMN IF NOT EXISTS staff_note TEXT;
+ALTER TABLE feedback_logs ADD COLUMN IF NOT EXISTS status_updated_at TIMESTAMPTZ;
+ALTER TABLE feedback_logs ADD COLUMN IF NOT EXISTS status_updated_by UUID REFERENCES admin_users(user_id);
+
+-- ---------------------------------------------------------------------------
+-- Partner registry: NGOs and civil society groups and the help they offer
+-- (Appendix R #38 "Track Neighborhood NGO Resource Tracks" and #40 "Maintain
+-- Local Civil Society Registries"). Entries added or changed by a Partner
+-- Organization account stay hidden from citizens until LGU staff verify them.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS partner_organizations (
+    org_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name          VARCHAR(200) NOT NULL,
+    org_type      VARCHAR(30) NOT NULL CHECK (org_type IN ('ngo', 'faith_based', 'civic', 'cooperative', 'private', 'academe', 'government')),
+    services      TEXT,
+    address       TEXT,
+    barangay_code VARCHAR(20) REFERENCES barangays(barangay_code) ON DELETE SET NULL,
+    contact       VARCHAR(100),
+    is_verified   BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+    managed_by    UUID REFERENCES admin_users(user_id),
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS partner_resources (
+    resource_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id        UUID NOT NULL REFERENCES partner_organizations(org_id) ON DELETE CASCADE,
+    title         VARCHAR(200) NOT NULL,
+    details       TEXT,
+    barangay_code VARCHAR(20) REFERENCES barangays(barangay_code) ON DELETE SET NULL,
+    starts_on     DATE,
+    ends_on       DATE,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (starts_on IS NULL OR ends_on IS NULL OR ends_on >= starts_on)
+);
+CREATE INDEX IF NOT EXISTS idx_partner_resources_org ON partner_resources (org_id);
+
+-- ---------------------------------------------------------------------------
+-- Merge duplicate programs. Running seed.sql more than once used to insert the
+-- starter programs again (without their rules). For each program name, the copy
+-- with the most rules is kept; anything only the other copies had (documents,
+-- rules, schedules, assessment records, delivery logs) is moved onto it, then the
+-- copies are removed and duplicate names are blocked from now on.
+-- ---------------------------------------------------------------------------
+DROP TABLE IF EXISTS program_merge;
+CREATE TEMP TABLE program_merge AS
+WITH ranked AS (
+    SELECT p.program_id, lower(btrim(p.program_name)) AS name_key,
+           row_number() OVER (
+               PARTITION BY lower(btrim(p.program_name))
+               ORDER BY (SELECT COUNT(*) FROM eligibility_criteria c WHERE c.program_id = p.program_id) DESC,
+                        (SELECT COUNT(*) FROM document_requirements d WHERE d.program_id = p.program_id) DESC,
+                        p.is_active DESC, p.program_id
+           ) AS rn
+    FROM programs p
+)
+SELECT dup.program_id AS dup_id, keep.program_id AS keep_id
+FROM ranked dup JOIN ranked keep ON keep.name_key = dup.name_key AND keep.rn = 1
+WHERE dup.rn > 1;
+
+-- Documents: move the ones the kept program doesn't have; point "do you have it?" answers at the kept copy.
+UPDATE document_requirements d SET program_id = m.keep_id
+FROM program_merge m
+WHERE d.program_id = m.dup_id
+  AND NOT EXISTS (SELECT 1 FROM document_requirements k WHERE k.program_id = m.keep_id AND lower(k.document_name) = lower(d.document_name));
+UPDATE document_checks dc SET doc_id = k.doc_id
+FROM document_requirements d JOIN program_merge m ON d.program_id = m.dup_id
+JOIN document_requirements k ON k.program_id = m.keep_id AND lower(k.document_name) = lower(d.document_name)
+WHERE dc.doc_id = d.doc_id;
+
+-- Rules the kept program doesn't have.
+UPDATE eligibility_criteria c SET program_id = m.keep_id
+FROM program_merge m
+WHERE c.program_id = m.dup_id
+  AND NOT EXISTS (SELECT 1 FROM eligibility_criteria k WHERE k.program_id = m.keep_id AND k.attribute = c.attribute);
+
+-- Everything else that points at a program.
+UPDATE barangay_schedules s SET program_id = m.keep_id FROM program_merge m WHERE s.program_id = m.dup_id;
+UPDATE demand_logs l SET program_id = m.keep_id FROM program_merge m WHERE l.program_id = m.dup_id;
+UPDATE sms_logs l SET program_id = m.keep_id FROM program_merge m WHERE l.program_id = m.dup_id;
+UPDATE email_logs l SET program_id = m.keep_id FROM program_merge m WHERE l.program_id = m.dup_id;
+
+DELETE FROM programs p USING program_merge m WHERE p.program_id = m.dup_id;
+DROP TABLE program_merge;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_program_name ON programs (lower(btrim(program_name)));

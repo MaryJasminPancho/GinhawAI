@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from app import mailer, secretbox
+from app import mailer, ml_scoring, secretbox
 from app.audit import write_audit
 from app.auth import SYSADMIN_ROLES, require_roles
 from app.config import GEMINI_API_KEY
@@ -44,7 +44,7 @@ async def services(request: Request, current_admin: dict = Depends(sysadmin)):
     return [
         {"name": "NLP extraction (Gemini, stand-in for XLM-RoBERTa)", "status": "up" if GEMINI_API_KEY else "down",
          "detail": "API key configured" if GEMINI_API_KEY else "GEMINI_API_KEY missing — chat falls back to the built-in parser"},
-        {"name": "Vulnerability scoring engine", "status": "up", "detail": "Rule-based placeholder (XGBoost pending)"},
+        {"name": "Vulnerability scoring engine", "status": "up" if ml_scoring.model() else "degraded", "detail": ml_scoring.describe()},
         *([{"name": sms_name, "status": sms_status, "detail": sms_detail}] if SMS_FEATURE_ENABLED else []),
         {"name": "Email gateway (SMTP)", **_email_status(s)},
     ]

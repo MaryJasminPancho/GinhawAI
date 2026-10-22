@@ -1,10 +1,9 @@
 """Vulnerability scoring + explainable eligibility evaluation.
 
-PLACEHOLDER SCORING: the XGBoost classifier described in the manuscript isn't
-trained yet, so `score_vulnerability` uses transparent, documented points based
-on PSA poverty indicators. It returns the same shape the model will
-(score 0–100, tier, top contributing factors), so swapping in the model later
-only changes this one function.
+Vulnerability scoring uses the trained XGBoost classifier (app/ml_scoring.py,
+trained by `python -m ml.train`); its top contributing factors come from the
+model's exact Tree SHAP contributions. If no trained model is installed,
+`rule_based_score` (transparent points based on PSA poverty indicators) is used.
 
 Eligibility is evaluated directly against the rules stored in
 eligibility_criteria — the same rows LGU staff edit in the admin console.
@@ -49,6 +48,113 @@ ATTRIBUTE_LABELS = {
     "not_receiving_other_pension": "Not receiving another pension (SSS, GSIS, AFP/PNP or veterans)",
     "not_receiving_similar_assistance": "Not receiving similar government assistance at the same time",
 }
+
+# The same labels in Filipino and Bisaya, for the citizen's "why" breakdown.
+ATTRIBUTE_LABELS_LOCAL = {
+    "fil": {
+        "monthly_income": "Buwanang kita ng pamilya (₱)",
+        "household_size": "Bilang ng nakatira sa bahay",
+        "per_capita_income": "Buwanang kita kada tao (₱)",
+        "age": "Edad ng aplikante",
+        "employment_status": "Kalagayan ng trabaho",
+        "housing_type": "Uri ng tirahan",
+        "barangay_code": "Barangay",
+        "has_children_0_18": "May anak na 0–18 taong gulang o buntis",
+        "has_member_age_0_18_or_pregnant": "May anak na 0–18 taong gulang o buntis",
+        "children_0_18": "May anak na 0–18 taong gulang",
+        "has_pwd": "May miyembrong may kapansanan (PWD)",
+        "is_pwd": "May miyembrong may kapansanan (PWD)",
+        "is_solo_parent": "Solo parent",
+        "crisis_type": "Kasalukuyang krisis",
+        "has_crisis": "May kinakaharap na krisis ngayon",
+        "is_unemployed": "Walang trabaho ngayon",
+        "is_indigent_or_vulnerable": "Mababa ang kita o bulnerableng pamilya",
+        "belongs_to_priority_worker_group": "Kabilang sa priority na grupo ng manggagawa",
+        "listed_in_targeting_system": "Nakalista sa DSWD Listahanan",
+        "not_government_employee_or_elected_official": "Hindi empleyado ng gobyerno o halal na opisyal",
+        "not_receiving_other_dswd_program": "Hindi tumatanggap ng katulad na programa ng DSWD",
+        "has_supporting_documents_for_assistance_type": "May dokumento para sa uri ng tulong na kailangan",
+        "physically_fit_for_assigned_task": "Kayang gawin ang itatakdang trabaho",
+        "not_receiving_other_pension": "Walang ibang pensyon (SSS, GSIS, AFP/PNP o beterano)",
+        "not_receiving_similar_assistance": "Hindi tumatanggap ng katulad na tulong mula sa gobyerno ngayon",
+    },
+    "ceb": {
+        "monthly_income": "Binulan nga kita sa pamilya (₱)",
+        "household_size": "Gidaghanon sa nagpuyo sa balay",
+        "per_capita_income": "Binulan nga kita matag tawo (₱)",
+        "age": "Edad sa aplikante",
+        "employment_status": "Kahimtang sa trabaho",
+        "housing_type": "Klase sa puy-anan",
+        "barangay_code": "Barangay",
+        "has_children_0_18": "Adunay anak nga 0–18 anyos o mabdos",
+        "has_member_age_0_18_or_pregnant": "Adunay anak nga 0–18 anyos o mabdos",
+        "children_0_18": "Adunay anak nga 0–18 anyos",
+        "has_pwd": "Adunay miyembro nga may kakulangan (PWD)",
+        "is_pwd": "Adunay miyembro nga may kakulangan (PWD)",
+        "is_solo_parent": "Solo parent",
+        "crisis_type": "Krisis karon",
+        "has_crisis": "Adunay krisis karon",
+        "is_unemployed": "Walay trabaho karon",
+        "is_indigent_or_vulnerable": "Ubos ang kita o bulnerable nga pamilya",
+        "belongs_to_priority_worker_group": "Sakop sa priority nga grupo sa mga mamumuo",
+        "listed_in_targeting_system": "Nalista sa DSWD Listahanan",
+        "not_government_employee_or_elected_official": "Dili empleyado sa gobyerno o napiling opisyal",
+        "not_receiving_other_dswd_program": "Wala nakadawat og susama nga programa sa DSWD",
+        "has_supporting_documents_for_assistance_type": "Adunay dokumento para sa klase sa tabang nga gikinahanglan",
+        "physically_fit_for_assigned_task": "Makahimo sa trabaho nga ihatag",
+        "not_receiving_other_pension": "Walay laing pensyon (SSS, GSIS, AFP/PNP o beterano)",
+        "not_receiving_similar_assistance": "Wala nakadawat og susama nga tabang gikan sa gobyerno karon",
+    },
+}
+
+RULE_TEXT = {
+    "pass": {"en": "Yours: {a} (needs {r}).", "fil": "Sa inyo: {a} (kailangan: {r}).", "ceb": "Imo: {a} (kinahanglan: {r})."},
+    "fail": {
+        "en": "Yours: {a}, but this program needs {r}.",
+        "fil": "Sa inyo: {a}, pero ang kailangan ng programang ito ay {r}.",
+        "ceb": "Imo: {a}, apan ang kinahanglan sa programa kay {r}.",
+    },
+    "unknown": {
+        "en": "We couldn't check this from the chat — the office will verify it.",
+        "fil": "Hindi ito masuri mula sa usapan — ang opisina ang magbe-verify nito.",
+        "ceb": "Dili kini masusi gikan sa istorya — ang opisina ang mo-verify niini.",
+    },
+    "yes": {"en": "yes", "fil": "oo", "ceb": "oo"},
+    "no": {"en": "no", "fil": "hindi", "ceb": "dili"},
+    "one_of": {"en": "one of: {v}", "fil": "isa sa {v}", "ceb": "usa sa {v}"},
+}
+
+# Comparisons in words, so citizens don't have to read ">=" or "<=".
+OP_TEXT = {
+    ">=": {"en": "at least {v}", "fil": "hindi bababa sa {v}", "ceb": "dili mubaba sa {v}"},
+    "<=": {"en": "{v} or less", "fil": "{v} o mas mababa", "ceb": "{v} o ubos pa"},
+    ">": {"en": "more than {v}", "fil": "higit sa {v}", "ceb": "labaw sa {v}"},
+    "<": {"en": "less than {v}", "fil": "mas mababa sa {v}", "ceb": "ubos sa {v}"},
+    "!=": {"en": "not {v}", "fil": "hindi {v}", "ceb": "dili {v}"},
+    "=": {"en": "{v}", "fil": "{v}", "ceb": "{v}"},
+}
+
+
+def _lang(lang: str) -> str:
+    return lang if lang in ("en", "fil", "ceb") else "en"
+
+
+def attribute_label(attr: str, lang: str = "en") -> str:
+    local = ATTRIBUTE_LABELS_LOCAL.get(_lang(lang), {}).get(attr)
+    return local or ATTRIBUTE_LABELS.get(attr, attr.replace("_", " ").capitalize())
+
+
+def value_label(v: str, lang: str = "en") -> str:
+    """Job / housing / crisis values in the citizen's language (the same words as the chat's answer chips)."""
+    lang = _lang(lang)
+    if lang != "en":
+        from app.chatflow import CHIPS  # chatflow imports this module, so import lazily
+        for slot in ("employment_status", "housing_type", "crisis_type"):
+            for value, label in CHIPS[slot][lang]:
+                if value == v:
+                    return label[0].lower() + label[1:] if label[:2] != label[:2].upper() else label
+    return VALUE_LABELS.get(v, v)
+
 
 # Attributes the evaluator can compute from the chat answers (shown in the admin rule form).
 COMPUTED_ATTRIBUTES = [
@@ -130,6 +236,7 @@ FACTOR_TEXT = {
     "solo": {"en": "Solo parent household.", "fil": "Solo parent ang nag-aalaga.", "ceb": "Solo parent ang nag-atiman."},
     "children": {"en": "There are children or a pregnant member to support.", "fil": "May mga anak o buntis na sinusuportahan.", "ceb": "Adunay mga bata o mabdos nga gisuportahan."},
     "size": {"en": "Large household of {v} people.", "fil": "Malaking pamilya na may {v} katao.", "ceb": "Dako nga pamilya nga adunay {v} ka tawo."},
+    "age": {"en": "The applicant is {v} years old.", "fil": "Ang aplikante ay {v} taong gulang.", "ceb": "Ang aplikante {v} anyos na."},
 }
 
 REL = {
@@ -157,7 +264,76 @@ TIER_MESSAGE = {
 }
 
 
+def _income_text(profile: dict, lang: str) -> str | None:
+    pc = profile.get("per_capita_income")
+    if pc is None:
+        return None
+    rel = "below" if pc <= POVERTY_THRESHOLD_MONTHLY else "near" if pc <= POVERTY_THRESHOLD_MONTHLY * 1.5 else "above"
+    return FACTOR_TEXT["income"][lang].format(v=f"₱{pc:,.0f}", rel=REL[lang][rel], line=POVERTY_THRESHOLD_MONTHLY)
+
+
+def _model_factor_text(field: str, profile: dict, lang: str) -> str | None:
+    """Plain-language sentence for one answer that raised the model's high-risk score (None = not worth saying)."""
+    if field in ("per_capita_income", "monthly_income"):
+        return _income_text(profile, lang)
+    if field == "employment_status" and profile.get("employment_status"):
+        return FACTOR_TEXT["employment"][lang].format(v=value_label(profile["employment_status"], lang))
+    if field == "housing_type" and profile.get("housing_type"):
+        return FACTOR_TEXT["housing"][lang].format(v=value_label(profile["housing_type"], lang))
+    if field == "crisis_type" and profile.get("has_crisis"):
+        return FACTOR_TEXT["crisis"][lang].format(v=value_label(profile["crisis_type"], lang))
+    if field == "has_pwd" and profile.get("has_pwd"):
+        return FACTOR_TEXT["pwd"][lang]
+    if field == "is_solo_parent" and profile.get("is_solo_parent"):
+        return FACTOR_TEXT["solo"][lang]
+    if field == "has_children_0_18" and profile.get("has_children_0_18"):
+        return FACTOR_TEXT["children"][lang]
+    if field == "age" and profile.get("age"):
+        return FACTOR_TEXT["age"][lang].format(v=int(profile["age"]))
+    return None
+
+
+def _score_with_model(profile: dict, lang: str) -> dict | None:
+    """XGBoost tier and score; the top three factors come from its exact Tree SHAP contributions."""
+    from app import ml_scoring
+
+    result = ml_scoring.predict(profile)
+    if result is None:
+        return None
+    # Income per person, total income and household size are one idea for a citizen
+    # ("how much money is there per person"), so their exact contributions are added
+    # together before ranking (Tree SHAP values are additive, so the sum is exact).
+    grouped: dict[str, float] = {}
+    for field, value in result["contributions"].items():
+        key = "per_capita_income" if field in ("per_capita_income", "monthly_income", "household_size") else field
+        grouped[key] = grouped.get(key, 0.0) + value
+    top: list[str] = []
+    for field, value in sorted(grouped.items(), key=lambda kv: -kv[1]):
+        if value <= 0 or len(top) == 3:
+            break
+        text = _model_factor_text(field, profile, lang)
+        if text:
+            top.append(text)
+    if not top:
+        top = [t for t in [_income_text(profile, lang)] if t]
+    return {
+        "score": result["score"],
+        "tier": result["tier"],
+        "message": TIER_MESSAGE[result["tier"]][lang],
+        "top_factors": top,
+        "probabilities": result["probabilities"],
+        "engine": ml_scoring.describe(),
+    }
+
+
 def score_vulnerability(profile: dict, lang: str = "en") -> dict:
+    lang = lang if lang in ("en", "fil", "ceb") else "en"
+    return _score_with_model(profile, lang) or rule_based_score(profile, lang)
+
+
+def rule_based_score(profile: dict, lang: str = "en") -> dict:
+    """Transparent points-based score: the fallback when no trained model is installed,
+    and the baseline the training report compares the model against."""
     lang = lang if lang in ("en", "fil", "ceb") else "en"
     factors: list[tuple[int, str]] = []
 
@@ -176,15 +352,15 @@ def score_vulnerability(profile: dict, lang: str = "en") -> dict:
     emp = profile.get("employment_status")
     emp_pts = {"unemployed": 15, "displaced": 15, "underemployed": 10, "informal": 10, "seasonal": 10, "self_employed": 5}.get(emp or "", 0)
     if emp:
-        factors.append((emp_pts, FACTOR_TEXT["employment"][lang].format(v=VALUE_LABELS.get(emp, emp))))
+        factors.append((emp_pts, FACTOR_TEXT["employment"][lang].format(v=value_label(emp, lang))))
 
     housing = profile.get("housing_type")
     h_pts = {"informal_settler": 12, "rented": 6, "with_relatives": 4}.get(housing or "", 0)
     if housing:
-        factors.append((h_pts, FACTOR_TEXT["housing"][lang].format(v=VALUE_LABELS.get(housing, housing))))
+        factors.append((h_pts, FACTOR_TEXT["housing"][lang].format(v=value_label(housing, lang))))
 
     if profile.get("has_crisis"):
-        factors.append((15, FACTOR_TEXT["crisis"][lang].format(v=VALUE_LABELS.get(profile["crisis_type"], profile["crisis_type"]))))
+        factors.append((15, FACTOR_TEXT["crisis"][lang].format(v=value_label(profile["crisis_type"], lang))))
     if profile.get("has_pwd"):
         factors.append((6, FACTOR_TEXT["pwd"][lang]))
     if profile.get("is_solo_parent"):
@@ -204,7 +380,7 @@ def score_vulnerability(profile: dict, lang: str = "en") -> dict:
         "tier": tier,
         "message": TIER_MESSAGE[tier][lang],
         "top_factors": top,
-        "engine": "rule-based placeholder (XGBoost pending)",
+        "engine": "Rule-based score (trained model not found)",
     }
 
 
@@ -262,52 +438,58 @@ def compare(actual, operator: str, threshold: str) -> bool:
     return False
 
 
-def _fmt(attr: str, v) -> str:
+def _fmt(attr: str, v, lang: str = "en") -> str:
     if isinstance(v, bool):
-        return "yes" if v else "no"
+        return RULE_TEXT["yes" if v else "no"][_lang(lang)]
     if attr in ("monthly_income", "per_capita_income") and isinstance(v, (int, float)):
         return f"₱{v:,.0f}"
     if isinstance(v, float) and v.is_integer():
         return str(int(v))
-    return VALUE_LABELS.get(str(v), str(v))
+    return value_label(str(v), lang)
 
 
-def _fmt_requirement(attr: str, op: str, threshold: str) -> str:
+def _fmt_requirement(attr: str, op: str, threshold: str, lang: str = "en") -> str:
+    lang = _lang(lang)
     op = "=" if op in ("=", "==") else op
     if op == "in" or "_or_" in threshold or "," in threshold:
-        opts = ", ".join(VALUE_LABELS.get(o, o) for o in _split_list(threshold))
-        return f"one of: {opts}"
+        opts = ", ".join(value_label(o, lang) for o in _split_list(threshold))
+        return RULE_TEXT["one_of"][lang].format(v=opts)
     b = _as_bool(threshold)
     if b is not None and op == "=":
-        return "yes" if b else "no"
+        return RULE_TEXT["yes" if b else "no"][lang]
     if attr in ("monthly_income", "per_capita_income") and _num(threshold) is not None:
-        return f"{op} ₱{_num(threshold):,.0f}"
-    return f"{op} {VALUE_LABELS.get(threshold, threshold)}"
+        v = f"₱{_num(threshold):,.0f}"
+    elif _num(threshold) is not None:
+        v = _fmt(attr, _num(threshold), lang)
+    else:
+        v = value_label(threshold, lang)
+    return OP_TEXT.get(op, OP_TEXT["="])[lang].format(v=v)
 
 
-def evaluate_program(program: dict, criteria: list[dict], profile: dict) -> dict:
+def evaluate_program(program: dict, criteria: list[dict], profile: dict, lang: str = "en") -> dict:
+    lang = _lang(lang)
     results = []
     total = passed = unknown = 0.0
     for c in criteria:
         w = float(c["weight"] or 0)
         total += w
         attr = c["attribute"]
-        label = ATTRIBUTE_LABELS.get(attr, attr.replace("_", " ").capitalize())
-        requirement = _fmt_requirement(attr, c["operator"], c["threshold_value"])
+        label = attribute_label(attr, lang)
+        requirement = _fmt_requirement(attr, c["operator"], c["threshold_value"], lang)
         if attr not in profile:
             unknown += w
             results.append({"attribute": attr, "label": label, "status": "unknown", "actual": None, "requirement": requirement,
-                            "explanation": "We couldn't check this from the chat — the office will verify it."})
+                            "explanation": RULE_TEXT["unknown"][lang]})
             continue
         ok = compare(profile[attr], c["operator"], c["threshold_value"])
-        actual = _fmt(attr, profile[attr])
+        actual = _fmt(attr, profile[attr], lang)
         if ok:
             passed += w
             results.append({"attribute": attr, "label": label, "status": "pass", "actual": actual, "requirement": requirement,
-                            "explanation": f"Yours: {actual} (needs {requirement})."})
+                            "explanation": RULE_TEXT["pass"][lang].format(a=actual, r=requirement)})
         else:
             results.append({"attribute": attr, "label": label, "status": "fail", "actual": actual, "requirement": requirement,
-                            "explanation": f"Yours: {actual}, but this program needs {requirement}."})
+                            "explanation": RULE_TEXT["fail"][lang].format(a=actual, r=requirement)})
 
     if not criteria:
         status, likelihood = "partial", 50

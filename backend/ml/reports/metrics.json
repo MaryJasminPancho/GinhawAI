@@ -1,0 +1,102 @@
+{
+  "trained_at": "2026-10-21T17:19:43+00:00",
+  "rows": 12000,
+  "train_rows": 9600,
+  "test_rows": 2400,
+  "best_params": {
+    "learning_rate": 0.1,
+    "max_depth": 3,
+    "n_estimators": 300
+  },
+  "cv": {
+    "kappa": {
+      "mean": 0.8698,
+      "std": 0.0087
+    },
+    "accuracy": {
+      "mean": 0.9137,
+      "std": 0.0058
+    },
+    "f1_macro": {
+      "mean": 0.9136,
+      "std": 0.0056
+    }
+  },
+  "test": {
+    "accuracy": 0.9167,
+    "cohen_kappa": 0.8741,
+    "f1_macro": 0.9167,
+    "per_class": {
+      "low": {
+        "precision": 0.9268,
+        "recall": 0.956,
+        "f1-score": 0.9412,
+        "support": 887.0
+      },
+      "moderate": {
+        "precision": 0.8804,
+        "recall": 0.8794,
+        "f1-score": 0.8799,
+        "support": 829.0
+      },
+      "high": {
+        "precision": 0.9482,
+        "recall": 0.9108,
+        "f1-score": 0.9292,
+        "support": 684.0
+      }
+    },
+    "confusion_matrix": {
+      "labels": [
+        "low",
+        "moderate",
+        "high"
+      ],
+      "rows_true_cols_predicted": [
+        [
+          848,
+          38,
+          1
+        ],
+        [
+          67,
+          729,
+          33
+        ],
+        [
+          0,
+          61,
+          623
+        ]
+      ]
+    }
+  },
+  "rule_based_baseline_on_test": {
+    "accuracy": 0.6592,
+    "cohen_kappa": 0.4762
+  },
+  "global_importance_mean_abs_contribution_to_high": {
+    "per_capita_income": 2.1559,
+    "employment_status": 0.9166,
+    "crisis_type": 0.8936,
+    "age": 0.5226,
+    "household_size": 0.521,
+    "housing_type": 0.4592,
+    "has_children_0_18": 0.3477,
+    "has_pwd": 0.2795,
+    "is_solo_parent": 0.1428,
+    "monthly_income": 0.0958
+  },
+  "kappa_target": 0.6,
+  "versions": {
+    "python": "3.11.9",
+    "xgboost": "3.2.0",
+    "scikit-learn": "1.9.1"
+  },
+  "tier_shares": {
+    "low": 0.3694,
+    "moderate": 0.3455,
+    "high": 0.2851
+  },
+  "config_seed": 2026
+}

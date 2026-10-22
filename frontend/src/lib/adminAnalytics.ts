@@ -51,6 +51,50 @@ export function byBarangay(rows: AssessmentRow[]): BarangayAgg[] {
   return [...m.values()].sort((a, b) => b.total - a.total);
 }
 
+/** "Trend Volatile Multi-Household Scoring": how each barangay's high-risk share
+ * moved between the last two months, and how much it swings month to month. */
+export type BarangayTrend = {
+  code: string;
+  prev: number | null; // high-risk share last-but-one month (null = too few assessments)
+  last: number | null; // high-risk share last month
+  change: number | null; // last - prev, in share points (0.12 = +12 points)
+  direction: "rising" | "falling" | "steady" | "unknown";
+  volatility: number | null; // spread (standard deviation) of the monthly share
+  volatile: boolean;
+};
+export const MIN_MONTH_SAMPLE = 3; // months with fewer assessments are too noisy to compare
+export const TREND_THRESHOLD = 0.1; // 10 share points
+export const VOLATILE_THRESHOLD = 0.2;
+
+export function barangayTrends(rows: AssessmentRow[], months: string[]): BarangayTrend[] {
+  const cells = new Map<string, Map<string, { high: number; total: number }>>();
+  for (const r of rows) {
+    const code = r.barangay_code ?? UNTAGGED;
+    const byM = cells.get(code) ?? new Map();
+    const c = byM.get(r.month) ?? { high: 0, total: 0 };
+    c.total += r.count;
+    if (r.tier === "high") c.high += r.count;
+    byM.set(r.month, c);
+    cells.set(code, byM);
+  }
+  const share = (c?: { high: number; total: number }) => (c && c.total >= MIN_MONTH_SAMPLE ? c.high / c.total : null);
+  const [m1, m2] = months.slice(-2);
+  return [...cells.entries()].map(([code, byM]) => {
+    const prev = months.length >= 2 ? share(byM.get(m1)) : null;
+    const last = share(byM.get(months.length >= 2 ? m2 : m1));
+    const change = prev !== null && last !== null ? last - prev : null;
+    const series = months.map((m) => share(byM.get(m))).filter((v): v is number => v !== null);
+    let volatility: number | null = null;
+    if (series.length >= 3) {
+      const mean = series.reduce((a, v) => a + v, 0) / series.length;
+      volatility = Math.sqrt(series.reduce((a, v) => a + (v - mean) ** 2, 0) / series.length);
+    }
+    const direction =
+      change === null ? "unknown" : change >= TREND_THRESHOLD ? "rising" : change <= -TREND_THRESHOLD ? "falling" : "steady";
+    return { code, prev, last, change, direction, volatility, volatile: volatility !== null && volatility >= VOLATILE_THRESHOLD };
+  });
+}
+
 /** How many assessments matched each program (for the chosen months / barangay). */
 export function byProgram(d: DemandData, months: string[], barangay?: string | null) {
   const set = new Set(months);

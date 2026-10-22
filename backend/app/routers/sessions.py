@@ -14,7 +14,7 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, Request
 
-from app import chatflow
+from app import chatflow, jargon
 from app.ai.ai_parser import extract_entities
 from app.schemas import AssessmentFeedbackIn, DocumentChecksIn, EmailChecklistRequest, EntityPatch, MessageIn, SessionStart, SmsRequest
 from app.scoring import derive_profile, evaluate_program, rank_programs, score_vulnerability, today_iso
@@ -179,7 +179,7 @@ async def send_message(session_id: str, payload: MessageIn, request: Request):
     understood = False
     # 1) A direct answer to the question just asked (chip tap, "oo", "5", "8k"…).
     if asking:
-        direct = chatflow.parse_for_slot(asking, text, lang)
+        direct = chatflow.parse_for_slot(asking, text, lang, jargon.synonyms())
         if direct is not None and asking == "barangay":
             # Free text could be a greeting — only take it as-is if it matches a
             # known barangay, or if we've already asked once.
@@ -282,7 +282,7 @@ async def assess(session_id: str, request: Request):
         by_program: dict[str, list] = {}
         for c in criteria:
             by_program.setdefault(str(c["program_id"]), []).append(dict(c))
-        evaluations = rank_programs([evaluate_program(dict(p), by_program.get(str(p["program_id"]), []), profile) for p in programs])
+        evaluations = rank_programs([evaluate_program(dict(p), by_program.get(str(p["program_id"]), []), profile, lang) for p in programs])
 
         docs_by_program: dict[str, list] = {}
         crisis = profile.get("crisis_type")
