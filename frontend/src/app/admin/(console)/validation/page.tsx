@@ -213,7 +213,7 @@ function RateView({ cases, index, setIndex, mine, rate, onDone, done }: { cases:
   const c = cases[Math.min(index, cases.length - 1)];
   const chosen = mine.get(c.case_id);
   const perCapita = Math.round(c.monthly_income / Math.max(1, c.household_size));
-  const specials = [c.has_children_0_18 && "children 0–18 / pregnant", c.has_pwd && "PWD member", c.is_solo_parent && "solo parent"].filter(Boolean) as string[];
+  const specials = [c.has_children_0_18 && "children 0–18 / pregnant", c.has_pwd && "PWD member", c.has_senior && "senior 60+", c.is_solo_parent && "solo parent"].filter(Boolean) as string[];
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px]">

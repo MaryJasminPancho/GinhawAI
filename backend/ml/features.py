@@ -11,7 +11,7 @@ NUMERIC = ["household_size", "monthly_income", "per_capita_income", "age"]
 # the barangay isn't listed or wasn't assessed (XGBoost handles missing values natively).
 HAZARDS = ["flood_level", "landslide_level", "storm_surge_level"]
 HAZARD_LEVELS = {"none": 0, "low": 1, "moderate": 2, "high": 3}
-BINARY = ["has_children_0_18", "has_pwd", "is_solo_parent"]
+BINARY = ["has_children_0_18", "has_pwd", "has_senior_member", "is_solo_parent"]
 CATEGORICAL = {
     "employment_status": ["employed", "self_employed", "informal", "seasonal", "underemployed", "unemployed", "displaced"],
     "housing_type": ["owned", "rented", "with_relatives", "informal_settler"],
@@ -33,6 +33,8 @@ def row_from_answers(a: dict) -> dict:
         "age": float(a.get("age") or 0),
         "has_children_0_18": int(bool(a.get("has_children_0_18"))),
         "has_pwd": int(bool(a.get("has_pwd"))),
+        # Senior in the household: the applicant is 60+ or someone else is (chat question has_senior).
+        "has_senior_member": int(bool(a.get("has_senior") or a.get("has_senior_member") or float(a.get("age") or 0) >= 60)),
         "is_solo_parent": int(bool(a.get("is_solo_parent"))),
         "employment_status": a.get("employment_status") or "employed",
         "housing_type": a.get("housing_type") or "owned",

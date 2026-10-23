@@ -22,6 +22,7 @@ From the citizen's message below, extract these fields as JSON (use null for any
 - housing_type (one of: "owned", "rented", "with_relatives", "informal_settler")
 - has_children_0_18 (boolean, true if there are children aged 0-18 or a pregnant member)
 - has_pwd (boolean, true if a household member has a disability)
+- has_senior (boolean, true if anyone in the household is 60 years old or older)
 - is_solo_parent (boolean)
 - crisis_type (one of: "none", "medical", "death", "fire", "calamity", "job_loss")
 
