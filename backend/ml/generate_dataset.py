@@ -44,6 +44,7 @@ def generate(n: int, seed: int, cfg: dict = CONFIG) -> pd.DataFrame:
             "age": int(rng.integers(cfg["age"]["minimum"], cfg["age"]["maximum"] + 1)),
             "has_children_0_18": bool(kids[i]),
             "has_pwd": bool(rng.random() < p["has_pwd"]),
+            "has_senior": bool(size[i] >= 2 and rng.random() < p["has_senior_if_household_2_plus"]),
             "is_solo_parent": bool(kids[i] and rng.random() < p["is_solo_parent_if_children"]),
             "employment_status": employment[i],
             "housing_type": None,  # filled below
@@ -91,8 +92,8 @@ def rubric_points(r, cfg: dict = CONFIG) -> float:
     pts += lr["has_pwd"] * r["has_pwd"] + lr["is_solo_parent"] * r["is_solo_parent"]
     if r["has_children_0_18"] and r["household_size"] >= 5:
         pts += lr["children_in_household_of_5_plus"]
-    if r["age"] >= 60:
-        pts += lr["senior_applicant_60_plus"]
+    if r["has_senior_member"]:
+        pts += lr["senior_in_household_60_plus"]
     if r["household_size"] >= 7:
         pts += lr["household_7_plus"]
     # Hazard exposure: worst of flood / landslide / storm surge, scaled by how exposed the housing is.

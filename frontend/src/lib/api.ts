@@ -17,6 +17,7 @@ export type Entities = {
   housing_type?: string;
   has_children_0_18?: boolean;
   has_pwd?: boolean;
+  has_senior?: boolean;
   is_solo_parent?: boolean;
   crisis_type?: string;
 };
@@ -130,7 +131,17 @@ export type CatalogProgram = {
 };
 export type Catalog = {
   programs: CatalogProgram[];
-  offices: { office_name: string; address: string | null; contact_number: string | null; operating_hours: string | null; barangay_name: string | null }[];
+  offices: {
+    office_name: string;
+    address: string | null;
+    contact_number: string | null;
+    operating_hours: string | null;
+    barangay_code: string | null;
+    barangay_name: string | null;
+    /** Only shown once the citizen picks that barangay. */
+    is_barangay_hall: boolean;
+  }[];
+  barangays: { barangay_code: string; barangay_name: string }[];
   /** Verified NGOs / civil society groups and the help they currently offer. */
   partners: {
     name: string;

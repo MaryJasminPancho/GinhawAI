@@ -110,10 +110,11 @@
     "maximum": 85
   },
   "probabilities": {
-    "_source": "Assumed prevalence. VERIFY: PWD share against PSA disability statistics; solo parents against DSWD / PSA estimates; children share against census household composition.",
+    "_source": "Assumed prevalence. VERIFY: PWD share against PSA disability statistics; solo parents against DSWD / PSA estimates; children share against census household composition. has_senior_if_household_2_plus (someone 60+ besides the applicant) is an assumption: VERIFY against PSA census household composition.",
     "has_children_if_household_2_plus": 0.65,
     "has_pwd": 0.12,
-    "is_solo_parent_if_children": 0.1
+    "is_solo_parent_if_children": 0.1,
+    "has_senior_if_household_2_plus": 0.3
   },
   "label_rubric": {
     "_about": "Reference labels for training, modelled on CBMS-style multidimensional deprivation: each deprivation adds points, the total decides the tier. These weights stand in for social-worker judgement and MUST be reviewed by the licensed social workers (manuscript: 'verified and weighted through peer review'). Changing them changes what the model learns.",
@@ -145,7 +146,7 @@
     "has_pwd": 1.0,
     "is_solo_parent": 1.0,
     "children_in_household_of_5_plus": 1.0,
-    "senior_applicant_60_plus": 1.0,
+    "senior_in_household_60_plus": 1.0,
     "household_7_plus": 0.5,
     "hazard": {
       "_about": "Hazard exposure (Appendix R #26): points for the WORST of flood, landslide and storm surge in the household's barangay, multiplied by how exposed their housing is. Informal settlers in high-hazard areas are the most exposed. To be reviewed by the social workers.",
