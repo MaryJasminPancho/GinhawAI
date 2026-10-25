@@ -153,6 +153,8 @@ export type Catalog = {
     resources: { title: string; details: string | null; barangay_name: string | null; starts_on: string | null; ends_on: string | null }[];
   }[];
 };
+/** Every Cebu City barangay, for picking one instead of typing it. */
+export const getBarangays = () => request<{ barangay_code: string; barangay_name: string }[]>("/api/barangays");
 export const getCatalog = (lang: Lang) => request<Catalog>(`/api/catalog?lang=${lang}`);
 export const endSession = (sessionId: string) => request<{ purged: boolean }>(`/api/sessions/${sessionId}`, { method: "DELETE" });
 export const submitFeedback = (answers: number[], comment: string) => request<{ sus_score: number }>("/api/feedback", post({ answers, comment }));
