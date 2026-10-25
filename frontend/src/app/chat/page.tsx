@@ -123,7 +123,7 @@ function ChatInner() {
     <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
       <Backdrop />
 
-      <main className="relative mx-auto flex h-screen w-full max-w-md flex-col p-4 text-gray-900 dark:text-gray-100 sm:h-[min(760px,88vh)] sm:max-w-lg sm:rounded-4xl sm:bg-white/70 sm:p-6 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
+      <main className="relative mx-auto flex h-screen w-full max-w-md flex-col p-4 text-gray-900 dark:text-gray-100 sm:h-[min(760px,88vh)] sm:max-w-2xl lg:max-w-3xl sm:rounded-4xl sm:bg-white/80 sm:p-6 sm:shadow-2xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
         <PageHeader
           title={t(lang, "assessment")}
           subtitle={LANG_LABELS[lang]}
@@ -163,7 +163,7 @@ function ChatInner() {
                   key={c.value}
                   type="button"
                   onClick={() => send(c.label)}
-                  className="rounded-full bg-white px-3.5 py-2 text-[13px] font-medium text-brand-800 shadow-sm ring-1 ring-brand-200 transition hover:bg-brand-50 active:scale-95 dark:bg-white/4 dark:text-brand-300 dark:ring-brand-500/30 dark:hover:bg-white/10"
+                  className="rounded-full bg-white px-3.5 py-2 text-[0.8125rem] font-medium text-brand-800 shadow-sm ring-1 ring-brand-200 transition hover:bg-brand-50 active:scale-95 dark:bg-white/4 dark:text-brand-300 dark:ring-brand-500/30 dark:hover:bg-white/10"
                 >
                   {c.label}
                 </button>
@@ -197,7 +197,7 @@ function ChatInner() {
               onChange={(e) => setInput(e.target.value)}
               placeholder={t(lang, "typeMessage")}
               disabled={!sessionId || sending}
-              className="flex-1 rounded-full bg-white px-4 py-3 text-[14px] text-gray-900 shadow-sm ring-1 ring-black/5 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-60 dark:bg-white/4 dark:text-gray-100 dark:ring-white/10 dark:placeholder:text-gray-500"
+              className="min-w-0 flex-1 rounded-full bg-white px-4 py-3 text-[0.875rem] text-gray-900 shadow-sm ring-1 ring-black/5 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-60 dark:bg-white/4 dark:text-gray-100 dark:ring-white/10 dark:placeholder:text-gray-500"
             />
             <button
               type="submit"

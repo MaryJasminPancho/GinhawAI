@@ -23,7 +23,7 @@ export default function LanguageSelection() {
     <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
       <Backdrop />
 
-      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-lg sm:rounded-[32px] sm:bg-white/70 sm:p-8 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/[0.04] dark:sm:ring-white/10">
+      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-xl sm:rounded-[32px] sm:bg-white/80 sm:p-8 sm:shadow-2xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/[0.04] dark:sm:ring-white/10">
         <PageHeader title="GinhawAI" step={1} totalSteps={4} />
 
         <div className="relative z-10 mt-10 flex flex-1 flex-col items-center justify-center gap-8 text-center sm:mt-8">
@@ -31,7 +31,7 @@ export default function LanguageSelection() {
             <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
               Choose your language
             </h1>
-            <p className="mt-1.5 text-[13px] text-gray-500 dark:text-gray-400">
+            <p className="mt-1.5 text-[0.8125rem] text-gray-500 dark:text-gray-400">
               Piliin ang iyong wika &nbsp;·&nbsp; Pilia ang imong pinulongan
             </p>
           </div>
