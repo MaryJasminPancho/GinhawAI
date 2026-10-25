@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Badge, Btn, Card, EmptyState, ErrorText, Field, inputClass, Loading, Modal, PageTitle, Segmented, Table, td, th } from "@/components/admin/ui";
+import { useAdmin } from "@/components/admin/AdminShell";
+import { Badge, Btn, Card, EmptyState, ErrorText, Field, inputClass, Loading, Modal, PageTitle, Segmented, Table, td, th, ViewOnly } from "@/components/admin/ui";
 import { Barangay, deleteOffice, HAZARD_FIELDS, HazardLevel, listBarangays, listOffices, Office, saveBarangay, saveOffice } from "@/lib/adminApi";
 
 // "Update Municipal Office Directories" (Fig. 9). Offices appear on the
@@ -12,6 +13,7 @@ import { Barangay, deleteOffice, HAZARD_FIELDS, HazardLevel, listBarangays, list
 type Tab = "offices" | "barangays";
 
 export default function OfficesPage() {
+  const { canEditWelfare: canEdit } = useAdmin();
   const [tab, setTab] = useState<Tab>("offices");
   const [offices, setOffices] = useState<Office[] | null>(null);
   const [barangays, setBarangays] = useState<Barangay[]>([]);
@@ -50,7 +52,9 @@ export default function OfficesPage() {
         title="Office Directory"
         description="Where citizens go to apply, and the barangays they can choose from. Offices are shown on the checklist screen and included in the checklist citizens can have emailed."
         actions={
-          tab === "offices" ? (
+          !canEdit ? (
+            <ViewOnly />
+          ) : tab === "offices" ? (
             <Btn onClick={() => setEditing({})}>+ Add office</Btn>
           ) : (
             <Btn onClick={() => setEditingBrgy({ value: { barangay_code: "", barangay_name: "", city_municipality: "Cebu City", latitude: null, longitude: null }, isNew: true })}>+ Add barangay</Btn>
@@ -96,10 +100,12 @@ export default function OfficesPage() {
                   <Row icon="M12 7v5l3 2M3 12a9 9 0 1018 0 9 9 0 00-18 0z" value={o.operating_hours} />
                   <Row icon="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8 9.8a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z" value={o.contact_number} />
                 </dl>
-                <div className="mt-auto flex justify-end gap-1 pt-3">
-                  <Btn variant="ghost" onClick={() => setEditing(o)}>Edit</Btn>
-                  <Btn variant="ghost" className="!text-red-600 dark:!text-red-400" onClick={() => remove(o)}>Remove</Btn>
-                </div>
+                {canEdit && (
+                  <div className="mt-auto flex justify-end gap-1 pt-3">
+                    <Btn variant="ghost" onClick={() => setEditing(o)}>Edit</Btn>
+                    <Btn variant="ghost" className="!text-red-600 dark:!text-red-400" onClick={() => remove(o)}>Remove</Btn>
+                  </div>
+                )}
               </Card>
             ))}
           </div>
@@ -119,7 +125,7 @@ export default function OfficesPage() {
                   <th className={th}>City / municipality</th>
                   <th className={th}>Map location</th>
                   <th className={th}>Hazard exposure</th>
-                  <th className={`${th} text-right`}><span className="sr-only">Actions</span></th>
+                  {canEdit && <th className={`${th} text-right`}><span className="sr-only">Actions</span></th>}
                 </tr>
               </thead>
               <tbody>
@@ -135,9 +141,11 @@ export default function OfficesPage() {
                       {b.latitude != null && b.longitude != null ? `${b.latitude.toFixed(4)}, ${b.longitude.toFixed(4)}` : <Badge tone="amber">Not on map</Badge>}
                     </td>
                     <td className={td}><HazardBadges b={b} /></td>
-                    <td className={`${td} text-right`}>
-                      <Btn variant="ghost" onClick={() => setEditingBrgy({ value: b, isNew: false })}>Edit</Btn>
-                    </td>
+                    {canEdit && (
+                      <td className={`${td} text-right`}>
+                        <Btn variant="ghost" onClick={() => setEditingBrgy({ value: b, isNew: false })}>Edit</Btn>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

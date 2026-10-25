@@ -11,11 +11,12 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.audit import write_audit
-from app.auth import WELFARE_ROLES, require_roles
+from app.auth import WELFARE_EDIT_ROLES, WELFARE_ROLES, require_roles
 from app.schemas import BarangayCreate, LguOfficeCreate, ScheduleCreate
 
 router = APIRouter()
 welfare = require_roles(WELFARE_ROLES)
+editor = require_roles(WELFARE_EDIT_ROLES)
 
 BARANGAY_COLS = ("barangay_code, barangay_name, city_municipality, latitude, longitude, "
                  "flood_level, landslide_level, storm_surge_level, hazard_source, hazard_checked_on")
@@ -39,7 +40,7 @@ async def list_barangays(request: Request):
 
 
 @router.post("/api/barangays", status_code=201)
-async def create_barangay(body: BarangayCreate, request: Request, current_admin: dict = Depends(welfare)):
+async def create_barangay(body: BarangayCreate, request: Request, current_admin: dict = Depends(editor)):
     async with request.app.state.db_pool.acquire() as conn:
         try:
             async with conn.transaction():
@@ -59,7 +60,7 @@ async def create_barangay(body: BarangayCreate, request: Request, current_admin:
 
 
 @router.patch("/api/barangays/{code}")
-async def update_barangay(code: str, body: BarangayCreate, request: Request, current_admin: dict = Depends(welfare)):
+async def update_barangay(code: str, body: BarangayCreate, request: Request, current_admin: dict = Depends(editor)):
     if body.barangay_code != code:
         raise HTTPException(status_code=422, detail="The barangay code can't be changed")
     async with request.app.state.db_pool.acquire() as conn:
@@ -95,7 +96,7 @@ async def list_lgu_offices(request: Request):
 
 
 @router.post("/api/lgu-offices", status_code=201)
-async def create_lgu_office(office: LguOfficeCreate, request: Request, current_admin: dict = Depends(welfare)):
+async def create_lgu_office(office: LguOfficeCreate, request: Request, current_admin: dict = Depends(editor)):
     async with request.app.state.db_pool.acquire() as conn:
         try:
             async with conn.transaction():
@@ -110,7 +111,7 @@ async def create_lgu_office(office: LguOfficeCreate, request: Request, current_a
 
 
 @router.patch("/api/lgu-offices/{office_id}")
-async def update_lgu_office(office_id: UUID, office: LguOfficeCreate, request: Request, current_admin: dict = Depends(welfare)):
+async def update_lgu_office(office_id: UUID, office: LguOfficeCreate, request: Request, current_admin: dict = Depends(editor)):
     async with request.app.state.db_pool.acquire() as conn:
         try:
             async with conn.transaction():
@@ -131,7 +132,7 @@ async def update_lgu_office(office_id: UUID, office: LguOfficeCreate, request: R
 
 
 @router.delete("/api/lgu-offices/{office_id}", status_code=204)
-async def delete_lgu_office(office_id: UUID, request: Request, current_admin: dict = Depends(welfare)):
+async def delete_lgu_office(office_id: UUID, request: Request, current_admin: dict = Depends(editor)):
     async with request.app.state.db_pool.acquire() as conn:
         try:
             async with conn.transaction():
@@ -162,7 +163,7 @@ async def list_schedules(request: Request, current_admin: dict = Depends(welfare
 
 
 @router.post("/api/barangay-schedules", status_code=201)
-async def create_schedule(body: ScheduleCreate, request: Request, current_admin: dict = Depends(welfare)):
+async def create_schedule(body: ScheduleCreate, request: Request, current_admin: dict = Depends(editor)):
     if body.end_date < body.start_date:
         raise HTTPException(status_code=422, detail="The end date can't be before the start date")
     async with request.app.state.db_pool.acquire() as conn:
@@ -179,7 +180,7 @@ async def create_schedule(body: ScheduleCreate, request: Request, current_admin:
 
 
 @router.patch("/api/barangay-schedules/{schedule_id}")
-async def update_schedule(schedule_id: UUID, body: ScheduleCreate, request: Request, current_admin: dict = Depends(welfare)):
+async def update_schedule(schedule_id: UUID, body: ScheduleCreate, request: Request, current_admin: dict = Depends(editor)):
     if body.end_date < body.start_date:
         raise HTTPException(status_code=422, detail="The end date can't be before the start date")
     async with request.app.state.db_pool.acquire() as conn:
@@ -201,7 +202,7 @@ async def update_schedule(schedule_id: UUID, body: ScheduleCreate, request: Requ
 
 
 @router.delete("/api/barangay-schedules/{schedule_id}", status_code=204)
-async def delete_schedule(schedule_id: UUID, request: Request, current_admin: dict = Depends(welfare)):
+async def delete_schedule(schedule_id: UUID, request: Request, current_admin: dict = Depends(editor)):
     async with request.app.state.db_pool.acquire() as conn:
         async with conn.transaction():
             before = await conn.fetchrow(f"SELECT {SCHEDULE_COLS} FROM barangay_schedules WHERE schedule_id = $1;", schedule_id)

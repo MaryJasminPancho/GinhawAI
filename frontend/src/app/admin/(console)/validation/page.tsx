@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAdmin } from "@/components/admin/AdminShell";
-import { Badge, Btn, Card, downloadCsv, EmptyState, ErrorText, Field, fmtNum, fmtPct, inputClass, Loading, Modal, PageTitle, Segmented, StatCard, TIER_META, TierBadge } from "@/components/admin/ui";
+import { Badge, Btn, Card, downloadCsv, ViewOnly, EmptyState, ErrorText, Field, fmtNum, fmtPct, inputClass, Loading, Modal, PageTitle, Segmented, StatCard, TIER_META, TierBadge } from "@/components/admin/ui";
 import { generateValidationCases, getModelTiers, getRatings, getValidationCases, Rating, resetValidationCases, submitRating, SyntheticCase, Tier, TIERS } from "@/lib/adminApi";
 
 // "Conduct Blind Cross-Validation Testing" → "Evaluate Synthetic Profile Cases" (Fig. 9).
@@ -57,12 +57,13 @@ const LABEL: Record<string, string> = {
 };
 
 export default function ValidationPage() {
-  const { session, group } = useAdmin();
+  // The System Administrator only sees the results: ratings come from the social-worker panel.
+  const { session, group, canEditWelfare: canRate } = useAdmin();
   const [cases, setCases] = useState<SyntheticCase[] | null>(null);
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [model, setModel] = useState<Record<string, Tier> | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<"rate" | "results">("rate");
+  const [view, setView] = useState<"rate" | "results">(canRate ? "rate" : "results");
   const [index, setIndex] = useState(0);
   const [generating, setGenerating] = useState(false);
 
@@ -142,9 +143,9 @@ export default function ValidationPage() {
         description="Classify each synthetic household the way you would with your usual risk-assessment matrix. You won't see the scoring engine's answer until you finish — that keeps the comparison fair."
         actions={
           <>
-            <Btn variant="secondary" onClick={() => setGenerating(true)}>+ Generate cases</Btn>
+            {canRate ? <Btn variant="secondary" onClick={() => setGenerating(true)}>+ Generate cases</Btn> : <ViewOnly />}
             {group === "sysadmin" && cases && cases.length > 0 && <Btn variant="danger" onClick={reset}>Reset</Btn>}
-            {cases && cases.length > 0 && (
+            {canRate && cases && cases.length > 0 && (
               <Segmented label="View" value={view} onChange={setView} options={[{ value: "rate", label: "Rate cases" }, { value: "results", label: "Results" }]} />
             )}
           </>
@@ -155,7 +156,9 @@ export default function ValidationPage() {
 
       {cases && cases.length === 0 && (
         <EmptyState title="No test cases yet">
-          Generate 30–50 synthetic household profiles to start the panel review (manuscript: Blind Cross-Validation Evaluation Protocol).
+          {canRate
+            ? "Generate 30–50 synthetic household profiles to start the panel review (manuscript: Blind Cross-Validation Evaluation Protocol)."
+            : "The social-worker panel generates and rates the cases. Results will show here."}
         </EmptyState>
       )}
 
