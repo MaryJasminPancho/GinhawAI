@@ -17,6 +17,10 @@ PARTNER_ORG = "Partner Organization"
 
 # Who may do what — mirrors the use case diagrams (manuscript Figs. 9–11).
 WELFARE_ROLES = {SYSTEM_ADMIN, LGU_ADMIN, SOCIAL_WORKER}  # rules, schedules, offices, audit, validation
+# Who may CHANGE welfare data. The System Administrator can open those screens to troubleshoot
+# but not edit them (separation of duties: whoever controls accounts and audit logs cannot
+# also change who qualifies for aid, or add ratings to the Blind Validation).
+WELFARE_EDIT_ROLES = {LGU_ADMIN, SOCIAL_WORKER}
 ANALYTICS_ROLES = {SYSTEM_ADMIN, LGU_ADMIN, SOCIAL_WORKER, LGU_EXECUTIVE, PARTNER_ORG}  # anonymized dashboards
 SYSADMIN_ROLES = {SYSTEM_ADMIN}  # accounts, system health, SMS gateway, security policy
 

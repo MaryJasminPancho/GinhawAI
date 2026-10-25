@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { Badge, Btn, Card, EmptyState, ErrorText, Field, inputClass, Loading, Modal, PageTitle, Segmented, Table, td, th, Toggle } from "@/components/admin/ui";
+import { useAdmin } from "@/components/admin/AdminShell";
+import { Badge, Btn, Card, EmptyState, ErrorText, Field, inputClass, Loading, Modal, PageTitle, Segmented, Table, td, th, Toggle, ViewOnly } from "@/components/admin/ui";
 import {
   AdminProgram,
   AttributeMeta,
@@ -29,6 +30,7 @@ import {
 type Tab = "criteria" | "documents";
 
 export default function ProgramsPage() {
+  const { canEditWelfare: canEdit } = useAdmin();
   const [programs, setPrograms] = useState<AdminProgram[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +65,7 @@ export default function ProgramsPage() {
       <PageTitle
         title="Program Rules Matrix"
         description="The eligibility rules and document checklists the assessment uses to match citizens with programs. Changes apply to new assessments right away and are recorded in the audit log."
-        actions={<Btn onClick={() => setAdding(true)}>+ Add program</Btn>}
+        actions={canEdit ? <Btn onClick={() => setAdding(true)}>+ Add program</Btn> : <ViewOnly />}
       />
       {error && <div className="mb-4"><ErrorText>{error}</ErrorText></div>}
       {!programs && !error && <Loading />}
@@ -85,7 +87,7 @@ export default function ProgramsPage() {
                         <Badge tone={p.scope === "National" ? "blue" : "brand"}>{p.scope}</Badge>
                       </div>
                     </button>
-                    <Toggle checked={p.is_active} onChange={(v) => toggleActive(p, v)} label={`${p.program_name} active`} />
+                    {canEdit && <Toggle checked={p.is_active} onChange={(v) => toggleActive(p, v)} label={`${p.program_name} active`} />}
                   </div>
                 </li>
               ))}
@@ -111,6 +113,7 @@ export default function ProgramsPage() {
 }
 
 function ProgramDetail({ program }: { program: AdminProgram }) {
+  const { canEditWelfare: canEdit } = useAdmin();
   const [tab, setTab] = useState<Tab>("criteria");
   const [criteria, setCriteria] = useState<Criterion[] | null>(null);
   const [docs, setDocs] = useState<DocumentReq[] | null>(null);
@@ -177,7 +180,7 @@ function ProgramDetail({ program }: { program: AdminProgram }) {
       {tab === "criteria" && criteria && (
         <>
           {criteria.length === 0 ? (
-            <EmptyState title="No eligibility rules yet">Add a rule so the assessment can evaluate this program.</EmptyState>
+            <EmptyState title="No eligibility rules yet">{canEdit && "Add a rule so the assessment can evaluate this program."}</EmptyState>
           ) : (
             <Table>
               <thead>
@@ -185,9 +188,11 @@ function ProgramDetail({ program }: { program: AdminProgram }) {
                   <th className={th}>Household attribute</th>
                   <th className={th}>Rule</th>
                   <th className={th}>Weight</th>
-                  <th className={`${th} text-right`}>
-                    <span className="sr-only">Actions</span>
-                  </th>
+                  {canEdit && (
+                    <th className={`${th} text-right`}>
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -212,10 +217,12 @@ function ProgramDetail({ program }: { program: AdminProgram }) {
                         <span className="tabular-nums">{Number(c.weight).toFixed(2)}</span>
                       </div>
                     </td>
-                    <td className={`${td} whitespace-nowrap text-right`}>
-                      <Btn variant="ghost" onClick={() => setEditCriterion(c)}>Edit</Btn>
-                      <Btn variant="ghost" className="!text-red-600 dark:!text-red-400" onClick={() => removeCriterion(c)}>Delete</Btn>
-                    </td>
+                    {canEdit && (
+                      <td className={`${td} whitespace-nowrap text-right`}>
+                        <Btn variant="ghost" onClick={() => setEditCriterion(c)}>Edit</Btn>
+                        <Btn variant="ghost" className="!text-red-600 dark:!text-red-400" onClick={() => removeCriterion(c)}>Delete</Btn>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -225,7 +232,7 @@ function ProgramDetail({ program }: { program: AdminProgram }) {
             <p className={`text-xs ${Math.abs(totalWeight - 1) < 0.001 || criteria.length === 0 ? "text-gray-500 dark:text-gray-400" : "font-semibold text-amber-700 dark:text-amber-300"}`}>
               Total weight: {totalWeight.toFixed(2)} {criteria.length > 0 && Math.abs(totalWeight - 1) >= 0.001 && "— weights usually add up to 1.00"}
             </p>
-            <Btn variant="secondary" onClick={() => setEditCriterion({})}>+ Add rule</Btn>
+            {canEdit && <Btn variant="secondary" onClick={() => setEditCriterion({})}>+ Add rule</Btn>}
           </div>
         </>
       )}
@@ -251,17 +258,21 @@ function ProgramDetail({ program }: { program: AdminProgram }) {
                     </div>
                     {d.notes && <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{d.notes}</p>}
                   </div>
-                  <div className="flex shrink-0">
-                    <Btn variant="ghost" onClick={() => setEditDoc(d)}>Edit</Btn>
-                    <Btn variant="ghost" className="!text-red-600 dark:!text-red-400" onClick={() => removeDoc(d)}>Remove</Btn>
-                  </div>
+                  {canEdit && (
+                    <div className="flex shrink-0">
+                      <Btn variant="ghost" onClick={() => setEditDoc(d)}>Edit</Btn>
+                      <Btn variant="ghost" className="!text-red-600 dark:!text-red-400" onClick={() => removeDoc(d)}>Remove</Btn>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
           )}
-          <div className="mt-4 flex justify-end">
-            <Btn variant="secondary" onClick={() => setEditDoc({ is_mandatory: true })}>+ Add document</Btn>
-          </div>
+          {canEdit && (
+            <div className="mt-4 flex justify-end">
+              <Btn variant="secondary" onClick={() => setEditDoc({ is_mandatory: true })}>+ Add document</Btn>
+            </div>
+          )}
         </>
       )}
 

@@ -14,11 +14,12 @@ MODEL_PATH = Path(__file__).resolve().parent.parent / "ml" / "models" / "vulnera
 
 _bundle = None
 _loaded = False
+_problem = "trained model not found"  # why the rule-based score is in use, for System Health
 
 
 def model():
     """The trained model bundle, or None if it isn't available."""
-    global _bundle, _loaded
+    global _bundle, _loaded, _problem
     if not _loaded:
         _loaded = True
         try:
@@ -26,7 +27,12 @@ def model():
             import xgboost  # noqa: F401
 
             _bundle = joblib.load(MODEL_PATH) if MODEL_PATH.exists() else None
-        except Exception as e:  # missing libraries or an incompatible file: fall back to the rules
+        except ImportError as e:
+            _problem = f"ML libraries not installed ({e.name}); run pip install -r requirements.txt"
+            print(f"Vulnerability model not loaded ({_problem}); using the rule-based score.")
+            _bundle = None
+        except Exception as e:  # an incompatible or damaged model file: fall back to the rules
+            _problem = f"model file could not be loaded ({type(e).__name__})"
             print(f"Vulnerability model not loaded ({type(e).__name__}: {e}); using the rule-based score.")
             _bundle = None
     return _bundle
@@ -35,7 +41,7 @@ def model():
 def describe() -> str:
     b = model()
     if b is None:
-        return "Rule-based score (trained model not found)"
+        return f"Rule-based score ({_problem})"
     m = b["meta"]
     return f"XGBoost classifier, trained {m['trained_at'][:10]} (test accuracy {m['test']['accuracy']:.0%}, Cohen's Kappa {m['test']['cohen_kappa']:.2f})"
 

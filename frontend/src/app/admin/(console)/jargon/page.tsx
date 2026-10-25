@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Btn, Card, ErrorText, inputClass, Loading, PageTitle } from "@/components/admin/ui";
+import { useAdmin } from "@/components/admin/AdminShell";
+import { Btn, Card, ErrorText, inputClass, Loading, PageTitle, ViewOnly } from "@/components/admin/ui";
 import { addJargon, deleteJargon, JargonData, JargonSlot, JargonTerm, listJargon, tryJargon, updateJargon } from "@/lib/adminApi";
 
 // Knowledge Base Manager: "Edit Regional Bureaucratic Jargon Sets" (Appendix R #60)
@@ -10,6 +11,7 @@ import { addJargon, deleteJargon, JargonData, JargonSlot, JargonTerm, listJargon
 // Changes take effect immediately, for the built-in parser and the AI alike.
 
 export default function JargonPage() {
+  const { canEditWelfare: canEdit } = useAdmin();
   const [data, setData] = useState<JargonData | null>(null);
   const [slot, setSlot] = useState<JargonSlot>("employment_status");
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +34,7 @@ export default function JargonPage() {
       <PageTitle
         title="Local Terms"
         description="The everyday words citizens use for their situation, in Filipino, Bisaya or English. When an answer contains one of these words, the chat understands it, and the AI is told about them too. Changes apply right away."
+        actions={canEdit ? undefined : <ViewOnly />}
       />
       {error && <div className="mb-4"><ErrorText>{error}</ErrorText></div>}
       {!data && !error && <Loading />}
@@ -75,6 +78,7 @@ function ValueGroup({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<JargonTerm | null>(null);
+  const { canEditWelfare: canEdit } = useAdmin();
 
   async function add(e: FormEvent) {
     e.preventDefault();
@@ -109,15 +113,23 @@ function ValueGroup({
         {terms.length === 0 && <span className="text-xs text-gray-400">No words yet.</span>}
         {terms.map((t) => (
           <span key={t.term_id} className="inline-flex items-center gap-1 rounded-full bg-white py-0.5 pl-2.5 pr-1 text-xs text-gray-800 ring-1 ring-black/5 dark:bg-white/10 dark:text-gray-100 dark:ring-white/10">
-            <button type="button" onClick={() => setEditing(t)} className="hover:underline" title="Edit">{t.term}</button>
-            <button type="button" onClick={() => remove(t)} aria-label={`Remove ${t.term}`} className="flex h-4 w-4 items-center justify-center rounded-full text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10">×</button>
+            {canEdit ? (
+              <>
+                <button type="button" onClick={() => setEditing(t)} className="hover:underline" title="Edit">{t.term}</button>
+                <button type="button" onClick={() => remove(t)} aria-label={`Remove ${t.term}`} className="flex h-4 w-4 items-center justify-center rounded-full text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10">×</button>
+              </>
+            ) : (
+              <span className="pr-1.5">{t.term}</span>
+            )}
           </span>
         ))}
       </div>
-      <form onSubmit={add} className="mt-2.5 flex gap-2">
-        <input aria-label={`Add a word for ${label}`} maxLength={60} placeholder="Add a word or phrase…" className={`${inputClass} py-1.5 text-[13px]`} value={word} onChange={(e) => setWord(e.target.value)} />
-        <Btn type="submit" variant="secondary" disabled={busy || word.trim().length < 2}>{busy ? "Adding…" : "Add"}</Btn>
-      </form>
+      {canEdit && (
+        <form onSubmit={add} className="mt-2.5 flex gap-2">
+          <input aria-label={`Add a word for ${label}`} maxLength={60} placeholder="Add a word or phrase…" className={`${inputClass} py-1.5 text-[13px]`} value={word} onChange={(e) => setWord(e.target.value)} />
+          <Btn type="submit" variant="secondary" disabled={busy || word.trim().length < 2}>{busy ? "Adding…" : "Add"}</Btn>
+        </form>
+      )}
       {error && <div className="mt-2"><ErrorText>{error}</ErrorText></div>}
       {editing && <EditTerm term={editing} slot={slot} options={options} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); onChanged(); }} />}
     </div>

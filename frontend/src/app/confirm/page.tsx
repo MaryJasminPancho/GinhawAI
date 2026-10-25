@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
 import Button, { buttonClasses } from "@/components/Button";
-import { assess, editEntities, Entities, getSession, Lang, SessionExpiredError } from "@/lib/api";
+import { assess, editEntities, Entities, getBarangays, getSession, Lang, SessionExpiredError } from "@/lib/api";
 import { BOOL_FIELDS, CHOICES, displayValue, FIELD_LABELS, FIELD_ORDER, NUMBER_FIELDS, t } from "@/lib/i18n";
 
 // Fig. 17 — Data Confirmation: review every answer, fix any of them with
@@ -27,11 +27,32 @@ function ErrorNotice({ children }: { children: React.ReactNode }) {
 const fieldInput =
   "w-full rounded-xl bg-white px-3 py-2 text-sm text-gray-900 ring-1 ring-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-white/[0.04] dark:text-gray-100 dark:ring-white/10";
 
+// Barangay: pick from the Cebu City list, so only a real barangay can be saved.
+function BarangayPicker({ value, lang, onSave }: { value: unknown; lang: Lang; onSave: (v: unknown) => void }) {
+  const [list, setList] = useState<{ barangay_code: string; barangay_name: string }[] | null>(null);
+  useEffect(() => {
+    getBarangays().then(setList).catch(() => setList([]));
+  }, []);
+  if (!list) return <p className="text-xs text-gray-500">…</p>;
+  return (
+    <select autoFocus className={fieldInput} defaultValue={typeof value === "string" ? value : ""} onChange={(e) => e.target.value && onSave(e.target.value)}>
+      <option value="">{t(lang, "chooseBarangay")}</option>
+      {list.map((b) => (
+        <option key={b.barangay_code} value={b.barangay_name}>
+          {b.barangay_name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function Editor({ field, value, lang, onSave, onCancel }: { field: string; value: unknown; lang: Lang; onSave: (v: unknown) => void; onCancel: () => void }) {
   const [draft, setDraft] = useState<string>(value === undefined || value === null ? "" : String(value));
 
   let control: React.ReactNode;
-  if (BOOL_FIELDS.has(field)) {
+  if (field === "barangay") {
+    control = <BarangayPicker value={value} lang={lang} onSave={onSave} />;
+  } else if (BOOL_FIELDS.has(field)) {
     control = (
       <div className="flex gap-2">
         {[true, false].map((b) => (

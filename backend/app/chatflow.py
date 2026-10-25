@@ -140,6 +140,14 @@ DONE = {
     "en": "Thank you! That's everything I need. Please review and confirm your answers.",
 }
 
+# The barangay answer didn't match any barangay in the database (GinhawAI covers Cebu City only).
+BARANGAY_UNKNOWN = {
+    "fil": "Pasensya na, hindi ko mahanap ang barangay na iyan sa Cebu City. Pakisulat po ang pangalan ng inyong barangay (hal. Lahug, Mabolo).",
+    "ceb": "Pasensya, wala nako makit-an kana nga barangay sa Cebu City. Palihug isulat ang ngalan sa inyong barangay (pananglitan Lahug, Mabolo).",
+    "en": "Sorry, I couldn't find that barangay in Cebu City. Please type the name of your barangay (e.g. Lahug, Mabolo).",
+}
+BARANGAY_SUGGEST = {"fil": " Ito po ba ang ibig ninyong sabihin?", "ceb": " Mao ba ni imong pasabot?", "en": " Did you mean one of these?"}
+
 RETRY = {
     "fil": "Pasensya na, hindi ko po naintindihan. ",
     "ceb": "Pasensya, wala nako masabti. ",
@@ -259,7 +267,7 @@ def parse_for_slot(slot: str, text: str, lang: str, synonyms: dict | None = None
         for word, value in pairs:  # "none" is checked last, as whole words only ("no" is inside "nasunog")
             if word and word in low:
                 return value
-        if slot == "crisis_type" and any(re.search(rf"{re.escape(w.lower())}", low) for w in synonyms[slot].get("none", [])):
+        if slot == "crisis_type" and any(re.search(rf"\b{re.escape(w.lower())}\b", low) for w in synonyms[slot].get("none", [])):
             return "none"
         if slot == "crisis_type" and _parse_bool(low) is False:
             return "none"

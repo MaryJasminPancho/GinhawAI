@@ -12,11 +12,12 @@ from pydantic import BaseModel, Field
 
 from app import chatflow, jargon
 from app.audit import write_audit
-from app.auth import WELFARE_ROLES, require_roles
+from app.auth import WELFARE_EDIT_ROLES, WELFARE_ROLES, require_roles
 from app.scoring import VALUE_LABELS
 
 router = APIRouter()
 welfare = require_roles(WELFARE_ROLES)
+editor = require_roles(WELFARE_EDIT_ROLES)
 
 SLOT_LABELS = {"employment_status": "Work situation", "housing_type": "Housing", "crisis_type": "Crisis"}
 COLS = "term_id, slot, value, term, created_at"
@@ -64,7 +65,7 @@ async def list_terms(request: Request, current_admin: dict = Depends(welfare)):
 
 
 @router.post("/api/jargon", status_code=201)
-async def add_term(body: TermIn, request: Request, current_admin: dict = Depends(welfare)):
+async def add_term(body: TermIn, request: Request, current_admin: dict = Depends(editor)):
     slot, value, term = _clean(body)
     pool = request.app.state.db_pool
     async with pool.acquire() as conn:
@@ -81,7 +82,7 @@ async def add_term(body: TermIn, request: Request, current_admin: dict = Depends
 
 
 @router.patch("/api/jargon/{term_id}")
-async def update_term(term_id: UUID, body: TermIn, request: Request, current_admin: dict = Depends(welfare)):
+async def update_term(term_id: UUID, body: TermIn, request: Request, current_admin: dict = Depends(editor)):
     slot, value, term = _clean(body)
     pool = request.app.state.db_pool
     async with pool.acquire() as conn:
@@ -103,7 +104,7 @@ async def update_term(term_id: UUID, body: TermIn, request: Request, current_adm
 
 
 @router.delete("/api/jargon/{term_id}", status_code=204)
-async def delete_term(term_id: UUID, request: Request, current_admin: dict = Depends(welfare)):
+async def delete_term(term_id: UUID, request: Request, current_admin: dict = Depends(editor)):
     pool = request.app.state.db_pool
     async with pool.acquire() as conn:
         async with conn.transaction():

@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, model_validator
 
 from app.audit import write_audit
-from app.auth import LGU_EXECUTIVE, PARTNER_ORG, WELFARE_ROLES, get_current_admin
+from app.auth import LGU_EXECUTIVE, PARTNER_ORG, WELFARE_EDIT_ROLES, WELFARE_ROLES, get_current_admin
 
 router = APIRouter()
 
@@ -69,12 +69,17 @@ def _is_staff(admin: dict) -> bool:
     return admin["role"] in WELFARE_ROLES
 
 
+def _is_editor(admin: dict) -> bool:
+    """Welfare staff who may change the registry (the System Administrator only views it)."""
+    return admin["role"] in WELFARE_EDIT_ROLES
+
+
 def _can_view(admin: dict) -> bool:
     return _is_staff(admin) or admin["role"] in (LGU_EXECUTIVE, PARTNER_ORG)
 
 
 def _can_edit(admin: dict, org) -> bool:
-    return _is_staff(admin) or (admin["role"] == PARTNER_ORG and org["managed_by"] is not None and str(org["managed_by"]) == admin["sub"])
+    return _is_editor(admin) or (admin["role"] == PARTNER_ORG and org["managed_by"] is not None and str(org["managed_by"]) == admin["sub"])
 
 
 async def _org(conn, org_id: UUID):
@@ -152,17 +157,17 @@ async def list_partners(request: Request, current_admin: dict = Depends(get_curr
         resources = await conn.fetch(f"SELECT {RES_COLS} FROM partner_resources ORDER BY starts_on NULLS FIRST, title;")
     return {
         "org_types": [{"value": k, "label": v} for k, v in ORG_TYPES.items()],
-        "can_create": _is_staff(current_admin) or current_admin["role"] == PARTNER_ORG,
-        "can_verify": _is_staff(current_admin),
+        "can_create": _is_editor(current_admin) or current_admin["role"] == PARTNER_ORG,
+        "can_verify": _is_editor(current_admin),
         "organizations": [_org_view(o, resources, current_admin) for o in orgs],
     }
 
 
 @router.post("/api/admin/partners", status_code=201)
 async def create_partner(body: OrgIn, request: Request, current_admin: dict = Depends(get_current_admin)):
-    if not (_is_staff(current_admin) or current_admin["role"] == PARTNER_ORG):
+    if not (_is_editor(current_admin) or current_admin["role"] == PARTNER_ORG):
         raise HTTPException(status_code=403, detail="Your role can't add organizations")
-    staff = _is_staff(current_admin)
+    staff = _is_editor(current_admin)
     async with request.app.state.db_pool.acquire() as conn:
         async with conn.transaction():
             await _check_barangay(conn, _clean(body.barangay_code))
@@ -187,7 +192,7 @@ async def update_partner(org_id: UUID, body: OrgIn, request: Request, current_ad
                 raise HTTPException(status_code=403, detail="You can only change your own organization")
             await _check_barangay(conn, _clean(body.barangay_code))
             # A partner's own edits need LGU staff to look again before citizens see them.
-            verified = before["is_verified"] if _is_staff(current_admin) else False
+            verified = before["is_verified"] if _is_editor(current_admin) else False
             await conn.execute(
                 "UPDATE partner_organizations SET name = $2, org_type = $3, services = $4, address = $5, barangay_code = $6, "
                 "contact = $7, is_active = $8, is_verified = $9, updated_at = NOW() WHERE org_id = $1;",
@@ -203,7 +208,7 @@ async def update_partner(org_id: UUID, body: OrgIn, request: Request, current_ad
 
 @router.post("/api/admin/partners/{org_id}/verify")
 async def verify_partner(org_id: UUID, body: VerifyIn, request: Request, current_admin: dict = Depends(get_current_admin)):
-    if not _is_staff(current_admin):
+    if not _is_editor(current_admin):
         raise HTTPException(status_code=403, detail="Only LGU staff can verify organizations")
     async with request.app.state.db_pool.acquire() as conn:
         async with conn.transaction():
@@ -236,7 +241,7 @@ async def _org_for_resource_edit(conn, org_id: UUID, admin: dict):
 
 
 async def _mark_unverified_if_partner(conn, org, admin: dict):
-    if not _is_staff(admin) and org["is_verified"]:
+    if not _is_editor(admin) and org["is_verified"]:
         await conn.execute("UPDATE partner_organizations SET is_verified = FALSE, updated_at = NOW() WHERE org_id = $1;", org["org_id"])
 
 

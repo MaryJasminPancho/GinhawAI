@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Badge, Btn, Card, EmptyState, ErrorText, Field, inputClass, Loading, Modal, PageTitle } from "@/components/admin/ui";
+import { useAdmin } from "@/components/admin/AdminShell";
+import { Badge, Btn, Card, EmptyState, ErrorText, Field, inputClass, Loading, Modal, PageTitle, ViewOnly } from "@/components/admin/ui";
 import {
   Barangay,
   deletePartner,
@@ -24,6 +25,7 @@ import {
 // only after LGU staff verify them.
 
 export default function PartnersPage() {
+  const { group } = useAdmin();
   const [data, setData] = useState<PartnerRegistry | null>(null);
   const [barangays, setBarangays] = useState<Barangay[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export default function PartnersPage() {
       <PageTitle
         title="Partner Registry"
         description="NGOs, faith-based and community groups in Cebu City, and the help they offer. Citizens see verified, active entries on the Browse programs page."
-        actions={data?.can_create ? <Btn onClick={() => setEditing("new")}>+ Add organization</Btn> : undefined}
+        actions={data?.can_create ? <Btn onClick={() => setEditing("new")}>+ Add organization</Btn> : group === "sysadmin" ? <ViewOnly /> : undefined}
       />
       {error && <div className="mb-4"><ErrorText>{error}</ErrorText></div>}
       {!data && !error && <Loading />}

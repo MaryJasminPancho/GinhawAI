@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Badge, Btn, Card, EmptyState, ErrorText, Field, fmtDate, inputClass, Loading, Modal, PageTitle, Segmented } from "@/components/admin/ui";
+import { useAdmin } from "@/components/admin/AdminShell";
+import { Badge, Btn, Card, EmptyState, ErrorText, Field, fmtDate, inputClass, Loading, Modal, PageTitle, Segmented, ViewOnly } from "@/components/admin/ui";
 import { AdminProgram, deleteSchedule, listOffices, listPrograms, listSchedules, Office, saveSchedule, Schedule } from "@/lib/adminApi";
 
 // "Insert Local Barangay Aid Schedules" (Fig. 9) — seasonal barangay livelihood
@@ -20,6 +21,7 @@ function status(s: Schedule) {
 }
 
 export default function SchedulesPage() {
+  const { canEditWelfare: canEdit } = useAdmin();
   const [schedules, setSchedules] = useState<Schedule[] | null>(null);
   const [programs, setPrograms] = useState<AdminProgram[]>([]);
   const [offices, setOffices] = useState<Office[]>([]);
@@ -62,7 +64,7 @@ export default function SchedulesPage() {
       <PageTitle
         title="Barangay Aid Schedules"
         description="Local distribution and registration dates. Active schedules appear in citizens' recommendations and checklists for the matching program."
-        actions={<Btn onClick={() => setEditing({})}>+ Add schedule</Btn>}
+        actions={canEdit ? <Btn onClick={() => setEditing({})}>+ Add schedule</Btn> : <ViewOnly />}
       />
       {error && <div className="mb-4"><ErrorText>{error}</ErrorText></div>}
 
@@ -117,10 +119,12 @@ export default function SchedulesPage() {
                 </div>
               </dl>
               {s.notes && <p className="mt-3 rounded-xl bg-gray-50 px-3 py-2 text-xs leading-relaxed text-gray-600 dark:bg-white/[0.04] dark:text-gray-300">{s.notes}</p>}
-              <div className="mt-auto flex justify-end gap-1 pt-3">
-                <Btn variant="ghost" onClick={() => setEditing(s)}>Edit</Btn>
-                <Btn variant="ghost" className="!text-red-600 dark:!text-red-400" onClick={() => remove(s)}>Delete</Btn>
-              </div>
+              {canEdit && (
+                <div className="mt-auto flex justify-end gap-1 pt-3">
+                  <Btn variant="ghost" onClick={() => setEditing(s)}>Edit</Btn>
+                  <Btn variant="ghost" className="!text-red-600 dark:!text-red-400" onClick={() => remove(s)}>Delete</Btn>
+                </div>
+              )}
             </Card>
           );
         })}

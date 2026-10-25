@@ -13,7 +13,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.audit import write_audit
-from app.auth import WELFARE_ROLES, require_roles
+from app.auth import WELFARE_EDIT_ROLES, WELFARE_ROLES, require_roles
 from app.schemas import DocumentRequirementCreate, EligibilityCriteriaCreate, ProgramCreate, ProgramUpdate
 from app.scoring import ATTRIBUTE_LABELS, COMPUTED_ATTRIBUTES
 
@@ -21,6 +21,7 @@ router = APIRouter()
 
 DUPLICATE_NAME = "A program with this name already exists."
 welfare = require_roles(WELFARE_ROLES)
+editor = require_roles(WELFARE_EDIT_ROLES)
 
 PROGRAM_COLS = "program_id, program_name, agency, scope, is_active"
 CRITERIA_COLS = "criteria_id, program_id, attribute, operator, threshold_value, weight"
@@ -69,7 +70,7 @@ async def list_attributes():
 # Programs
 # ---------------------------------------------------------------------------
 @router.post("/api/programs", status_code=201)
-async def create_program(program: ProgramCreate, request: Request, current_admin: dict = Depends(welfare)):
+async def create_program(program: ProgramCreate, request: Request, current_admin: dict = Depends(editor)):
     async with request.app.state.db_pool.acquire() as conn:
         async with conn.transaction():
             try:
@@ -84,7 +85,7 @@ async def create_program(program: ProgramCreate, request: Request, current_admin
 
 
 @router.patch("/api/programs/{program_id}")
-async def update_program(program_id: UUID, body: ProgramUpdate, request: Request, current_admin: dict = Depends(welfare)):
+async def update_program(program_id: UUID, body: ProgramUpdate, request: Request, current_admin: dict = Depends(editor)):
     changes = body.model_dump(exclude_unset=True)
     if not changes:
         raise HTTPException(status_code=422, detail="Nothing to update")
@@ -107,7 +108,7 @@ async def update_program(program_id: UUID, body: ProgramUpdate, request: Request
 # Eligibility criteria
 # ---------------------------------------------------------------------------
 @router.post("/api/programs/{program_id}/eligibility", status_code=201)
-async def create_eligibility_criteria(program_id: UUID, criteria: EligibilityCriteriaCreate, request: Request, current_admin: dict = Depends(welfare)):
+async def create_eligibility_criteria(program_id: UUID, criteria: EligibilityCriteriaCreate, request: Request, current_admin: dict = Depends(editor)):
     async with request.app.state.db_pool.acquire() as conn:
         async with conn.transaction():
             name = await conn.fetchval("SELECT program_name FROM programs WHERE program_id = $1;", program_id)
@@ -122,7 +123,7 @@ async def create_eligibility_criteria(program_id: UUID, criteria: EligibilityCri
 
 
 @router.patch("/api/programs/{program_id}/eligibility/{criteria_id}")
-async def update_eligibility_criteria(program_id: UUID, criteria_id: UUID, criteria: EligibilityCriteriaCreate, request: Request, current_admin: dict = Depends(welfare)):
+async def update_eligibility_criteria(program_id: UUID, criteria_id: UUID, criteria: EligibilityCriteriaCreate, request: Request, current_admin: dict = Depends(editor)):
     async with request.app.state.db_pool.acquire() as conn:
         async with conn.transaction():
             before = await conn.fetchrow(f"SELECT {CRITERIA_COLS} FROM eligibility_criteria WHERE criteria_id = $1 AND program_id = $2;", criteria_id, program_id)
@@ -137,7 +138,7 @@ async def update_eligibility_criteria(program_id: UUID, criteria_id: UUID, crite
 
 
 @router.delete("/api/programs/{program_id}/eligibility/{criteria_id}", status_code=204)
-async def delete_eligibility_criteria(program_id: UUID, criteria_id: UUID, request: Request, current_admin: dict = Depends(welfare)):
+async def delete_eligibility_criteria(program_id: UUID, criteria_id: UUID, request: Request, current_admin: dict = Depends(editor)):
     async with request.app.state.db_pool.acquire() as conn:
         async with conn.transaction():
             before = await conn.fetchrow(
@@ -152,7 +153,7 @@ async def delete_eligibility_criteria(program_id: UUID, criteria_id: UUID, reque
 # Document requirements
 # ---------------------------------------------------------------------------
 @router.post("/api/programs/{program_id}/documents", status_code=201)
-async def create_document_requirement(program_id: UUID, document: DocumentRequirementCreate, request: Request, current_admin: dict = Depends(welfare)):
+async def create_document_requirement(program_id: UUID, document: DocumentRequirementCreate, request: Request, current_admin: dict = Depends(editor)):
     async with request.app.state.db_pool.acquire() as conn:
         async with conn.transaction():
             name = await conn.fetchval("SELECT program_name FROM programs WHERE program_id = $1;", program_id)
@@ -167,7 +168,7 @@ async def create_document_requirement(program_id: UUID, document: DocumentRequir
 
 
 @router.patch("/api/programs/{program_id}/documents/{doc_id}")
-async def update_document_requirement(program_id: UUID, doc_id: UUID, document: DocumentRequirementCreate, request: Request, current_admin: dict = Depends(welfare)):
+async def update_document_requirement(program_id: UUID, doc_id: UUID, document: DocumentRequirementCreate, request: Request, current_admin: dict = Depends(editor)):
     async with request.app.state.db_pool.acquire() as conn:
         async with conn.transaction():
             before = await conn.fetchrow(f"SELECT {DOC_COLS} FROM document_requirements WHERE doc_id = $1 AND program_id = $2;", doc_id, program_id)
@@ -183,7 +184,7 @@ async def update_document_requirement(program_id: UUID, doc_id: UUID, document: 
 
 
 @router.delete("/api/programs/{program_id}/documents/{doc_id}", status_code=204)
-async def delete_document_requirement(program_id: UUID, doc_id: UUID, request: Request, current_admin: dict = Depends(welfare)):
+async def delete_document_requirement(program_id: UUID, doc_id: UUID, request: Request, current_admin: dict = Depends(editor)):
     async with request.app.state.db_pool.acquire() as conn:
         async with conn.transaction():
             before = await conn.fetchrow(f"DELETE FROM document_requirements WHERE doc_id = $1 AND program_id = $2 RETURNING {DOC_COLS};", doc_id, program_id)
