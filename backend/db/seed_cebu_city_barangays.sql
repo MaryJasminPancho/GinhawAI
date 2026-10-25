@@ -37,7 +37,9 @@ INSERT INTO barangays (barangay_code, barangay_name, city_municipality, latitude
 ('0730600019', 'Cambinocot',          'Cebu City', 10.4631, 123.8975),
 ('0730600020', 'Capitol Site',        'Cebu City', 10.3247, 123.8902),
 ('0730600021', 'Carreta',             'Cebu City', 10.3082, 123.9149),
-('0730600022', 'Central',             'Cebu City', 10.2951, 123.9028),
+-- Formerly "Central" (Central Proper); renamed Señor Santo Niño (reported as City Ordinance
+-- No. 1374, VERIFY). Same PSGC code, so old records stay linked; the chat still accepts "Central".
+('0730600022', 'Señor Santo Niño',    'Cebu City', 10.2951, 123.9028),
 ('0730600023', 'Cogon Ramos',         'Cebu City', 10.3049, 123.8984),
 ('0730600024', 'Cogon Pardo',         'Cebu City', 10.2774, 123.8621),
 ('0730600025', 'Day-as',              'Cebu City', 10.3015, 123.9023),

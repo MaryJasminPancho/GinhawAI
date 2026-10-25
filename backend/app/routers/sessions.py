@@ -10,8 +10,10 @@ import json
 import math
 import re
 import secrets
+import unicodedata
 import uuid
 import asyncio
+import difflib
 
 from fastapi import APIRouter, HTTPException, Request
 
@@ -56,30 +58,80 @@ ROMAN = {"1": "i", "2": "ii"}  # "Sambag 2" = "Sambag II"
 
 
 def _norm(name: str) -> str:
+    name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()  # "Niño" -> "Nino"
     name = re.sub(r"^(brgy\.?|barangay|bgy\.?)\s+", "", name.strip(), flags=re.I)
     name = re.sub(r"\b([12])\b", lambda m: ROMAN[m.group(1)], name.lower())
     name = re.sub(r"[^a-z0-9]", "", name)
     return re.sub(r"([b-df-hj-np-tv-z])\1+", r"\1", name)  # "Hipodromo" = "Hippodromo" (but keep "II")
 
 
-async def _resolve_barangay(request: Request, text: str) -> tuple[str, str | None]:
-    """Match what the citizen typed to a barangay in the database."""
+# Other names people use for a barangay -> its PSGC code. Checked before any fuzzy match,
+# so "Central" doesn't drift to Pahina Central or San Nicolas Central.
+BARANGAY_ALIASES = {
+    "0730600022": ["Central", "Central Proper", "Santo Niño", "Sto. Niño", "Sto Niño", "Señor Santo Niño", "Sr. Sto. Niño"],
+}
+
+# "Lahug, Cebu City" / "Mabolo Cebu" -> the barangay part only.
+CITY_SUFFIX = re.compile(r"(?:[,\s]*(?:cebu\s*city|cebu|city|ph|philippines))+[\s.]*$", re.I)
+
+
+async def _barangay_rows(request: Request):
     async with request.app.state.db_pool.acquire() as conn:
-        rows = await conn.fetch("SELECT barangay_code, barangay_name FROM barangays;")
-    typed = _norm(text)
+        return await conn.fetch("SELECT barangay_code, barangay_name FROM barangays;")
+
+
+async def _resolve_barangay(request: Request, text: str) -> tuple[str, str | None]:
+    """Match what the citizen typed to a barangay in the database. Returns (name, code);
+    the code is None when it isn't a known barangay, and then the answer is not accepted."""
+    rows = await _barangay_rows(request)
+    typed = _norm(CITY_SUFFIX.sub("", str(text).strip()))
     if not typed:
-        return text, None
+        return str(text).strip(), None
+    aliases = {_norm(a): code for code, names_ in BARANGAY_ALIASES.items() for a in names_}
+    if typed in aliases:
+        hit = next((r for r in rows if r["barangay_code"] == aliases[typed]), None)
+        if hit:
+            return hit["barangay_name"], hit["barangay_code"]
     names = [(r, _norm(r["barangay_name"])) for r in rows]
     # Best match first: exact, then "starts with" ("Sambag" -> Sambag I), then
-    # contains ("Padilla" -> T. Padilla). Among several, the shortest name wins.
+    # contains ("Padilla" -> T. Padilla), then a close spelling ("Kasambagn" -> Kasambagan).
+    # Among several, the shortest name wins.
     tests = [lambda n: n == typed]
     if len(typed) >= 4:
-        tests += [lambda n: n.startswith(typed) or typed.startswith(n), lambda n: typed in n]
+        tests += [
+            lambda n: n.startswith(typed),
+            lambda n: typed in n,
+            lambda n: difflib.SequenceMatcher(None, typed, n).ratio() >= 0.88,
+        ]
     for test in tests:
         hits = sorted((r for r, n in names if test(n)), key=lambda r: len(r["barangay_name"]))
         if hits:
             return hits[0]["barangay_name"], hits[0]["barangay_code"]
-    return text.strip(), None
+    # A short sentence that names one ("taga Guadalupe ko", "sa Lahug po"): the longest
+    # barangay name (or alias) found as whole words wins, so "Pahina Central" beats "Central".
+    def words(s: str) -> str:
+        s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode().lower()
+        return " " + re.sub(r"\b([12])\b", lambda m: ROMAN[m.group(1)], re.sub(r"[^a-z0-9]+", " ", s)).strip() + " "
+
+    said = words(str(text))
+    if len(said.split()) <= 8:
+        phrases = [(words(r["barangay_name"]), r) for r in rows]
+        phrases += [(words(a), r) for r in rows for a in BARANGAY_ALIASES.get(r["barangay_code"], [])]
+        found = [(p, r) for p, r in phrases if p in said]
+        if found:
+            best = max(found, key=lambda pr: len(pr[0]))[1]
+            return best["barangay_name"], best["barangay_code"]
+    return str(text).strip(), None
+
+
+async def _suggest_barangays(request: Request, text: str) -> list[str]:
+    """Up to 3 barangay names that look like what the citizen typed, for quick replies."""
+    rows = await _barangay_rows(request)
+    typed = _norm(CITY_SUFFIX.sub("", str(text).strip()))
+    if len(typed) < 3:
+        return []
+    by_norm = {_norm(r["barangay_name"]): r["barangay_name"] for r in rows}
+    return [by_norm[n] for n in difflib.get_close_matches(typed, list(by_norm), n=3, cutoff=0.6)]
 
 
 async def _apply(request: Request, entities: dict, slot: str, value) -> bool:
@@ -88,6 +140,8 @@ async def _apply(request: Request, entities: dict, slot: str, value) -> bool:
         return False
     if slot == "barangay":
         name, code = await _resolve_barangay(request, value)
+        if code is None:  # not a Cebu City barangay: never saved
+            return False
         entities["barangay"] = name
         entities["barangay_code"] = code
     else:
@@ -186,14 +240,7 @@ async def send_message(session_id: str, payload: MessageIn, request: Request):
     # 1) A direct answer to the question just asked (chip tap, "oo", "5", "8k"…).
     if asking:
         direct = chatflow.parse_for_slot(asking, text, lang, jargon.synonyms())
-        if direct is not None and asking == "barangay":
-            # Free text could be a greeting — only take it as-is if it matches a
-            # known barangay, or if we've already asked once.
-            name, code = await _resolve_barangay(request, direct)
-            if code or state.get("barangay_retry"):
-                entities["barangay"], entities["barangay_code"] = name, code
-                understood = True
-        elif direct is not None:
+        if direct is not None:
             understood = await _apply(request, entities, asking, direct)
 
     # 1b) Fine-tuned XLM-RoBERTa classifier. Only runs for the employment question,
@@ -230,12 +277,15 @@ async def send_message(session_id: str, payload: MessageIn, request: Request):
     chatflow.auto_answer(entities)
     nxt = chatflow.next_slot(entities)
     state["asking"] = nxt
+    quick = None  # barangay suggestions replace the usual chips
     if nxt is None:
         reply = chatflow.DONE[lang]
+    elif nxt == asking and not understood and nxt == "barangay":
+        suggestions = await _suggest_barangays(request, text)
+        reply = chatflow.BARANGAY_UNKNOWN[lang] + (chatflow.BARANGAY_SUGGEST[lang] if suggestions else "")
+        quick = [{"value": s, "label": s} for s in suggestions]
     elif nxt == asking and not understood:
         reply = chatflow.RETRY[lang] + chatflow.question(nxt, lang)
-        if nxt == "barangay":
-            state["barangay_retry"] = True
     else:
         reply = chatflow.question(nxt, lang)
     state["messages"].append({"from": "assistant", "text": reply})
@@ -246,7 +296,7 @@ async def send_message(session_id: str, payload: MessageIn, request: Request):
         "session_id": session_id,
         "reply": reply,
         "asking": nxt,
-        "quick_replies": chatflow.quick_replies(nxt, lang),
+        "quick_replies": quick if quick is not None else chatflow.quick_replies(nxt, lang),
         "is_complete": progress["profile_complete"],
         **progress,
         # kept for backward compatibility with earlier clients
@@ -268,7 +318,7 @@ async def edit_entities(session_id: str, payload: EntityPatch, request: Request)
             errors[field] = "Unknown field"
             continue
         if not await _apply(request, entities, field, value):
-            errors[field] = "Invalid value"
+            errors[field] = "Not a barangay in Cebu City" if field == "barangay" else "Invalid value"
     state.pop("assessment", None)
     chatflow.auto_answer(entities)
     state["asking"] = chatflow.next_slot(entities)
