@@ -12,13 +12,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.audit import write_audit
-from app.auth import SYSTEM_ADMIN, WELFARE_ROLES, require_roles
+from app.auth import WELFARE_EDIT_ROLES, SYSTEM_ADMIN, WELFARE_ROLES, require_roles
 from app.schemas import RatingIn
 from app.routers.sessions import barangay_hazards
 from app.scoring import CRISIS_VALUES, EMPLOYMENT_VALUES, HOUSING_VALUES, derive_profile, score_vulnerability
 
 router = APIRouter()
 welfare = require_roles(WELFARE_ROLES)
+editor = require_roles(WELFARE_EDIT_ROLES)
 
 
 class GenerateIn(BaseModel):
@@ -56,7 +57,7 @@ async def list_cases(request: Request, current_admin: dict = Depends(welfare)):
 
 
 @router.post("/api/validation/cases/generate", status_code=201)
-async def generate_cases(body: GenerateIn, request: Request, current_admin: dict = Depends(welfare)):
+async def generate_cases(body: GenerateIn, request: Request, current_admin: dict = Depends(editor)):
     rng = random.Random()
     async with request.app.state.db_pool.acquire() as conn:
         async with conn.transaction():
@@ -98,7 +99,7 @@ async def list_ratings(request: Request, current_admin: dict = Depends(welfare))
 
 
 @router.put("/api/validation/cases/{case_id}/rating")
-async def rate_case(case_id: str, body: RatingIn, request: Request, current_admin: dict = Depends(welfare)):
+async def rate_case(case_id: str, body: RatingIn, request: Request, current_admin: dict = Depends(editor)):
     async with request.app.state.db_pool.acquire() as conn:
         exists = await conn.fetchval("SELECT 1 FROM validation_cases WHERE case_id = $1;", case_id)
         if not exists:

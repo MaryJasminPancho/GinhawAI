@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from app.schemas import FeedbackCreate
 from app.audit import write_audit
-from app.auth import WELFARE_ROLES, get_current_admin, require_roles
+from app.auth import WELFARE_EDIT_ROLES, WELFARE_ROLES, get_current_admin, require_roles
 
 router = APIRouter()
 
@@ -35,7 +35,7 @@ class FeedbackStatusIn(BaseModel):
 
 @router.patch("/api/feedback/{feedback_id}/status")
 async def update_feedback_status(feedback_id: UUID, body: FeedbackStatusIn, request: Request,
-                                 current_admin: dict = Depends(require_roles(WELFARE_ROLES))):
+                                 current_admin: dict = Depends(require_roles(WELFARE_EDIT_ROLES))):
     note = (body.staff_note or "").strip() or None
     async with request.app.state.db_pool.acquire() as conn:
         async with conn.transaction():

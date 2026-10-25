@@ -12,6 +12,9 @@ import { ACCOUNT_PATH, canAccess, CONSOLE_NAME, navFor } from "./nav";
 type Ctx = {
   session: AdminSession;
   group: RoleGroup;
+  /** May change welfare data (programs, schedules, offices, terms, feedback, partners, validation).
+   *  The System Administrator opens those screens view only; the backend enforces the same rule. */
+  canEditWelfare: boolean;
   /** Signed-in person's profile (name, picture); null until loaded or while on a temporary password. */
   profile: Profile | null;
   setProfile: (p: Profile) => void;
@@ -176,7 +179,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   );
 
   return (
-    <AdminContext.Provider value={{ session, group, profile, setProfile, profileError, reloadProfile }}>
+    <AdminContext.Provider value={{ session, group, canEditWelfare: group === "welfare", profile, setProfile, profileError, reloadProfile }}>
       <div className="relative isolate min-h-screen bg-gray-50/60 text-gray-900 dark:bg-[#0a0f0c] dark:text-gray-100">
         {/* soft brand wash like the citizen screens, kept subtle for dense data */}
         <div className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-72 bg-gradient-to-b from-brand-50 to-transparent dark:from-brand-950/30" />

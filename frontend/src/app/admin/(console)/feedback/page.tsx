@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Badge, Btn, Card, EmptyState, ErrorText, fmtDateTime, inputClass, Loading, PageTitle, PrivacyChip, StatCard } from "@/components/admin/ui";
+import { useAdmin } from "@/components/admin/AdminShell";
+import { Badge, Btn, Card, EmptyState, ErrorText, fmtDateTime, inputClass, Loading, PageTitle, PrivacyChip, StatCard, ViewOnly } from "@/components/admin/ui";
 import { Feedback, FeedbackStatus, getFeedback, updateFeedbackStatus } from "@/lib/adminApi";
 import { susGrade } from "@/lib/adminAnalytics";
 
@@ -16,6 +17,7 @@ const STATUS: Record<FeedbackStatus, { label: string; tone: "blue" | "amber" | "
 type Filter = FeedbackStatus | "all";
 
 export default function FeedbackPage() {
+  const { canEditWelfare: canEdit } = useAdmin();
   const [items, setItems] = useState<Feedback[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("new");
@@ -41,7 +43,7 @@ export default function FeedbackPage() {
       <PageTitle
         title="Citizen Feedback"
         description="What citizens said after their assessment (last 12 months). Mark each one as seen, and as acted on once something was done about it. Feedback is anonymous."
-        actions={<PrivacyChip />}
+        actions={<>{!canEdit && <ViewOnly />}<PrivacyChip /></>}
       />
       {error && <div className="mb-4"><ErrorText>{error}</ErrorText></div>}
       {!items && !error && <Loading />}
@@ -92,6 +94,7 @@ function FeedbackItem({ f, onSaved }: { f: Feedback; onSaved: (f: Feedback) => v
   const [note, setNote] = useState(f.staff_note ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { canEditWelfare: canEdit } = useAdmin();
 
   async function set(status: FeedbackStatus) {
     setBusy(true);
@@ -114,29 +117,38 @@ function FeedbackItem({ f, onSaved }: { f: Feedback; onSaved: (f: Feedback) => v
       ) : (
         <p className="text-xs text-gray-400">No written comment, only the usability score.</p>
       )}
-      <div className="mt-3 space-y-2">
-        <textarea
-          aria-label="Staff note"
-          rows={2}
-          maxLength={1000}
-          placeholder="What was done about it? (optional, staff only)"
-          className={`${inputClass} text-[13px]`}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-        />
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      {!canEdit ? (
+        <div className="mt-3 space-y-1">
+          {f.staff_note && <p className="text-[13px] text-gray-600 dark:text-gray-300">Staff note: {f.staff_note}</p>}
           <p className="text-[11px] text-gray-400">
             {f.status_updated_at ? `Updated ${fmtDateTime(f.status_updated_at)}${f.status_updated_by ? ` by ${f.status_updated_by}` : ""}` : "Not handled yet"}
           </p>
-          <div className="flex gap-1.5">
-            {f.status !== "seen" && <Btn variant="secondary" disabled={busy} onClick={() => set("seen")}>Mark seen</Btn>}
-            {f.status !== "acted_on" && <Btn disabled={busy} onClick={() => set("acted_on")}>Mark acted on</Btn>}
-            {f.status === "acted_on" && note.trim() !== (f.staff_note ?? "") && <Btn disabled={busy} onClick={() => set("acted_on")}>Save note</Btn>}
-            {f.status !== "new" && <Btn variant="ghost" disabled={busy} onClick={() => set("new")}>Reopen</Btn>}
-          </div>
         </div>
-        {error && <ErrorText>{error}</ErrorText>}
-      </div>
+      ) : (
+        <div className="mt-3 space-y-2">
+          <textarea
+            aria-label="Staff note"
+            rows={2}
+            maxLength={1000}
+            placeholder="What was done about it? (optional, staff only)"
+            className={`${inputClass} text-[13px]`}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11px] text-gray-400">
+              {f.status_updated_at ? `Updated ${fmtDateTime(f.status_updated_at)}${f.status_updated_by ? ` by ${f.status_updated_by}` : ""}` : "Not handled yet"}
+            </p>
+            <div className="flex gap-1.5">
+              {f.status !== "seen" && <Btn variant="secondary" disabled={busy} onClick={() => set("seen")}>Mark seen</Btn>}
+              {f.status !== "acted_on" && <Btn disabled={busy} onClick={() => set("acted_on")}>Mark acted on</Btn>}
+              {f.status === "acted_on" && note.trim() !== (f.staff_note ?? "") && <Btn disabled={busy} onClick={() => set("acted_on")}>Save note</Btn>}
+              {f.status !== "new" && <Btn variant="ghost" disabled={busy} onClick={() => set("new")}>Reopen</Btn>}
+            </div>
+          </div>
+          {error && <ErrorText>{error}</ErrorText>}
+        </div>
+      )}
     </Card>
   );
 }

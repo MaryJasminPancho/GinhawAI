@@ -74,6 +74,15 @@ export function Badge({ children, tone = "gray", dot = false }: { children: Reac
   );
 }
 
+/** Shown in place of the Add/Edit buttons for the System Administrator on welfare screens. */
+export function ViewOnly() {
+  return (
+    <span title="System Administrators can view this page but only LGU Administrators and Social Workers can change it.">
+      <Badge>View only</Badge>
+    </span>
+  );
+}
+
 // Same red / amber / green meaning as the citizen's Vulnerability Score screen (Fig. 18).
 export const TIER_META = {
   high: { label: "High risk", tone: "red" as const, color: "#dc2626" },
