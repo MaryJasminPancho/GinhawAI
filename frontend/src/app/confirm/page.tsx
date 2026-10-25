@@ -147,9 +147,9 @@ function ConfirmInner() {
     <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
       <Backdrop />
 
-      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-lg sm:rounded-4xl sm:bg-white/70 sm:p-8 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
+      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-2xl sm:rounded-4xl sm:bg-white/80 sm:p-8 sm:shadow-2xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
         <PageHeader title={t(lang, "confirmTitle")} step={3} totalSteps={4} />
-        <p className="relative z-10 mt-4 text-[13px] text-gray-500 dark:text-gray-400">{t(lang, "confirmHint")}</p>
+        <p className="relative z-10 mt-4 text-[0.8125rem] text-gray-500 dark:text-gray-400">{t(lang, "confirmHint")}</p>
 
         <section className="relative z-10 mt-3 overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10">
           {missingSession && <ErrorNotice>{t(lang, "sessionEnded")}</ErrorNotice>}

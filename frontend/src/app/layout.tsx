@@ -25,10 +25,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        {/* Applies the saved theme (or the device setting on a first visit) before the page paints, so it doesn't flash */}
+        {/* Applies the saved theme (or the device setting on a first visit) and text size
+            before the page paints, so neither flashes */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem("theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.classList.add("dark")}}catch(e){}`,
+            __html: `try{var t=localStorage.getItem("theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.classList.add("dark")}var s=localStorage.getItem("textSize");if(s&&/^[0-3]$/.test(s)){document.documentElement.dataset.textSize=s}}catch(e){}`,
           }}
         />
       </head>

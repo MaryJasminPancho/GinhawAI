@@ -40,7 +40,7 @@ function DoneInner() {
     <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
       <Backdrop />
 
-      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-lg sm:rounded-[32px] sm:bg-white/70 sm:p-8 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/[0.04] dark:sm:ring-white/10">
+      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-xl sm:rounded-[32px] sm:bg-white/80 sm:p-8 sm:shadow-2xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/[0.04] dark:sm:ring-white/10">
         <PageHeader title="GinhawAI" />
 
         <section className="relative z-10 mt-8 flex flex-col items-center gap-3 text-center">
@@ -48,20 +48,20 @@ function DoneInner() {
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
           </span>
           <h1 className="text-2xl font-bold tracking-tight">{t(lang, "doneTitle")}</h1>
-          <p className="text-[14px] leading-relaxed text-gray-600 dark:text-gray-300">{t(lang, "donePurged")}</p>
+          <p className="text-[0.875rem] leading-relaxed text-gray-600 dark:text-gray-300">{t(lang, "donePurged")}</p>
         </section>
 
         <section className="relative z-10 mt-8 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 dark:bg-white/[0.04] dark:ring-white/10">
           {state === "sent" ? (
-            <p className="py-4 text-center text-[15px] font-semibold text-brand-800 dark:text-brand-300">{t(lang, "feedbackThanks")}</p>
+            <p className="py-4 text-center text-[0.9375rem] font-semibold text-brand-800 dark:text-brand-300">{t(lang, "feedbackThanks")}</p>
           ) : (
             <form onSubmit={submit}>
-              <h2 className="text-[15px] font-semibold">{t(lang, "feedbackTitle")}</h2>
+              <h2 className="text-[0.9375rem] font-semibold">{t(lang, "feedbackTitle")}</h2>
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t(lang, "feedbackHint")}</p>
               <ol className="mt-4 space-y-4">
                 {SUS_ITEMS.map((item, i) => (
                   <li key={i}>
-                    <p id={`sus-${i}`} className="mb-2 text-[13px] text-gray-800 dark:text-gray-200">
+                    <p id={`sus-${i}`} className="mb-2 text-[0.8125rem] text-gray-800 dark:text-gray-200">
                       {i + 1}. {item[lang]}
                     </p>
                     <div role="radiogroup" aria-labelledby={`sus-${i}`} className="grid grid-cols-5 gap-1.5">
@@ -82,7 +82,7 @@ function DoneInner() {
                 ))}
               </ol>
               <label className="mt-5 block">
-                <span className="mb-1.5 block text-[13px] text-gray-800 dark:text-gray-200">{t(lang, "comment")}</span>
+                <span className="mb-1.5 block text-[0.8125rem] text-gray-800 dark:text-gray-200">{t(lang, "comment")}</span>
                 <textarea
                   rows={3}
                   maxLength={1000}

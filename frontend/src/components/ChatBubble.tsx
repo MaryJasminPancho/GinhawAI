@@ -7,7 +7,7 @@ type Props = {
 
 function AssistantAvatar() {
   return (
-    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm">
+    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-700 text-white shadow-sm">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z" />
       </svg>
@@ -19,7 +19,7 @@ export default function ChatBubble({ role, text }: Props) {
   if (role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[78%] rounded-2xl rounded-br-sm bg-gradient-to-b from-brand-600 to-brand-700 px-4 py-2.5 text-[14px] leading-relaxed text-white shadow-sm">
+        <div className="max-w-[86%] rounded-2xl rounded-br-sm bg-gradient-to-br from-brand-500 to-brand-700 px-4 py-2.5 text-[0.875rem] leading-relaxed text-white shadow-md shadow-brand-600/20 sm:text-[0.9375rem]">
           {text}
         </div>
       </div>
@@ -28,7 +28,7 @@ export default function ChatBubble({ role, text }: Props) {
   return (
     <div className="flex items-end gap-2">
       <AssistantAvatar />
-      <div className="max-w-[78%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-gray-100 px-4 py-2.5 text-[14px] leading-relaxed text-gray-800 dark:bg-white/[0.06] dark:text-gray-100">
+      <div className="max-w-[86%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-white px-4 py-2.5 text-[0.875rem] leading-relaxed text-gray-800 shadow-sm ring-1 ring-brand-900/5 dark:bg-white/[0.07] dark:text-gray-100 dark:ring-white/5 sm:text-[0.9375rem]">
         {text}
       </div>
     </div>

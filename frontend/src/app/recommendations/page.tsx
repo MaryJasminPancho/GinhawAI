@@ -36,7 +36,7 @@ function CriterionIcon({ status }: { status: "pass" | "fail" | "unknown" }) {
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
       </span>
     );
-  return <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[11px] font-bold text-gray-500 dark:bg-white/10 dark:text-gray-400" aria-label="To be verified">?</span>;
+  return <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[0.6875rem] font-bold text-gray-500 dark:bg-white/10 dark:text-gray-400" aria-label="To be verified">?</span>;
 }
 
 function ProgramCard({ p, lang, have, onToggleDoc }: { p: ProgramResult; lang: Lang; have: Set<string>; onToggleDoc: (docId: string) => void }) {
@@ -46,7 +46,7 @@ function ProgramCard({ p, lang, have, onToggleDoc }: { p: ProgramResult; lang: L
     <details className={`group overflow-hidden rounded-2xl border-l-4 bg-white shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10 ${st.border}`}>
       <summary className="flex cursor-pointer list-none items-start justify-between gap-3 p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
         <div className="min-w-0">
-          <h2 className="text-[15px] font-semibold leading-snug text-gray-900 dark:text-white">{p.program_name}</h2>
+          <h2 className="text-[0.9375rem] font-semibold leading-snug text-gray-900 dark:text-white">{p.program_name}</h2>
           <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{p.agency}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${st.badge}`}>
@@ -69,7 +69,7 @@ function ProgramCard({ p, lang, have, onToggleDoc }: { p: ProgramResult; lang: L
           <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">{t(lang, "whyTitle")}</h3>
           <ul className="space-y-2.5">
             {p.criteria.map((c, i) => (
-              <li key={i} className="flex gap-2.5 text-[13px]">
+              <li key={i} className="flex gap-2.5 text-[0.8125rem]">
                 <CriterionIcon status={c.status} />
                 <div>
                   <p className="font-medium text-gray-800 dark:text-gray-200">{c.label}</p>
@@ -91,14 +91,14 @@ function ProgramCard({ p, lang, have, onToggleDoc }: { p: ProgramResult; lang: L
                   <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-gray-50 p-3 dark:bg-white/4">
                     <input type="checkbox" checked={have.has(d.doc_id)} onChange={() => onToggleDoc(d.doc_id)} className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600" />
                     <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-1.5 text-[13px] font-medium text-gray-800 dark:text-gray-200">
+                      <span className="flex flex-wrap items-center gap-1.5 text-[0.8125rem] font-medium text-gray-800 dark:text-gray-200">
                         {d.document_name}
-                        <span className={`rounded-full px-1.5 text-[10px] font-semibold ${d.is_mandatory ? "bg-brand-100 text-brand-800 dark:bg-brand-500/15 dark:text-brand-300" : "bg-gray-200 text-gray-600 dark:bg-white/10 dark:text-gray-400"}`}>
+                        <span className={`rounded-full px-1.5 text-[0.625rem] font-semibold ${d.is_mandatory ? "bg-brand-100 text-brand-800 dark:bg-brand-500/15 dark:text-brand-300" : "bg-gray-200 text-gray-600 dark:bg-white/10 dark:text-gray-400"}`}>
                           {t(lang, d.is_mandatory ? "required" : "optional")}
                         </span>
                       </span>
                       {d.notes && <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">{d.notes}</span>}
-                      <span className="mt-1 block text-[11px] text-gray-400">{t(lang, "iHaveThis")}</span>
+                      <span className="mt-1 block text-[0.6875rem] text-gray-400">{t(lang, "iHaveThis")}</span>
                     </span>
                   </label>
                 </li>
@@ -112,7 +112,7 @@ function ProgramCard({ p, lang, have, onToggleDoc }: { p: ProgramResult; lang: L
             <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">{t(lang, "schedulesTitle")}</h3>
             <ul className="space-y-2">
               {p.schedules.map((s) => (
-                <li key={s.schedule_id} className="rounded-xl bg-brand-50/70 p-3 text-[13px] dark:bg-brand-500/10">
+                <li key={s.schedule_id} className="rounded-xl bg-brand-50/70 p-3 text-[0.8125rem] dark:bg-brand-500/10">
                   <p className="font-semibold text-brand-900 dark:text-brand-200">
                     {fmtDay(s.start_date)} – {fmtDay(s.end_date)} · {s.office_name}
                   </p>
@@ -205,25 +205,25 @@ function RecommendationsInner() {
     <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
       <Backdrop />
 
-      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-lg sm:rounded-4xl sm:bg-white/70 sm:p-8 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
+      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-2xl lg:max-w-5xl sm:rounded-4xl sm:bg-white/80 sm:p-8 sm:shadow-2xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
         <PageHeader title={t(lang, "programsTitle")} subtitle={result?.barangay ? `Brgy. ${result.barangay}` : undefined} />
 
-        <div className="relative z-10 mt-6 space-y-3">
-          {!sessionId && <p className="text-sm text-red-600 dark:text-red-400">{t(lang, "sessionEnded")}</p>}
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-          {sessionId && !error && !result && <p className="text-sm text-gray-400 dark:text-gray-500">{t(lang, "loading")}</p>}
+        <div className="relative z-10 mt-6 space-y-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0">
+          {!sessionId && <p className="text-sm text-red-600 lg:col-span-2 dark:text-red-400">{t(lang, "sessionEnded")}</p>}
+          {error && <p className="text-sm text-red-600 lg:col-span-2 dark:text-red-400">{error}</p>}
+          {sessionId && !error && !result && <p className="text-sm text-gray-400 lg:col-span-2 dark:text-gray-500">{t(lang, "loading")}</p>}
           {result && matched.length === 0 && (
-            <p className="rounded-2xl bg-amber-50 p-4 text-[13px] leading-relaxed text-amber-900 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/20">{t(lang, "noPrograms")}</p>
+            <p className="rounded-2xl bg-amber-50 p-4 text-[0.8125rem] lg:col-span-2 leading-relaxed text-amber-900 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/20">{t(lang, "noPrograms")}</p>
           )}
           {matched.map((p) => (
             <ProgramCard key={p.program_id} p={p} lang={lang} have={have} onToggleDoc={(d) => toggleDoc(p.program_id, d)} />
           ))}
           {others.length > 0 && (
-            <details className="group rounded-2xl">
+            <details className="group rounded-2xl lg:col-span-2">
               <summary className="cursor-pointer list-none px-1 py-2 text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400">
                 {t(lang, "otherPrograms")} ({others.length}) ▾
               </summary>
-              <div className="mt-2 space-y-3">
+              <div className="mt-2 space-y-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0">
                 {others.map((p) => (
                   <ProgramCard key={p.program_id} p={p} lang={lang} have={have} onToggleDoc={(d) => toggleDoc(p.program_id, d)} />
                 ))}
@@ -236,9 +236,9 @@ function RecommendationsInner() {
         {result && result.offices.length > 0 && (
           <section className="relative z-10 mt-6">
             <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">{t(lang, "officesTitle")}</h2>
-            <ul className="space-y-2">
+            <ul className="space-y-2 lg:grid lg:grid-cols-3 lg:gap-3 lg:space-y-0">
               {result.offices.map((o) => (
-                <li key={o.office_id} className="rounded-2xl bg-white p-4 text-[13px] shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10">
+                <li key={o.office_id} className="rounded-2xl bg-white p-4 text-[0.8125rem] shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10">
                   <p className="font-semibold text-gray-900 dark:text-white">{o.office_name}</p>
                   {o.address && <p className="mt-0.5 text-gray-600 dark:text-gray-300">{o.address}</p>}
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -258,14 +258,14 @@ function RecommendationsInner() {
                 <span className="flex h-12 w-12 animate-[pulse_1s_ease-out_1] items-center justify-center rounded-full bg-green-100 text-green-600 dark:bg-green-500/15 dark:text-green-300">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
                 </span>
-                <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t(lang, "sent")}</p>
+                <p className="text-[0.9375rem] font-bold text-gray-900 dark:text-white">{t(lang, "sent")}</p>
                 <p className="font-mono text-xs text-gray-500">{sms.text}</p>
                 {via === "email" && <p className="text-xs text-gray-500 dark:text-gray-400">{t(lang, "checkSpam")}</p>}
               </div>
             ) : (
               <form onSubmit={onSendSms}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="text-[15px] font-semibold text-gray-900 dark:text-white">{channels.email ? t(lang, "sendTitle") : t(lang, "smsTitle")}</h2>
+                  <h2 className="text-[0.9375rem] font-semibold text-gray-900 dark:text-white">{channels.email ? t(lang, "sendTitle") : t(lang, "smsTitle")}</h2>
                   {channels.email && channels.sms && (
                     <div role="tablist" aria-label={t(lang, "sendTitle")} className="flex rounded-full bg-gray-100 p-0.5 text-xs font-semibold dark:bg-white/10">
                       {(["email", "sms"] as const).map((v) => (
@@ -295,7 +295,7 @@ function RecommendationsInner() {
                       placeholder="name@gmail.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="min-w-0 flex-1 rounded-full bg-white px-4 py-2.5 text-[14px] text-gray-900 ring-1 ring-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-white/[0.04] dark:text-gray-100 dark:ring-white/10"
+                      className="min-w-0 flex-1 rounded-full bg-white px-4 py-2.5 text-[0.875rem] text-gray-900 ring-1 ring-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-white/[0.04] dark:text-gray-100 dark:ring-white/10"
                     />
                   ) : (
                     <input
@@ -306,7 +306,7 @@ function RecommendationsInner() {
                       placeholder="09XX XXX XXXX"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="min-w-0 flex-1 rounded-full bg-white px-4 py-2.5 text-[14px] text-gray-900 ring-1 ring-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-white/[0.04] dark:text-gray-100 dark:ring-white/10"
+                      className="min-w-0 flex-1 rounded-full bg-white px-4 py-2.5 text-[0.875rem] text-gray-900 ring-1 ring-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-white/[0.04] dark:text-gray-100 dark:ring-white/10"
                     />
                   )}
                   <button type="submit" disabled={!(via === "email" ? email.trim() : phone) || sms.state === "sending"} className="rounded-full bg-gradient-to-b from-brand-600 to-brand-700 px-5 text-sm font-semibold text-white shadow-sm disabled:opacity-50">

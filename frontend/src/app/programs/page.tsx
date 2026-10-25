@@ -59,7 +59,7 @@ function BrowseInner() {
   return (
     <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
       <Backdrop />
-      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-lg sm:rounded-4xl sm:bg-white/70 sm:p-8 sm:shadow-2xl sm:shadow-brand-950/10 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
+      <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-2xl lg:max-w-5xl sm:rounded-4xl sm:bg-white/80 sm:p-8 sm:shadow-2xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
         <PageHeader title={t(lang, "browseTitle")} subtitle={LANG_LABELS[lang]} />
 
         <div className="relative z-10 mt-5 space-y-3">
@@ -76,21 +76,21 @@ function BrowseInner() {
               </button>
             ))}
           </div>
-          <p className="text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">{t(lang, "browseHint")}</p>
+          <p className="text-[0.8125rem] leading-relaxed text-gray-500 dark:text-gray-400">{t(lang, "browseHint")}</p>
           <input
             type="search"
             aria-label={t(lang, "searchPrograms")}
             placeholder={t(lang, "searchPrograms")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-full bg-white px-4 py-2.5 text-[14px] text-gray-900 ring-1 ring-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-white/4 dark:text-gray-100 dark:ring-white/10"
+            className="w-full rounded-full bg-white px-4 py-2.5 text-[0.875rem] text-gray-900 ring-1 ring-gray-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-white/4 dark:text-gray-100 dark:ring-white/10"
           />
         </div>
 
-        <div className="relative z-10 mt-4 space-y-3">
-          {error && <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</p>}
-          {!catalog && !error && <p className="text-sm text-gray-400">{t(lang, "loading")}</p>}
-          {catalog && shown.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">{t(lang, "noMatch")}</p>}
+        <div className="relative z-10 mt-4 space-y-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0">
+          {error && <p className="lg:col-span-2 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</p>}
+          {!catalog && !error && <p className="text-sm text-gray-400 lg:col-span-2">{t(lang, "loading")}</p>}
+          {catalog && shown.length === 0 && <p className="text-sm text-gray-500 lg:col-span-2 dark:text-gray-400">{t(lang, "noMatch")}</p>}
           {shown.map((p) => (
             <ProgramDetails key={p.program_id} p={p} lang={lang} />
           ))}
@@ -100,9 +100,9 @@ function BrowseInner() {
           <section className="relative z-10 mt-6">
             <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">{t(lang, "communityTitle")}</h2>
             <p className="mb-2 mt-1 text-xs text-gray-500 dark:text-gray-400">{t(lang, "communityHint")}</p>
-            <ul className="space-y-2">
+            <ul className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0">
               {catalog.partners.map((o) => (
-                <li key={o.name} className="rounded-2xl bg-white p-3.5 text-[13px] shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10">
+                <li key={o.name} className="rounded-2xl bg-white p-3.5 text-[0.8125rem] shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10">
                   <p className="font-semibold text-gray-900 dark:text-white">{o.name}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{[o.org_type, o.barangay_name && `Brgy. ${o.barangay_name}`].filter(Boolean).join(" · ")}</p>
                   {o.services && <p className="mt-1 text-gray-700 dark:text-gray-300">{o.services}</p>}
@@ -145,9 +145,9 @@ function BrowseInner() {
               ))}
             </select>
             {!hallListed && <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">{t(lang, barangay ? "hallNotListed" : "pickBarangayHint")}</p>}
-            <ul className="space-y-2">
+            <ul className="space-y-2 lg:grid lg:grid-cols-3 lg:gap-2 lg:space-y-0">
               {offices.map((o) => (
-                <li key={o.office_name} className="rounded-2xl bg-white p-3.5 text-[13px] shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10">
+                <li key={o.office_name} className="rounded-2xl bg-white p-3.5 text-[0.8125rem] shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10">
                   <p className="font-semibold text-gray-900 dark:text-white">{o.office_name}</p>
                   {o.address && <p className="mt-0.5 text-gray-600 dark:text-gray-300">{o.address}</p>}
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{[o.operating_hours, o.contact_number].filter(Boolean).join(" · ")}</p>
@@ -173,14 +173,14 @@ function ProgramDetails({ p, lang }: { p: CatalogProgram; lang: Lang }) {
     <details className="group overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10">
       <summary className="flex cursor-pointer list-none items-start justify-between gap-3 p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
         <div className="min-w-0">
-          <h2 className="text-[15px] font-semibold leading-snug text-gray-900 dark:text-white">{p.program_name}</h2>
+          <h2 className="text-[0.9375rem] font-semibold leading-snug text-gray-900 dark:text-white">{p.program_name}</h2>
           <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{[p.agency, p.scope].filter(Boolean).join(" · ")}</p>
         </div>
         <svg className="mt-1 shrink-0 text-gray-300 transition group-open:rotate-180 dark:text-gray-600" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" aria-hidden="true">
           <path d="M6 9l6 6 6-6" />
         </svg>
       </summary>
-      <div className="space-y-4 border-t border-gray-100 px-4 py-4 text-[13px] dark:border-white/10">
+      <div className="space-y-4 border-t border-gray-100 px-4 py-4 text-[0.8125rem] dark:border-white/10">
         {p.who_can_apply.length > 0 && (
           <div>
             <h3 className="mb-1.5 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">{t(lang, "whoCanApply")}</h3>
@@ -201,10 +201,10 @@ function ProgramDetails({ p, lang }: { p: CatalogProgram; lang: Lang }) {
                 <li key={i}>
                   <p className="flex flex-wrap items-center gap-1.5 font-medium text-gray-800 dark:text-gray-200">
                     {d.document_name}
-                    <span className={`rounded-full px-1.5 py-px text-[10px] font-semibold ${d.is_mandatory ? "bg-brand-100 text-brand-800 dark:bg-brand-500/15 dark:text-brand-300" : "bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300"}`}>
+                    <span className={`rounded-full px-1.5 py-px text-[0.625rem] font-semibold ${d.is_mandatory ? "bg-brand-100 text-brand-800 dark:bg-brand-500/15 dark:text-brand-300" : "bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300"}`}>
                       {t(lang, d.is_mandatory ? "required" : "optional")}
                     </span>
-                    {d.only_if && <span className="rounded-full bg-amber-100 px-1.5 py-px text-[10px] font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">{t(lang, "onlyIf")}: {d.only_if}</span>}
+                    {d.only_if && <span className="rounded-full bg-amber-100 px-1.5 py-px text-[0.625rem] font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">{t(lang, "onlyIf")}: {d.only_if}</span>}
                   </p>
                   {d.notes && <p className="text-xs text-gray-500 dark:text-gray-400">{d.notes}</p>}
                 </li>

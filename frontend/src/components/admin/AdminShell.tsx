@@ -94,7 +94,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   if (!session) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#0a0f0c]">
+      <div data-admin className="flex min-h-screen items-center justify-center bg-white dark:bg-[#0a0f0c]">
         <span className="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
       </div>
     );
@@ -180,7 +180,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <AdminContext.Provider value={{ session, group, canEditWelfare: group === "welfare", profile, setProfile, profileError, reloadProfile }}>
-      <div className="relative isolate min-h-screen bg-gray-50/60 text-gray-900 dark:bg-[#0a0f0c] dark:text-gray-100">
+      <div data-admin className="relative isolate min-h-screen bg-gray-50/60 text-gray-900 dark:bg-[#0a0f0c] dark:text-gray-100">
         {/* soft brand wash like the citizen screens, kept subtle for dense data */}
         <div className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-72 bg-gradient-to-b from-brand-50 to-transparent dark:from-brand-950/30" />
 

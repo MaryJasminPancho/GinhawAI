@@ -5,18 +5,19 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
-  /* Brand scale sampled from the GinhawAI logo (green, hue ~152°). */
-  --color-brand-50: #f1f8f5;
-  --color-brand-100: #dff1e9;
-  --color-brand-200: #bde5d2;
-  --color-brand-300: #8fd6b5;
-  --color-brand-400: #65c397;
-  --color-brand-500: #3fab79;
-  --color-brand-600: #2c8c5f;
-  --color-brand-700: #1f6f4a;
-  --color-brand-800: #165538;
-  --color-brand-900: #103c28;
-  --color-brand-950: #0a2418;
+  /* Brand scale: the GinhawAI logo green (hue ~155°), more saturated so screens look
+     fresh instead of dull. 700 stays close to the logo itself. */
+  --color-brand-50: #ecfdf4;
+  --color-brand-100: #d0f8e4;
+  --color-brand-200: #a3efc9;
+  --color-brand-300: #67e0a8;
+  --color-brand-400: #2fc884;
+  --color-brand-500: #12ad6c;
+  --color-brand-600: #098c57;
+  --color-brand-700: #0a7049;
+  --color-brand-800: #0c583b;
+  --color-brand-900: #0b4831;
+  --color-brand-950: #03281a;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -36,8 +37,14 @@
   color-scheme: dark;
 }
 
+/* Citizen "A− / A+" text size (components/TextSize.tsx). Citizen pages size text in rem,
+   so changing the root size scales them; the staff console keeps its own size. */
+html[data-text-size="1"]:not(:has([data-admin])) { font-size: 115%; }
+html[data-text-size="2"]:not(:has([data-admin])) { font-size: 130%; }
+html[data-text-size="3"]:not(:has([data-admin])) { font-size: 150%; }
+
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
