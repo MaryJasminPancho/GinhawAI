@@ -1,0 +1,29 @@
+text,label
+Wala kaming problema,none
+Walay krisis karon,none
+Okay lang kami,none
+Maayo ra among kahimtang,none
+Naospital ang anak ko,medical
+May sakit sa puso ang tatay ko,medical
+Kinahanglan operasyon sa akong asawa,medical
+Mahal ang gamot namin,medical
+Namatay ang tatay ko,death
+Namatay akong bana,death
+Pumanaw ang lola ko noong isang linggo,death
+Wala kaming pambayad sa lamay,death
+Nasunugan kami kahapon,fire
+Nasunog ang bahay namin,fire
+Nasunog among balay,fire
+Nagkaroon ng sunog sa lugar namin at nawala gamit namin,fire
+Binaha ang bahay namin,calamity
+Natangay ng bagyo ang bubong namin,calamity
+Naguba among balay sa linog,calamity
+Nasira ang pananim namin dahil sa bagyo,calamity
+Natanggal ako sa trabaho,job_loss
+Nawalan ng trabaho ang asawa ko,job_loss
+Gi-layoff ako sa among kompanya,job_loss
+Nagsara ang pinagtatrabahuhan ko,job_loss
+Ewan ko,unclear
+Hindi ko alam,unclear
+Kumusta po,unclear
+Dili ko sure,unclear

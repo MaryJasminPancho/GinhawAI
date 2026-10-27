@@ -38,7 +38,7 @@ REQUIRED_FIELDS = chatflow.SLOTS
 SLOT_MODELS = {
     "employment_status": "employment_status",
     # "housing_type": "housing_type",
-    # "crisis_type": "crisis_type",
+    "crisis_type": "crisis_type",   # 85.7% on the hand-written test (28 sentences)
     # "has_children_0_18": "yes_no",
     # "has_pwd": "yes_no",
     # "is_solo_parent": "yes_no",
