@@ -5,11 +5,18 @@ so swapping this out later doesn't require changing anything downstream. """
 
 import json
 import asyncio
+import time
 from google import genai
 from app.config import GEMINI_API_KEY
 
 # Without a key the chat still works using the built-in parser in app/chatflow.py.
 client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+
+# Gemini often returns 503. Keep retries few so a citizen never waits long, and after a
+# failed round skip Gemini for BREAKER_SECONDS (see "circuit breaker" in extract_entities).
+MAX_ATTEMPTS = 2
+BREAKER_SECONDS = 60
+_gemini_down_until = 0.0  # time.monotonic() value until which Gemini is skipped
 
 EXTRACTION_PROMPT = """You are a social welfare intake assistant for GinhawAI, serving Filipino citizens who may write in Tagalog, Bisaya, Taglish, or English.
 
@@ -42,19 +49,27 @@ async def extract_entities(message: str, current_question: str = "(start of conv
     from app.jargon import glossary_text  # staff-managed local words (admin console > Local Terms)
     prompt = EXTRACTION_PROMPT.format(message=message, current_question=current_question, glossary=glossary_text() or "(none)")
 
+    global _gemini_down_until
+    # Circuit breaker: Gemini just failed repeatedly, so skip it for a while.
+    # The chat then answers instantly from the rules and the fine-tuned models.
+    if time.monotonic() < _gemini_down_until:
+        return {}
+
     last_error = None
-    for attempt in range(5):
+    for attempt in range(MAX_ATTEMPTS):
         try:
             response = await client.aio.models.generate_content(model="gemini-3.6-flash", contents=prompt)
             break
         except Exception as e:
             last_error = e
             print(f"Gemini extraction attempt {attempt + 1} failed: {e}")
-            if attempt < 4:
-                await asyncio.sleep(2 ** attempt)  # wait 1s, then 2s, before retrying
+            if attempt < MAX_ATTEMPTS - 1:
+                await asyncio.sleep(1)  # short pause before the one retry
     else:
-        print(f"Gemini extraction failed after 3 attempts: {last_error}")
+        _gemini_down_until = time.monotonic() + BREAKER_SECONDS  # stop calling Gemini for a minute
+        print(f"Gemini extraction failed after {MAX_ATTEMPTS} attempts, pausing it for {BREAKER_SECONDS}s: {last_error}")
         return {}
+    _gemini_down_until = 0.0  # it worked, so close the breaker
 
     text = response.text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
     try:

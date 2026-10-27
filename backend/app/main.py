@@ -1,3 +1,4 @@
+import asyncio
 import time
 from contextlib import asynccontextmanager
 
@@ -17,6 +18,20 @@ from app.settings import DEFAULTS, load_settings
 CORS_ORIGINS: list[str] = list(DEFAULTS["allowed_origins"])
 
 
+async def warm_up_models():
+    """Loads every fine-tuned model once at startup. The first load of a ~1 GB model takes
+    many seconds; doing it here means the first citizen to answer a question is not the one
+    who waits (that wait used to pass the frontend's 20 s limit)."""
+    from app.ai.slot_classifier import load_model
+
+    for key in sorted(set(sessions.SLOT_MODELS.values())):
+        try:
+            await asyncio.to_thread(load_model, key)  # to_thread: keeps the server responsive
+            print(f"[warm-up] model loaded: {key}")
+        except Exception as e:  # a missing model must not stop the backend; the chat falls back
+            print(f"[warm-up] could not load {key}: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.db_pool = await create_db_pool()
@@ -25,6 +40,7 @@ async def lifespan(app: FastAPI):
     await jargon.load(app.state.db_pool)
     app.state.cors_origins = CORS_ORIGINS
     CORS_ORIGINS[:] = app.state.settings.get("allowed_origins") or DEFAULTS["allowed_origins"]
+    app.state.warmup_task = asyncio.create_task(warm_up_models())  # background: the server starts at once
     yield
     await app.state.db_pool.close()
     await app.state.redis.aclose()
