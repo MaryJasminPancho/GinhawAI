@@ -32,8 +32,19 @@ router = APIRouter()
 # Kept for reference by other modules/tests; the real list lives in chatflow.SLOTS.
 REQUIRED_FIELDS = chatflow.SLOTS
 
-# Minimum confidence before we trust the fine-tuned model's answer (below this we fall back to Gemini)
-EMPLOYMENT_MIN_CONF = 0.5
+# Which fine-tuned classifier answers which chat question (slot name -> model key).
+# Housing/crisis/yes_no are commented out until each passes the hand-written test
+# (python scripts/evaluate_classifier.py <model>) with at least 80% accuracy.
+SLOT_MODELS = {
+    "employment_status": "employment_status",
+    # "housing_type": "housing_type",
+    # "crisis_type": "crisis_type",
+    # "has_children_0_18": "yes_no",
+    # "has_pwd": "yes_no",
+    # "is_solo_parent": "yes_no",
+}
+# Minimum confidence before we trust a model's answer (below this we fall back to Gemini)
+MODEL_MIN_CONF = 0.5
 
 def _key(session_id: str) -> str:
     return f"session:{session_id}"
@@ -243,15 +254,17 @@ async def send_message(session_id: str, payload: MessageIn, request: Request):
         if direct is not None:
             understood = await _apply(request, entities, asking, direct)
 
-    # 1b) Fine-tuned XLM-RoBERTa classifier. Only runs for the employment question,
-    #     and only if the rule parser above did not understand the answer.
+    # 1b) Fine-tuned XLM-RoBERTa classifier for the question being asked (see SLOT_MODELS).
+    #     Only runs if the rule parser above did not understand the answer.
     #     Low confidence or "unclear" -> we fall through to Gemini below.
-    if asking == "employment_status" and not understood:
+    model_key = SLOT_MODELS.get(asking)
+    if model_key and not understood:
         try:
-            label, conf = await asyncio.to_thread(classify, text)  # to_thread: keeps the server responsive while the model runs
-            print(f"[classifier] {text!r} -> {label} ({conf})")      # debug line: shows what the model decided
-            if label != "unclear" and conf >= EMPLOYMENT_MIN_CONF:
-                understood = await _apply(request, entities, asking, label)
+            label, conf = await asyncio.to_thread(classify, text, model_key)  # to_thread: keeps the server responsive while the model runs
+            print(f"[classifier:{model_key}] {text!r} -> {label} ({conf})")   # debug line: shows what the model decided
+            if label != "unclear" and conf >= MODEL_MIN_CONF:
+                value = (label == "yes") if model_key == "yes_no" else label  # yes/no slots store True/False
+                understood = await _apply(request, entities, asking, value)
                 model_used = understood
         except Exception as e:  # never let the model break the chat
             print(f"Classifier error: {e}")
