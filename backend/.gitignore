@@ -19,5 +19,6 @@ __pycache__/
 # Synthetic training data (regenerate with: python -m ml.generate_dataset)
 ml/data/
 
-#models
-backend/models/
+# Fine-tuned model files (about 1 GB; share through Google Drive, never commit).
+# This file lives inside backend/, so the path is "models/", not "backend/models/".
+models/
