@@ -37,7 +37,7 @@ REQUIRED_FIELDS = chatflow.SLOTS
 # (python scripts/evaluate_classifier.py <model>) with at least 80% accuracy.
 SLOT_MODELS = {
     "employment_status": "employment_status",
-    # "housing_type": "housing_type",
+    "housing_type": "housing_type",   # 92% on the hand-written test (25 sentences)
     "crisis_type": "crisis_type",   # 85.7% on the hand-written test (28 sentences)
     # "has_children_0_18": "yes_no",
     # "has_pwd": "yes_no",
@@ -45,6 +45,9 @@ SLOT_MODELS = {
 }
 # Minimum confidence before we trust a model's answer (below this we fall back to Gemini)
 MODEL_MIN_CONF = 0.5
+# Longest we wait for Gemini on one message before carrying on without it (frontend gives up at 20 s)
+AI_TIMEOUT_SECONDS = 8
+AI_BONUS_TIMEOUT_SECONDS = 3  # shorter wait when the answer was already understood without Gemini
 
 def _key(session_id: str) -> str:
     return f"session:{session_id}"
@@ -275,8 +278,15 @@ async def send_message(session_id: str, payload: MessageIn, request: Request):
     # Skip Gemini when the answer is short, or when the XLM-R model already answered the question.
     if not (understood and (len(text.split()) <= 3 or model_used)):
         try:
-            ai = await extract_entities(text, chatflow.question(asking, "en") if asking else "(done)")
-        except Exception as e:  # never let the AI break the chat
+            # wait_for: if Gemini is slow or down, give up so the reply still arrives before the
+            # frontend's 20 s limit ("Can't connect right now"). When the rules/model already
+            # understood the answer, Gemini is only a bonus (extra facts in the same sentence),
+            # so it gets a much shorter wait.
+            ai = await asyncio.wait_for(
+                extract_entities(text, chatflow.question(asking, "en") if asking else "(done)"),
+                timeout=AI_BONUS_TIMEOUT_SECONDS if understood else AI_TIMEOUT_SECONDS,
+            )
+        except Exception as e:  # never let the AI break the chat (a timeout lands here too)
             print(f"AI extraction error: {e}")
             ai = {}
         if isinstance(ai, dict):
