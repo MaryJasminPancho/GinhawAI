@@ -21,7 +21,8 @@ from app import chatflow, jargon
 from app.ai.slot_classifier import classify
 from app.ai.ai_parser import extract_entities
 from app.routers.citizens import citizen_id_from, load_citizen_profile, save_citizen_assessment, save_citizen_profile
-from app.schemas import AssessmentFeedbackIn, DocumentChecksIn, EmailChecklistRequest, EntityPatch, MessageIn, SessionStart, SmsRequest
+from app.action_plan import build_plan, urgent_contacts
+from app.schemas import AssessmentFeedbackIn, DocumentChecksIn, EmailChecklistRequest, EntityPatch, MessageIn, PlanRequest, SessionStart, SmsRequest
 from app.scoring import derive_profile, evaluate_program, rank_programs, score_vulnerability, today_iso
 from app.settings import get_settings
 from app import mailer, sms
@@ -467,10 +468,13 @@ async def assess(session_id: str, request: Request):
                     )
             state["demand_logged"] = True
 
+    directory = {o["office_name"]: dict(o) for o in offices}
     assessment = {
         "vulnerability": vulnerability,
         "programs": evaluations,
         "offices": office_list,
+        # Crisis reported: who to call right now (results page and Action Plan).
+        "urgent": urgent_contacts(state["entities"].get("crisis_type"), directory, lang),
         "barangay": state["entities"].get("barangay"),
         "assessed_on": today_iso(),
     }
@@ -502,6 +506,20 @@ async def claim_session(session_id: str, request: Request, authorization: str | 
         saved = True
     await _save(request, session_id, state)
     return {"saved": saved}
+
+
+@router.post("/api/sessions/{session_id}/plan")
+async def action_plan(session_id: str, body: PlanRequest, request: Request):
+    """Step-by-step Action Plan for the programs the household can or may apply for
+    (2nd consultation: the result must not end with "That's all?")."""
+    state = await _load(request, session_id)
+    assessment = state.get("assessment")
+    if not assessment:
+        raise HTTPException(status_code=409, detail="Please finish the assessment first.")
+    async with request.app.state.db_pool.acquire() as conn:
+        rows = await conn.fetch("SELECT office_name, address, contact_number, operating_hours FROM lgu_offices;")
+    directory = {r["office_name"]: dict(r) for r in rows}
+    return build_plan(assessment, state["entities"].get("crisis_type"), set(body.have), directory, state.get("lang", "en"))
 
 
 @router.post("/api/sessions/{session_id}/document-checks")

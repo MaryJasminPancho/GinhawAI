@@ -57,7 +57,11 @@ export type ProgramResult = {
   schedules: ScheduleItem[];
 };
 
+export type UrgentContact = { name: string; phone: string | null; address: string | null; what: string };
+
 export type Assessment = {
+  /** Who to call right now, when the citizen reported a crisis (empty otherwise). */
+  urgent?: UrgentContact[];
   vulnerability: {
     score: number;
     tier: Tier;
@@ -236,6 +240,26 @@ export const citizenGoogle = (credential: string, consent: boolean) =>
   request<CitizenSession>("/api/citizen/google", post({ credential, consent })).then(kept);
 /** Keep this (anonymous) chat in the account the citizen just signed in to. */
 export const claimSession = (sessionId: string) => request<{ saved: boolean }>(`/api/sessions/${sessionId}/claim`, { method: "POST" });
+/** Step-by-step Action Plan for the programs the household can or may apply for. */
+export type ActionPlan = {
+  urgent: UrgentContact[];
+  urgent_title: string;
+  labels: { docs: string; docs_all: string; go: string; there: string; dates: string };
+  programs: {
+    program_id: string;
+    program_name: string;
+    status: ProgramResult["status"];
+    documents: { document_name: string; have: boolean; how: string | null; is_mandatory: boolean }[];
+    all_documents_ready: boolean;
+    office: { name: string; address: string | null; hours: string | null; phone: string | null } | null;
+    office_note: string | null;
+    what_happens: string;
+    schedules: { start_date: string; end_date: string; notes: string | null; office_name: string }[];
+  }[];
+};
+export const getPlan = (sessionId: string, have: string[]) => request<ActionPlan>(`/api/sessions/${sessionId}/plan`, post({ have }));
+/** Where the results page keeps the "I have this" ticks for the Action Plan (this tab only). */
+export const haveKey = (sessionId: string) => `have-${sessionId}`;
 export const getMyAccount = () => request<CitizenAccount>("/api/citizen/me");
 export const deleteMyAccount = () => request<void>("/api/citizen/me", { method: "DELETE" }).then(citizenLogout);
 

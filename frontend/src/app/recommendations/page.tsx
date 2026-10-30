@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
 import Button, { buttonClasses } from "@/components/Button";
-import { assess, Assessment, endSession, getChannels, getCitizenToken, getSession, Lang, ProgramResult, sendDocumentChecks, sendEmail, sendSms, SessionExpiredError } from "@/lib/api";
+import UrgentHelp from "@/components/UrgentHelp";
+import { assess, Assessment, endSession, getChannels, getCitizenToken, getSession, haveKey, Lang, ProgramResult, sendDocumentChecks, sendEmail, sendSms, SessionExpiredError } from "@/lib/api";
 import { t } from "@/lib/i18n";
 
 // Figs. 19–22: ranked programs (green / amber / red), the explainable
@@ -141,7 +142,14 @@ function RecommendationsInner() {
   const signedIn = useSyncExternalStore(() => () => {}, () => !!getCitizenToken(), () => true);
   const [result, setResult] = useState<Assessment | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [have, setHave] = useState<Set<string>>(new Set());
+  // "I have this" ticks, kept in this tab so they survive a trip to the Action Plan and back.
+  const [have, setHave] = useState<Set<string>>(() => {
+    try {
+      return new Set(sessionId && typeof window !== "undefined" ? JSON.parse(sessionStorage.getItem(haveKey(sessionId)) || "[]") : []);
+    } catch {
+      return new Set();
+    }
+  });
   const [touched, setTouched] = useState<Set<string>>(new Set()); // programs whose checklist the citizen used
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -175,6 +183,10 @@ function RecommendationsInner() {
       const n = new Set(h);
       if (n.has(docId)) n.delete(docId);
       else n.add(docId);
+      // The Action Plan shows these as ready (kept in this tab only).
+      try {
+        if (sessionId) sessionStorage.setItem(haveKey(sessionId), JSON.stringify([...n]));
+      } catch {}
       return n;
     });
     setTouched((s) => new Set(s).add(programId));
@@ -215,6 +227,12 @@ function RecommendationsInner() {
 
       <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-2xl lg:max-w-5xl sm:rounded-4xl sm:bg-white/80 sm:p-8 sm:shadow-2xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
         <PageHeader title={t(lang, "programsTitle")} subtitle={result?.barangay ? `Brgy. ${result.barangay}` : undefined} />
+
+        {result?.urgent && result.urgent.length > 0 && (
+          <div className="relative z-10 mt-6">
+            <UrgentHelp title={t(lang, "urgentTitle")} contacts={result.urgent} />
+          </div>
+        )}
 
         <div className="relative z-10 mt-6 space-y-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0">
           {!sessionId && <p className="text-sm text-red-600 lg:col-span-2 dark:text-red-400">{t(lang, "sessionEnded")}</p>}
@@ -338,6 +356,11 @@ function RecommendationsInner() {
         <p className="relative z-10 mt-4 text-xs leading-relaxed text-gray-400 dark:text-gray-500">{t(lang, "disclaimer")}</p>
 
         <div className="relative z-10 mt-6 flex flex-col gap-3 print:hidden">
+          {result && matched.length > 0 && sessionId && (
+            <Link href={`/plan?session=${sessionId}`} className={buttonClasses("primary", "w-full text-center")}>
+              {t(lang, "planButton")} →
+            </Link>
+          )}
           {result && matched.length > 0 && (
             <Button variant="secondary" onClick={() => window.print()} className="w-full">
               {t(lang, "saveChecklist")}

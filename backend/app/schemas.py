@@ -162,6 +162,10 @@ class DocumentChecksIn(BaseModel):
     checks: list[DocumentCheck] = Field(max_length=100)
 
 
+class PlanRequest(BaseModel):
+    have: list[str] = Field(default_factory=list, max_length=200)  # doc_ids the citizen already has
+
+
 class SmsRequest(BaseModel):
     phone: str
     program_ids: list[str] | None = None
