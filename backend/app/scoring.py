@@ -287,21 +287,23 @@ REL = {
     "ceb": {"below": "ubos", "near": "gamay ra nga taas", "above": "taas"},
 }
 
+# About NEED only. Whether the household qualifies is a separate question, answered per
+# program on the next page (2nd consultation: the score and the program results were confused).
 TIER_MESSAGE = {
     "high": {
-        "en": "Your household may need support right away. Programs that can help quickly are listed first.",
-        "fil": "Maaaring kailangan agad ng tulong ng inyong pamilya. Nauuna sa listahan ang mga programang makakatulong agad.",
-        "ceb": "Mahimong kinahanglan dayon sa inyong pamilya ang tabang. Nag-una sa lista ang mga programa nga makatabang dayon.",
+        "en": "Your household needs help soon. On the next page, see which programs you can apply for.",
+        "fil": "Kailangan ng inyong pamilya ng tulong sa lalong madaling panahon. Sa susunod na pahina, tingnan kung saang mga programa kayo maaaring mag-apply.",
+        "ceb": "Kinahanglan sa inyong pamilya ang tabang sa labing dali. Sa sunod nga panid, tan-awa kung asang mga programa ka makaaplay.",
     },
     "moderate": {
-        "en": "Your household may qualify for some support programs.",
-        "fil": "Maaaring kwalipikado ang inyong pamilya sa ilang programa ng tulong.",
-        "ceb": "Mahimong kwalipikado ang inyong pamilya sa pipila ka programa sa tabang.",
+        "en": "Your household needs some help. On the next page, see which programs you can apply for.",
+        "fil": "Nangangailangan ng kaunting tulong ang inyong pamilya. Sa susunod na pahina, tingnan kung saang mga programa kayo maaaring mag-apply.",
+        "ceb": "Nanginahanglan og pipila ka tabang ang inyong pamilya. Sa sunod nga panid, tan-awa kung asang mga programa ka makaaplay.",
     },
     "low": {
-        "en": "Your household's need looks lower right now, but you can still check the programs below.",
-        "fil": "Mukhang mas mababa ang pangangailangan ngayon, pero maaari pa ring tingnan ang mga programa sa ibaba.",
-        "ceb": "Morag ubos ang panginahanglan karon, apan mahimo gihapon nimong tan-awon ang mga programa sa ubos.",
+        "en": "Your household's need is lower right now. You can still see which programs you can apply for on the next page.",
+        "fil": "Mas mababa ang pangangailangan ng inyong pamilya ngayon. Makikita pa rin sa susunod na pahina kung saang mga programa kayo maaaring mag-apply.",
+        "ceb": "Mas ubos ang panginahanglan sa inyong pamilya karon. Makita gihapon sa sunod nga panid kung asang mga programa ka makaaplay.",
     },
 }
 
@@ -363,13 +365,32 @@ def _score_with_model(profile: dict, lang: str) -> dict | None:
     if not top:
         top = [t for t in [_income_text(profile, lang)] if t]
     return {
-        "score": result["score"],
+        "score": band_score(result["tier"], result["score"], MODEL_RAW_RANGE[result["tier"]]),
         "tier": result["tier"],
         "message": TIER_MESSAGE[result["tier"]][lang],
         "top_factors": top,
         "probabilities": result["probabilities"],
         "engine": ml_scoring.describe(),
     }
+
+
+# The 0-100 number shown to citizens always sits inside its tier's band, so a "high" household
+# never shows a lower number than a "moderate" one (2nd consultation: score and level must agree).
+TIER_BANDS = {"low": (0, 33), "moderate": (34, 66), "high": (67, 100)}
+
+
+def band_score(tier: str, raw: float, raw_range: tuple[float, float]) -> int:
+    """Place a raw score inside its tier's band: where it sits in raw_range sets where it sits in the band."""
+    lo, hi = TIER_BANDS[tier]
+    r_lo, r_hi = raw_range
+    position = 0.0 if r_hi <= r_lo else min(1.0, max(0.0, (raw - r_lo) / (r_hi - r_lo)))
+    return round(lo + position * (hi - lo))
+
+
+# Raw-score range each tier actually takes (model: 100 x (P(high) + 0.5 P(moderate)) on the
+# 12,000 synthetic households; rule-based: its own 35 / 60 point cut-offs).
+MODEL_RAW_RANGE = {"low": (0, 33), "moderate": (25, 75), "high": (70, 100)}
+RULE_RAW_RANGE = {"low": (0, 34), "moderate": (35, 59), "high": (60, 100)}
 
 
 def score_vulnerability(profile: dict, lang: str = "en") -> dict:
@@ -429,7 +450,7 @@ def rule_based_score(profile: dict, lang: str = "en") -> dict:
     if not top and factors:
         top = [factors[0][1]]
     return {
-        "score": score,
+        "score": band_score(tier, score, RULE_RAW_RANGE[tier]),
         "tier": tier,
         "message": TIER_MESSAGE[tier][lang],
         "top_factors": top,
@@ -522,32 +543,30 @@ def _fmt_requirement(attr: str, op: str, threshold: str, lang: str = "en") -> st
 def evaluate_program(program: dict, criteria: list[dict], profile: dict, lang: str = "en") -> dict:
     lang = _lang(lang)
     results = []
-    total = passed = unknown = 0.0
     for c in criteria:
-        w = float(c["weight"] or 0)
-        total += w
         attr = c["attribute"]
         label = attribute_label(attr, lang)
         requirement = _fmt_requirement(attr, c["operator"], c["threshold_value"], lang)
         if attr not in profile:
-            unknown += w
             results.append({"attribute": attr, "label": label, "status": "unknown", "actual": None, "requirement": requirement,
                             "explanation": RULE_TEXT["unknown"][lang]})
             continue
         ok = compare(profile[attr], c["operator"], c["threshold_value"])
         actual = _fmt(attr, profile[attr], lang)
         if ok:
-            passed += w
             results.append({"attribute": attr, "label": label, "status": "pass", "actual": actual, "requirement": requirement,
                             "explanation": RULE_TEXT["pass"][lang].format(a=actual, r=requirement)})
         else:
             results.append({"attribute": attr, "label": label, "status": "fail", "actual": actual, "requirement": requirement,
                             "explanation": RULE_TEXT["fail"][lang].format(a=actual, r=requirement)})
 
+    # Counted, not weighted: "meets 3 of 4 requirements" always agrees with the verdict
+    # (one unmet requirement means "not qualified"), unlike the old weighted percentage.
+    met = sum(1 for r in results if r["status"] == "pass")
+    to_verify = sum(1 for r in results if r["status"] == "unknown")
     if not criteria:
-        status, likelihood = "partial", 50
+        status = "partial"
     else:
-        likelihood = round(((passed + 0.5 * unknown) / total) * 100) if total > 0 else 50
         if any(r["status"] == "fail" for r in results):
             status = "not_qualified"
         elif any(r["status"] == "unknown" for r in results):
@@ -560,7 +579,9 @@ def evaluate_program(program: dict, criteria: list[dict], profile: dict, lang: s
         "agency": program["agency"],
         "scope": program["scope"],
         "status": status,
-        "likelihood": likelihood,
+        "requirements_met": met,
+        "requirements_total": len(results),
+        "requirements_to_verify": to_verify,
         "criteria": results,
     }
 
@@ -569,7 +590,7 @@ STATUS_ORDER = {"qualified": 0, "partial": 1, "not_qualified": 2}
 
 
 def rank_programs(evaluations: list[dict]) -> list[dict]:
-    return sorted(evaluations, key=lambda e: (STATUS_ORDER[e["status"]], -e["likelihood"]))
+    return sorted(evaluations, key=lambda e: (STATUS_ORDER[e["status"]], -(e["requirements_met"] / (e["requirements_total"] or 1))))
 
 
 def today_iso() -> str:

@@ -37,6 +37,29 @@ const LEVELS: Record<Tier, { label: Record<Lang, string>; from: string; to: stri
 const RADIUS = 52;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
+// The three need levels and their score ranges; the household's own level is highlighted.
+function ScoreBands({ tier, lang }: { tier: "low" | "moderate" | "high"; lang: Lang }) {
+  const bands = [
+    { key: "low", range: "0–33", label: t(lang, "bandLow"), on: "bg-brand-600 text-white" },
+    { key: "moderate", range: "34–66", label: t(lang, "bandModerate"), on: "bg-amber-500 text-white" },
+    { key: "high", range: "67–100", label: t(lang, "bandHigh"), on: "bg-red-600 text-white" },
+  ] as const;
+  return (
+    <div className="grid w-full max-w-xs grid-cols-3 gap-1.5" aria-label="Score ranges">
+      {bands.map((b) => (
+        <div
+          key={b.key}
+          aria-current={b.key === tier ? "true" : undefined}
+          className={`rounded-xl px-1 py-1.5 text-center ${b.key === tier ? `${b.on} shadow-sm` : "bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-400"}`}
+        >
+          <p className="text-[0.75rem] font-bold leading-tight">{b.label}</p>
+          <p className="text-[0.6875rem] tabular-nums leading-tight opacity-90">{b.range}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ScoreRing({ score, from, to, label }: { score: number; from: string; to: string; label: string }) {
   const pct = Math.min(Math.max(score, 0), 100);
   // Start empty, then animate to the target offset once mounted (fill-in effect).
@@ -111,6 +134,7 @@ function ScoreInner() {
           {v && level && (
             <>
               <ScoreRing score={v.score} from={level.from} to={level.to} label={t(lang, "outOf100")} />
+              <ScoreBands tier={v.tier} lang={lang} />
               <span className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ${level.badge}`}>
                 <span className={`h-1.5 w-1.5 rounded-full ${level.dot}`} />
                 {level.label[lang]}

@@ -44,7 +44,11 @@ export type ProgramResult = {
   agency: string;
   scope: string;
   status: "qualified" | "partial" | "not_qualified";
-  likelihood: number;
+  /** How many of the program's requirements the household meets (counted, not weighted). */
+  requirements_met: number;
+  requirements_total: number;
+  /** Requirements only the office can confirm (e.g. documents). */
+  requirements_to_verify: number;
   criteria: CriterionResult[];
   documents: DocumentItem[];
   schedules: ScheduleItem[];

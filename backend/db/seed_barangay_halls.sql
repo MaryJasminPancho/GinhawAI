@@ -19,6 +19,9 @@
 --   Guadalupe: listed as open 24 hours
 --   Tejero: phone (032) 601 764 is missing a digit
 
+-- The file is UTF-8 (–, ñ); without this, psql on Windows reads it as WIN1252 and garbles them.
+SET client_encoding = 'UTF8';
+
 CREATE TEMP TABLE hall_rows (office_name text, address text, barangay_code text, contact_number text, operating_hours text, source text);
 INSERT INTO hall_rows VALUES
   ('Barangay Adlaon Hall', 'Sitio Kang-Atis, Barangay Adlaon, Cebu City', '0730600001', '(032) 513 5511', 'Mon–Fri, 8:00 AM – 5:00 PM', 'Google, 2026-10-24'),

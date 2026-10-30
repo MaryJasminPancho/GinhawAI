@@ -53,8 +53,9 @@ function ProgramCard({ p, lang, have, onToggleDoc }: { p: ProgramResult; lang: L
               <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
               {t(lang, st.key)}
             </span>
-            <span className="text-xs font-semibold tabular-nums text-gray-500 dark:text-gray-400">
-              {p.likelihood}% {t(lang, "likelihood")}
+            <span className="text-xs font-semibold tabular-nums text-gray-600 dark:text-gray-300">
+              {t(lang, "reqMet").replace("{met}", String(p.requirements_met)).replace("{total}", String(p.requirements_total))}
+              {p.requirements_to_verify > 0 && ` · ${t(lang, "reqVerify").replace("{n}", String(p.requirements_to_verify))}`}
             </span>
           </div>
         </div>
