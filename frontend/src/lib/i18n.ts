@@ -97,6 +97,12 @@ const T = {
   seePrograms: { fil: "Tingnan ang mga programa", ceb: "Tan-awa ang mga programa", en: "See recommended programs" },
   outOf100: { fil: "sa 100", ceb: "sa 100", en: "out of 100" },
   bandLow: { fil: "Mababa", ceb: "Ubos", en: "Low" },
+  raisedScore: { fil: "Nagpataas sa score", ceb: "Nagpataas sa score", en: "What raised your score" },
+  loweredScore: { fil: "Nagpababa sa score", ceb: "Nagpaubos sa score", en: "What lowered it" },
+  effectBig: { fil: "Malaking epekto", ceb: "Dakong epekto", en: "Big effect" },
+  effectSome: { fil: "May epekto", ceb: "Naay epekto", en: "Some effect" },
+  effectSmall: { fil: "Maliit na epekto", ceb: "Gamay nga epekto", en: "Small effect" },
+  inSimpleWords: { fil: "Sa madaling salita", ceb: "Sa yanong pulong", en: "In simple words" },
   bandModerate: { fil: "Katamtaman", ceb: "Kasarangan", en: "Moderate" },
   bandHigh: { fil: "Mataas", ceb: "Taas", en: "High" },
 
@@ -200,11 +206,12 @@ export const t = (lang: Lang, key: Key) => T[key][lang] ?? T[key].en;
 export const FIELD_LABELS: Record<keyof Omit<Entities, "barangay_code">, Record<Lang, string>> = {
   barangay: { fil: "Barangay", ceb: "Barangay", en: "Barangay" },
   household_size: { fil: "Bilang ng nakatira", ceb: "Gidaghanon sa nagpuyo", en: "People in household" },
-  monthly_income: { fil: "Kita kada buwan", ceb: "Kita kada bulan", en: "Monthly income" },
-  employment_status: { fil: "Trabaho", ceb: "Trabaho", en: "Work situation" },
   age: { fil: "Edad", ceb: "Edad", en: "Age" },
+  employment_status: { fil: "Trabaho", ceb: "Trabaho", en: "Work situation" },
+  monthly_income: { fil: "Kita kada buwan", ceb: "Kita kada bulan", en: "Monthly income" },
   housing_type: { fil: "Tirahan", ceb: "Puy-anan", en: "Housing" },
-  has_children_0_18: { fil: "May anak 0–18 / buntis", ceb: "Naay anak 0–18 / mabdos", en: "Children 0–18 / pregnant" },
+  has_children_0_18: { fil: "May anak 0–18", ceb: "Naay anak 0–18", en: "Children 0–18" },
+  has_pregnant: { fil: "May buntis", ceb: "Naay mabdos", en: "Pregnant member" },
   has_pwd: { fil: "May PWD sa pamilya", ceb: "Naay PWD sa pamilya", en: "PWD in household" },
   has_senior: { fil: "May 60 pataas sa pamilya", ceb: "Naay 60 pataas sa pamilya", en: "Someone 60+ in household" },
   is_solo_parent: { fil: "Solo parent", ceb: "Solo parent", en: "Solo parent" },
@@ -239,7 +246,7 @@ export const CHOICES: Record<string, { value: string; label: Record<Lang, string
   ],
 };
 
-export const BOOL_FIELDS = new Set(["has_children_0_18", "has_pwd", "has_senior", "is_solo_parent"]);
+export const BOOL_FIELDS = new Set(["has_children_0_18", "has_pregnant", "has_pwd", "has_senior", "is_solo_parent"]);
 export const NUMBER_FIELDS = new Set(["household_size", "monthly_income", "age"]);
 
 export function displayValue(field: string, value: unknown, lang: Lang): string {

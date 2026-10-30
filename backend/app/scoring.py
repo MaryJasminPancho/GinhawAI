@@ -28,7 +28,8 @@ ATTRIBUTE_LABELS = {
     "employment_status": "Employment status",
     "housing_type": "Housing situation",
     "barangay_code": "Barangay",
-    "has_children_0_18": "Has children 0–18 or a pregnant member",
+    "has_children_0_18": "Has children 0–18",
+    "has_pregnant_member": "Has a pregnant member",
     "has_member_age_0_18_or_pregnant": "Has children 0–18 or a pregnant member",
     "children_0_18": "Has children 0–18",
     "has_pwd": "Has a household member with disability (PWD)",
@@ -60,7 +61,8 @@ ATTRIBUTE_LABELS_LOCAL = {
         "employment_status": "Kalagayan ng trabaho",
         "housing_type": "Uri ng tirahan",
         "barangay_code": "Barangay",
-        "has_children_0_18": "May anak na 0–18 taong gulang o buntis",
+        "has_children_0_18": "May anak na 0–18 taong gulang",
+        "has_pregnant_member": "May buntis sa pamilya",
         "has_member_age_0_18_or_pregnant": "May anak na 0–18 taong gulang o buntis",
         "children_0_18": "May anak na 0–18 taong gulang",
         "has_pwd": "May miyembrong may kapansanan (PWD)",
@@ -88,7 +90,8 @@ ATTRIBUTE_LABELS_LOCAL = {
         "employment_status": "Kahimtang sa trabaho",
         "housing_type": "Klase sa puy-anan",
         "barangay_code": "Barangay",
-        "has_children_0_18": "Adunay anak nga 0–18 anyos o mabdos",
+        "has_children_0_18": "Adunay anak nga 0–18 anyos",
+        "has_pregnant_member": "Adunay mabdos sa pamilya",
         "has_member_age_0_18_or_pregnant": "Adunay anak nga 0–18 anyos o mabdos",
         "children_0_18": "Adunay anak nga 0–18 anyos",
         "has_pwd": "Adunay miyembro nga may kakulangan (PWD)",
@@ -162,7 +165,7 @@ def value_label(v: str, lang: str = "en") -> str:
 # Attributes the evaluator can compute from the chat answers (shown in the admin rule form).
 COMPUTED_ATTRIBUTES = [
     "monthly_income", "household_size", "per_capita_income", "age", "employment_status", "housing_type",
-    "barangay_code", "has_children_0_18", "has_pwd", "has_senior_member", "is_solo_parent", "crisis_type", "has_crisis",
+    "barangay_code", "has_children_0_18", "has_pregnant_member", "has_pwd", "has_senior_member", "is_solo_parent", "crisis_type", "has_crisis",
     "is_unemployed", "is_indigent_or_vulnerable", "belongs_to_priority_worker_group",
 ]
 
@@ -198,6 +201,9 @@ def derive_profile(entities: dict) -> dict:
     has_pwd = entities.get("has_pwd")
     solo = entities.get("is_solo_parent")
     kids = entities.get("has_children_0_18")
+    pregnant = entities.get("has_pregnant")
+    # 4Ps covers households with children 0-18 OR a pregnant member (asked as two questions).
+    kids_or_pregnant = True if (kids or pregnant) else (False if kids is False and pregnant is False else None)
 
     p = {
         "monthly_income": income,
@@ -208,7 +214,8 @@ def derive_profile(entities: dict) -> dict:
         "housing_type": entities.get("housing_type"),
         "barangay_code": entities.get("barangay_code"),
         "has_children_0_18": kids,
-        "has_member_age_0_18_or_pregnant": kids,
+        "has_member_age_0_18_or_pregnant": kids_or_pregnant,
+        "has_pregnant_member": pregnant,
         "children_0_18": (1 if kids else 0) if kids is not None else None,
         "has_pwd": has_pwd,
         "is_pwd": has_pwd,
@@ -256,6 +263,12 @@ FACTOR_TEXT = {
     "children": {"en": "There are children or a pregnant member to support.", "fil": "May mga anak o buntis na sinusuportahan.", "ceb": "Adunay mga bata o mabdos nga gisuportahan."},
     "size": {"en": "Large household of {v} people.", "fil": "Malaking pamilya na may {v} katao.", "ceb": "Dako nga pamilya nga adunay {v} ka tawo."},
     "age": {"en": "The applicant is {v} years old.", "fil": "Ang aplikante ay {v} taong gulang.", "ceb": "Ang aplikante {v} anyos na."},
+    # Answers that lowered the need score ("what lowered it")
+    "no_crisis": {"en": "No emergency right now.", "fil": "Walang emergency ngayon.", "ceb": "Walay emerhensya karon."},
+    "no_pwd": {"en": "No household member has a disability.", "fil": "Walang miyembrong may kapansanan.", "ceb": "Walay miyembro nga may kakulangan."},
+    "no_senior": {"en": "No one in the household is 60 or older.", "fil": "Walang miyembrong 60 pataas.", "ceb": "Walay miyembro nga 60 pataas."},
+    "no_solo": {"en": "Not a solo parent household.", "fil": "Hindi solo parent.", "ceb": "Dili solo parent."},
+    "no_children": {"en": "No children 0–18 or pregnant member.", "fil": "Walang anak na 0–18 o buntis.", "ceb": "Walay anak nga 0–18 o mabdos."},
     "hazard": {
         "en": "Your barangay has a {level} risk of {hazard}.",
         "fil": "May {level} panganib ng {hazard} sa inyong barangay.",
@@ -332,13 +345,34 @@ def _model_factor_text(field: str, profile: dict, lang: str) -> str | None:
         return FACTOR_TEXT["senior"][lang]
     if field == "is_solo_parent" and profile.get("is_solo_parent"):
         return FACTOR_TEXT["solo"][lang]
-    if field == "has_children_0_18" and profile.get("has_children_0_18"):
+    if field == "has_children_0_18" and profile.get("has_member_age_0_18_or_pregnant"):
         return FACTOR_TEXT["children"][lang]
     if field == "age" and profile.get("age"):
         return FACTOR_TEXT["age"][lang].format(v=int(profile["age"]))
     if field in HAZARD_NAMES:
         return hazard_text(field, profile.get(field), lang)
     return None
+
+
+def _lowering_text(field: str, profile: dict, lang: str) -> str | None:
+    """Plain sentence for an answer that LOWERED the need score (None = not worth saying)."""
+    if field in ("per_capita_income", "monthly_income", "employment_status", "housing_type", "age"):
+        return _model_factor_text(field, profile, lang)
+    simple = {"crisis_type": ("has_crisis", "no_crisis"), "has_pwd": ("has_pwd", "no_pwd"), "has_senior_member": ("has_senior_member", "no_senior"),
+              "is_solo_parent": ("is_solo_parent", "no_solo"), "has_children_0_18": ("has_member_age_0_18_or_pregnant", "no_children")}
+    if field in simple and profile.get(simple[field][0]) is False:
+        return FACTOR_TEXT[simple[field][1]][lang]
+    return None
+
+
+def _breakdown(raising: list[tuple[str, float]], lowering: list[tuple[str, float]]) -> list[dict]:
+    """"Why this score", for citizens: up to 4 answers that raised it and 2 that lowered it. "share" is
+    each answer's effect compared with the strongest one shown (= 100), on ONE scale for both
+    directions, so a small "lowered" answer never looks bigger than a strong "raised" one.
+    The page turns it into big / some / small effect, not numbers."""
+    shown = [("up", t, v) for t, v in raising[:4]] + [("down", t, v) for t, v in lowering[:2]]
+    strongest = max((v for _, _, v in shown), default=0) or 1
+    return [{"text": t, "direction": d, "share": round(100 * v / strongest)} for d, t, v in shown]
 
 
 def _score_with_model(profile: dict, lang: str) -> dict | None:
@@ -364,11 +398,14 @@ def _score_with_model(profile: dict, lang: str) -> dict | None:
             top.append(text)
     if not top:
         top = [t for t in [_income_text(profile, lang)] if t]
+    raising = [(t, v) for f, v in sorted(grouped.items(), key=lambda kv: -kv[1]) if v > 0 and (t := _model_factor_text(f, profile, lang))]
+    lowering = [(t, -v) for f, v in sorted(grouped.items(), key=lambda kv: kv[1]) if v < 0 and (t := _lowering_text(f, profile, lang))]
     return {
         "score": band_score(result["tier"], result["score"], MODEL_RAW_RANGE[result["tier"]]),
         "tier": result["tier"],
         "message": TIER_MESSAGE[result["tier"]][lang],
         "top_factors": top,
+        "breakdown": _breakdown(raising, lowering),
         "probabilities": result["probabilities"],
         "engine": ml_scoring.describe(),
     }
@@ -439,7 +476,7 @@ def rule_based_score(profile: dict, lang: str = "en") -> dict:
         factors.append((4, FACTOR_TEXT["senior"][lang]))
     if profile.get("is_solo_parent"):
         factors.append((6, FACTOR_TEXT["solo"][lang]))
-    if profile.get("has_children_0_18"):
+    if profile.get("has_member_age_0_18_or_pregnant"):
         factors.append((4, FACTOR_TEXT["children"][lang]))
     if (profile.get("household_size") or 0) >= 6:
         factors.append((4, FACTOR_TEXT["size"][lang].format(v=profile["household_size"])))
@@ -454,6 +491,7 @@ def rule_based_score(profile: dict, lang: str = "en") -> dict:
         "tier": tier,
         "message": TIER_MESSAGE[tier][lang],
         "top_factors": top,
+        "breakdown": _breakdown([(text, pts) for pts, text in sorted(factors, key=lambda f: -f[0]) if pts > 0], []),
         "engine": "Rule-based score (trained model not found)",
     }
 
@@ -579,11 +617,65 @@ def evaluate_program(program: dict, criteria: list[dict], profile: dict, lang: s
         "agency": program["agency"],
         "scope": program["scope"],
         "status": status,
+        "summary": program_summary(status, results, lang) if criteria else "",
         "requirements_met": met,
         "requirements_total": len(results),
         "requirements_to_verify": to_verify,
         "criteria": results,
     }
+
+
+# One plain sentence per program, shown before the details (2nd consultation: "explain it like
+# you're explaining to a 10-year-old why they qualify or not").
+SUMMARY_TEXT = {
+    "qualified": {
+        "en": "Good news! Your household meets everything this program asks for, so you can apply. Bring the documents listed below.",
+        "fil": "Magandang balita! Natugunan ng inyong pamilya ang lahat ng hinihingi ng programang ito, kaya maaari kayong mag-apply. Dalhin ang mga dokumento sa ibaba.",
+        "ceb": "Maayong balita! Natuman sa inyong pamilya ang tanan nga gipangayo niining programa, busa makaaplay ka. Dad-a ang mga dokumento sa ubos.",
+    },
+    "partial": {
+        "en": "So far so good: nothing you told us rules you out. The office still has to check {things}. Bring the documents below so they can.",
+        "fil": "Sa ngayon, walang sagot ninyo na hindi pasok. Kailangan pang suriin ng opisina ang {things}. Dalhin ang mga dokumento sa ibaba.",
+        "ceb": "Sa pagkakaron, walay tubag nimo nga dili pasok. Kinahanglan pa susihon sa opisina ang {things}. Dad-a ang mga dokumento sa ubos.",
+    },
+    # A yes/no rule ("only for households with a senior") and a value rule ("income per person
+    # ₱2,790 or less") read differently, so each has its own sentence.
+    "not_yes": {
+        "en": "This program is not for you right now. It is only for households where this is true: “{label}”. You answered no.",
+        "fil": "Hindi pa para sa inyo ang programang ito ngayon. Para lang ito sa pamilyang totoo ito: “{label}”. Hindi ang sagot ninyo.",
+        "ceb": "Dili pa para nimo kini nga programa karon. Para lang kini sa pamilya nga tinuod kini: “{label}”. Dili ang imong tubag.",
+    },
+    "not_no": {
+        "en": "This program is not for you right now. It is only for households where this is not true: “{label}”. You answered yes.",
+        "fil": "Hindi pa para sa inyo ang programang ito ngayon. Para lang ito sa pamilyang hindi totoo ito: “{label}”. Oo ang sagot ninyo.",
+        "ceb": "Dili pa para nimo kini nga programa karon. Para lang kini sa pamilya nga dili tinuod kini: “{label}”. Oo ang imong tubag.",
+    },
+    "not_value": {
+        "en": "This program is not for you right now. “{label}” must be {needs}, but yours is {yours}.",
+        "fil": "Hindi pa para sa inyo ang programang ito ngayon. Ang “{label}” ay dapat {needs}, pero ang sa inyo ay {yours}.",
+        "ceb": "Dili pa para nimo kini nga programa karon. Ang “{label}” kinahanglan {needs}, apan ang imo kay {yours}.",
+    },
+    "and_more": {"en": " (and {n} more)", "fil": " (at {n} pa)", "ceb": " (ug {n} pa)"},
+}
+
+
+def program_summary(status: str, criteria: list[dict], lang: str) -> str:
+    if status == "qualified":
+        return SUMMARY_TEXT["qualified"][lang]
+    if status == "partial":
+        things = ", ".join(f"“{c['label']}”" for c in criteria if c["status"] == "unknown") or "—"
+        return SUMMARY_TEXT["partial"][lang].format(things=things)
+    failed = [c for c in criteria if c["status"] == "fail"]
+    first = failed[0]
+    if first["requirement"] == RULE_TEXT["yes"][lang]:
+        text = SUMMARY_TEXT["not_yes"][lang].format(label=first["label"])
+    elif first["requirement"] == RULE_TEXT["no"][lang]:
+        text = SUMMARY_TEXT["not_no"][lang].format(label=first["label"])
+    else:
+        text = SUMMARY_TEXT["not_value"][lang].format(label=first["label"], needs=first["requirement"], yours=first["actual"])
+    if len(failed) > 1:
+        text = text[:-1] + SUMMARY_TEXT["and_more"][lang].format(n=len(failed) - 1) + "."
+    return text
 
 
 STATUS_ORDER = {"qualified": 0, "partial": 1, "not_qualified": 2}

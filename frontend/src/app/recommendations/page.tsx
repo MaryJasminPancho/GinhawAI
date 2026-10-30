@@ -58,6 +58,12 @@ function ProgramCard({ p, lang, have, onToggleDoc }: { p: ProgramResult; lang: L
               {p.requirements_to_verify > 0 && ` · ${t(lang, "reqVerify").replace("{n}", String(p.requirements_to_verify))}`}
             </span>
           </div>
+          {p.summary && (
+            <p className="mt-2.5 rounded-xl bg-gray-50 px-3 py-2 text-[0.875rem] leading-relaxed text-gray-700 dark:bg-white/[0.04] dark:text-gray-200">
+              <span className="sr-only">{t(lang, "inSimpleWords")}: </span>
+              {p.summary}
+            </p>
+          )}
         </div>
         <svg className="mt-1 shrink-0 text-gray-300 transition group-open:rotate-180 dark:text-gray-600" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" aria-hidden="true">
           <path d="M6 9l6 6 6-6" />

@@ -16,6 +16,7 @@ export type Entities = {
   age?: number;
   housing_type?: string;
   has_children_0_18?: boolean;
+  has_pregnant?: boolean;
   has_pwd?: boolean;
   has_senior?: boolean;
   is_solo_parent?: boolean;
@@ -44,6 +45,8 @@ export type ProgramResult = {
   agency: string;
   scope: string;
   status: "qualified" | "partial" | "not_qualified";
+  /** One plain-language sentence: why they can or can't apply. */
+  summary: string;
   /** How many of the program's requirements the household meets (counted, not weighted). */
   requirements_met: number;
   requirements_total: number;
@@ -55,7 +58,15 @@ export type ProgramResult = {
 };
 
 export type Assessment = {
-  vulnerability: { score: number; tier: Tier; message: string; top_factors: string[]; engine: string };
+  vulnerability: {
+    score: number;
+    tier: Tier;
+    message: string;
+    top_factors: string[];
+    /** What raised and what lowered the score; share = % of the push in that direction. */
+    breakdown?: { text: string; direction: "up" | "down"; share: number }[];
+    engine: string;
+  };
   programs: ProgramResult[];
   offices: OfficeItem[];
   barangay: string | null;

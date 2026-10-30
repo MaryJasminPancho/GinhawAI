@@ -31,7 +31,8 @@ def row_from_answers(a: dict) -> dict:
         "monthly_income": income,
         "per_capita_income": income / size,
         "age": float(a.get("age") or 0),
-        "has_children_0_18": int(bool(a.get("has_children_0_18"))),
+        # Trained as "children 0-18 or a pregnant member"; the chat now asks these separately.
+        "has_children_0_18": int(bool(a.get("has_children_0_18") or a.get("has_pregnant") or a.get("has_member_age_0_18_or_pregnant"))),
         "has_pwd": int(bool(a.get("has_pwd"))),
         # Senior in the household: the applicant is 60+ or someone else is (chat question has_senior).
         "has_senior_member": int(bool(a.get("has_senior") or a.get("has_senior_member") or float(a.get("age") or 0) >= 60)),
