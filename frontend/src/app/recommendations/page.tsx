@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
 import Button, { buttonClasses } from "@/components/Button";
-import { assess, Assessment, endSession, getChannels, getSession, Lang, ProgramResult, sendDocumentChecks, sendEmail, sendSms, SessionExpiredError } from "@/lib/api";
+import { assess, Assessment, endSession, getChannels, getCitizenToken, getSession, Lang, ProgramResult, sendDocumentChecks, sendEmail, sendSms, SessionExpiredError } from "@/lib/api";
 import { t } from "@/lib/i18n";
 
 // Figs. 19–22: ranked programs (green / amber / red), the explainable
@@ -131,6 +131,7 @@ function RecommendationsInner() {
   const router = useRouter();
   const sessionId = useSearchParams().get("session");
   const [lang, setLang] = useState<Lang>("en");
+  const signedIn = useSyncExternalStore(() => () => {}, () => !!getCitizenToken(), () => true);
   const [result, setResult] = useState<Assessment | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [have, setHave] = useState<Set<string>>(new Set());
@@ -319,6 +320,14 @@ function RecommendationsInner() {
           </section>
         )}
 
+        {result && sessionId && !signedIn && (
+          <Link
+            href={`/account?lang=${lang}&mode=signup&claim=${sessionId}&next=/me`}
+            className="relative z-10 mt-6 block rounded-3xl bg-brand-50 p-4 text-sm leading-relaxed text-brand-900 ring-1 ring-brand-200 transition hover:bg-brand-100 print:hidden dark:bg-brand-500/10 dark:text-brand-200 dark:ring-brand-500/20"
+          >
+            {t(lang, "acctSavePrompt")} <span className="font-semibold underline">{t(lang, "acctSignup")} →</span>
+          </Link>
+        )}
         <p className="relative z-10 mt-4 text-xs leading-relaxed text-gray-400 dark:text-gray-500">{t(lang, "disclaimer")}</p>
 
         <div className="relative z-10 mt-6 flex flex-col gap-3 print:hidden">

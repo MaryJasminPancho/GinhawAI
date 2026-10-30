@@ -34,6 +34,9 @@ REDIS_URL = os.getenv("REDIS_URL", f"redis://{REDIS_HOST}:{REDIS_PORT}/0")
 SECRET_KEY = os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET_KEY")
 SEMAPHORE_API_KEY = os.getenv("SEMAPHORE_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# Optional: OAuth client ID for "Continue with Google" on citizen sign-in (Google Cloud Console →
+# Credentials → OAuth client ID, type "Web application"). Without it the Google button is hidden.
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
 # Constants
 JWT_ALGORITHM = "HS256"

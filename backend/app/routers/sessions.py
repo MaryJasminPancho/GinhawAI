@@ -15,11 +15,12 @@ import uuid
 import asyncio
 import difflib
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request
 
 from app import chatflow, jargon
 from app.ai.slot_classifier import classify
 from app.ai.ai_parser import extract_entities
+from app.routers.citizens import citizen_id_from, load_citizen_profile, save_citizen_assessment, save_citizen_profile
 from app.schemas import AssessmentFeedbackIn, DocumentChecksIn, EmailChecklistRequest, EntityPatch, MessageIn, SessionStart, SmsRequest
 from app.scoring import derive_profile, evaluate_program, rank_programs, score_vulnerability, today_iso
 from app.settings import get_settings
@@ -173,18 +174,29 @@ def _progress(state: dict) -> dict:
 # Session lifecycle
 # ---------------------------------------------------------------------------
 @router.post("/api/sessions", status_code=201)
-async def start_session(request: Request, body: SessionStart | None = None):
+async def start_session(request: Request, body: SessionStart | None = None, authorization: str | None = Header(default=None)):
     lang = chatflow.lang_of(body.language if body else None)
     session_id = secrets.token_urlsafe(24)
-    first = chatflow.SLOTS[0]
+    entities: dict = {}
     greeting = chatflow.GREETING[lang]
-    q = chatflow.question(first, lang)
+    # Optional account: a signed-in citizen starts with their saved answers.
+    citizen_id = citizen_id_from(authorization)
+    if citizen_id:
+        saved = await load_citizen_profile(request, citizen_id)
+        entities = {k: v for k, v in saved.get("entities", {}).items() if k in chatflow.SLOTS or k == "barangay_code"}
+        name = saved.get("name") or ""
+        greeting = (chatflow.WELCOME_BACK if entities else chatflow.SIGNED_IN)[lang].format(name=name)
+    chatflow.auto_answer(entities)
+    first = chatflow.next_slot(entities)
+    q = chatflow.question(first, lang) if first else chatflow.ALL_SAVED[lang]
     state = {
         "lang": lang,
-        "entities": {},
+        "entities": entities,
         "asking": first,
         "messages": [{"from": "assistant", "text": greeting}, {"from": "assistant", "text": q}],
     }
+    if citizen_id:
+        state["citizen_id"] = citizen_id
     await _save(request, session_id, state)
     return {
         "session_id": session_id,
@@ -193,6 +205,7 @@ async def start_session(request: Request, body: SessionStart | None = None):
         "messages": [greeting, q],
         "asking": first,
         "quick_replies": chatflow.quick_replies(first, lang),
+        "is_complete": first is None,
     }
 
 
@@ -462,8 +475,33 @@ async def assess(session_id: str, request: Request):
         "assessed_on": today_iso(),
     }
     state["assessment"] = assessment
+    # Optional account: keep the citizen's answers and this result (once per set of answers).
+    if state.get("citizen_id") and state.get("citizen_saved") != state["entities"]:
+        await save_citizen_profile(request, state["citizen_id"], state["entities"], lang)
+        await save_citizen_assessment(request, state["citizen_id"], state["entities"], vulnerability, evaluations)
+        state["citizen_saved"] = dict(state["entities"])
     await _save(request, session_id, state)
     return assessment
+
+
+@router.post("/api/sessions/{session_id}/claim")
+async def claim_session(session_id: str, request: Request, authorization: str | None = Header(default=None)):
+    """A citizen who signs up (or logs in) from their results keeps this chat's answers and result."""
+    citizen_id = citizen_id_from(authorization)
+    if not citizen_id:
+        raise HTTPException(status_code=401, detail="Please log in again.")
+    state = await _load(request, session_id)
+    state["citizen_id"] = citizen_id
+    saved = False
+    if _progress(state)["profile_complete"]:
+        await save_citizen_profile(request, citizen_id, state["entities"], state.get("lang"))
+        assessment = state.get("assessment")
+        if assessment and state.get("citizen_saved") != state["entities"]:
+            await save_citizen_assessment(request, citizen_id, state["entities"], assessment["vulnerability"], assessment["programs"])
+            state["citizen_saved"] = dict(state["entities"])
+        saved = True
+    await _save(request, session_id, state)
+    return {"saved": saved}
 
 
 @router.post("/api/sessions/{session_id}/document-checks")

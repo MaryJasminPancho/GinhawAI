@@ -128,6 +128,24 @@ CHIPS = {
     "is_solo_parent": YES_NO,
 }
 
+# Signed-in citizen with saved answers (optional account).
+WELCOME_BACK = {
+    "fil": "Maligayang pagbabalik, {name}! Inilagay ko na ang inyong mga naka-save na sagot. Maaari ninyong baguhin ang alinman sa susunod na pahina.",
+    "ceb": "Maayong pagbalik, {name}! Gibutang na nako ang imong mga na-save nga tubag. Mahimo nimo usbon bisan unsa niini sa sunod nga panid.",
+    "en": "Welcome back, {name}! I've filled in your saved answers. You can change any of them on the next page.",
+}
+ALL_SAVED = {
+    "fil": "Kumpleto na ang inyong mga sagot. Pindutin ang \"Tingnan ang mga sagot\" para suriin o baguhin ang mga ito.",
+    "ceb": "Kompleto na ang imong mga tubag. Pindota ang \"Tan-awa ang mga tubag\" aron susihon o usbon kini.",
+    "en": "All your answers are filled in. Tap \"Review your answers\" to check or change them.",
+}
+# Signed in, nothing saved yet: unlike the anonymous greeting, answers ARE kept (in their account).
+SIGNED_IN = {
+    "fil": "Kumusta, {name}! Ako si GinhawAI. Magtatanong ako ng ilang bagay para malaman kung aling mga programa ng tulong ang para sa inyo. Dahil naka-log in kayo, ise-save ang inyong mga sagot sa inyong account.",
+    "ceb": "Kumusta, {name}! Ako si GinhawAI. Mangutana ko og pipila ka butang aron mahibal-an kung unsang mga programa sa tabang ang para nimo. Kay naka-log in ka, i-save ang imong mga tubag sa imong account.",
+    "en": "Hi {name}! I'm GinhawAI. I'll ask a few questions to find which assistance programs may fit your household. Since you're logged in, your answers will be saved to your account.",
+}
+
 GREETING = {
     "fil": "Magandang araw! Ako si GinhawAI. Magtatanong ako ng ilang bagay para malaman kung aling mga programa ng tulong ang maaaring para sa inyo. Hindi namin itatago ang inyong mga sagot pagkatapos ng session.",
     "ceb": "Maayong adlaw! Ako si GinhawAI. Mangutana ko og pipila ka butang aron mahibal-an kung unsang mga programa sa tabang ang para nimo. Dili namo tipigan ang imong mga tubag human sa session.",

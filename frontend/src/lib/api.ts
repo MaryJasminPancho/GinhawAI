@@ -22,7 +22,7 @@ export type Entities = {
   crisis_type?: string;
 };
 
-export type StartResponse = { session_id: string; language: Lang; messages: string[]; asking: string | null; quick_replies: QuickReply[] };
+export type StartResponse = { session_id: string; language: Lang; messages: string[]; asking: string | null; quick_replies: QuickReply[]; is_complete?: boolean };
 
 export type MessageResponse = {
   reply: string;
@@ -69,11 +69,53 @@ export type SessionState = {
 
 export class SessionExpiredError extends Error {}
 
+// ---------------------------------------------------------------------------
+// Optional citizen account (2nd consultation). The token is kept on this device only.
+// ---------------------------------------------------------------------------
+const CITIZEN_KEY = "citizenToken";
+const CITIZEN_NAME = "citizenName";
+export function getCitizenToken(): string | null {
+  try {
+    return typeof window === "undefined" ? null : localStorage.getItem(CITIZEN_KEY);
+  } catch {
+    return null;
+  }
+}
+export function getCitizenName(): string | null {
+  try {
+    return typeof window === "undefined" ? null : localStorage.getItem(CITIZEN_NAME);
+  } catch {
+    return null;
+  }
+}
+function keepCitizen(s: { token: string; display_name: string | null }) {
+  try {
+    localStorage.setItem(CITIZEN_KEY, s.token);
+    localStorage.setItem(CITIZEN_NAME, s.display_name ?? "");
+  } catch {
+    // Storage blocked (private mode): the account works for this page only.
+  }
+}
+export function citizenLogout() {
+  try {
+    localStorage.removeItem(CITIZEN_KEY);
+    localStorage.removeItem(CITIZEN_NAME);
+  } catch {
+    // nothing stored
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
     // Give up after 20 s so the screen never sits on "Loading…" forever.
-    res = await fetch(`${BASE}${path}`, { ...init, signal: AbortSignal.timeout(20000), headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
+    // A signed-in citizen (optional account) sends their token, so the chat can use saved answers.
+    const citizen = getCitizenToken();
+    res = await fetch(`${BASE}${path}`, {
+      ...init,
+      signal: AbortSignal.timeout(20000),
+      headers: { "Content-Type": "application/json", ...(citizen ? { Authorization: `Bearer ${citizen}` } : {}), ...(init?.headers ?? {}) },
+    });
   } catch {
     throw new Error("Can't connect right now. Please check your internet and try again.");
   }
@@ -156,5 +198,31 @@ export type Catalog = {
 /** Every Cebu City barangay, for picking one instead of typing it. */
 export const getBarangays = () => request<{ barangay_code: string; barangay_name: string }[]>("/api/barangays");
 export const getCatalog = (lang: Lang) => request<Catalog>(`/api/catalog?lang=${lang}`);
+export type CitizenAccount = {
+  display_name: string | null;
+  username: string | null;
+  email: string | null;
+  signed_in_with: "google" | "password";
+  member_since: string;
+  profile: { language: Lang | null; entities: Entities; updated_at: string } | null;
+  history: { assessment_id: string; tier: Tier | null; score: number | null; programs: { program_name: string; status: ProgramResult["status"] }[]; created_at: string }[];
+};
+type CitizenSession = { token: string; display_name: string | null };
+const kept = (s: CitizenSession) => {
+  keepCitizen(s);
+  return s;
+};
+export const getCitizenConfig = () => request<{ google_client_id: string | null }>("/api/citizen/config");
+export const citizenSignup = (username: string, password: string, display_name: string, consent: boolean) =>
+  request<CitizenSession>("/api/citizen/signup", post({ username, password, display_name, consent })).then(kept);
+export const citizenLogin = (username: string, password: string) =>
+  request<CitizenSession>("/api/citizen/login", post({ username, password })).then(kept);
+export const citizenGoogle = (credential: string, consent: boolean) =>
+  request<CitizenSession>("/api/citizen/google", post({ credential, consent })).then(kept);
+/** Keep this (anonymous) chat in the account the citizen just signed in to. */
+export const claimSession = (sessionId: string) => request<{ saved: boolean }>(`/api/sessions/${sessionId}/claim`, { method: "POST" });
+export const getMyAccount = () => request<CitizenAccount>("/api/citizen/me");
+export const deleteMyAccount = () => request<void>("/api/citizen/me", { method: "DELETE" }).then(citizenLogout);
+
 export const endSession = (sessionId: string) => request<{ purged: boolean }>(`/api/sessions/${sessionId}`, { method: "DELETE" });
 export const submitFeedback = (answers: number[], comment: string) => request<{ sus_score: number }>("/api/feedback", post({ answers, comment }));

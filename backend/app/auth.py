@@ -57,6 +57,8 @@ async def get_current_admin(request: Request, credentials: HTTPAuthorizationCred
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
+    if claims.get("typ") == "citizen":  # citizen accounts never reach the staff console
+        raise HTTPException(status_code=401, detail="Invalid token")
 
     # Reject tokens of deactivated accounts, and tokens issued before a
     # password reset or a "revoke all sessions".
