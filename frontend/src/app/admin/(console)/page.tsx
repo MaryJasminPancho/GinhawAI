@@ -10,9 +10,11 @@ import {
   AdminProgram,
   AuditLog,
   Barangay,
+  CitizenAccountCounts,
   DemandData,
   Feedback,
   getAuditLogs,
+  getCitizenAccountCounts,
   getDemand,
   getFeedback,
   getRatings,
@@ -46,6 +48,7 @@ type Data = {
   ratings: Rating[];
   health: ServiceStatus[] | null;
   pendingPasswords: number;
+  accounts: CitizenAccountCounts | null; // counts only; null if the call fails (the dashboard still loads)
   loadedAt: number;
 };
 
@@ -56,7 +59,7 @@ function greeting() {
 
 async function load(group: RoleGroup): Promise<Data> {
   const ops = group !== "executive";
-  const [programs, barangays, demand, sms, feedback, schedules, offices, audit, cases, ratings, health, pendingPasswords] = await Promise.all([
+  const [programs, barangays, demand, sms, feedback, schedules, offices, audit, cases, ratings, health, pendingPasswords, accounts] = await Promise.all([
     listPrograms(),
     listBarangays(),
     getDemand(12),
@@ -69,8 +72,9 @@ async function load(group: RoleGroup): Promise<Data> {
     ops ? getRatings() : Promise.resolve([]),
     group === "sysadmin" ? getSystemHealth() : Promise.resolve(null),
     group === "sysadmin" ? listPasswordRequests("pending").then((r) => r.length) : Promise.resolve(0),
+    getCitizenAccountCounts(12).catch(() => null), // anonymous counts for every role
   ]);
-  return { programs, barangays, demand, sms: sms.months, feedback, schedules, offices, audit, cases, ratings, health, pendingPasswords, loadedAt: Date.now() };
+  return { programs, barangays, demand, sms: sms.months, feedback, schedules, offices, audit, cases, ratings, health, pendingPasswords, accounts, loadedAt: Date.now() };
 }
 
 export default function DashboardPage() {
@@ -127,6 +131,15 @@ function AnalyticsBlock({ d }: { d: Data }) {
         <StatCard label={`Checklists sent by ${DELIVERY_CHANNEL.toLowerCase()} this month`} value={smsTotal ? fmtPct(smsMonth.sent / smsTotal) : "—"} hint={smsTotal ? `${fmtNum(smsMonth.sent)} of ${fmtNum(smsTotal)} delivered to the gateway` : "None sent yet"} tone={!smsTotal || smsMonth.sent / smsTotal >= 0.95 ? "brand" : "amber"} />
         <StatCard label="Avg. SUS score" value={sus === null ? "—" : sus.toFixed(1)} hint={sus === null ? "No feedback yet" : `From the last ${recentFb.length} citizen responses`} tone={sus === null || sus >= 68 ? "brand" : "amber"} />
       </div>
+
+      {/* Optional citizen accounts: counts only, so nobody can be identified from this. */}
+      {d.accounts && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard label="Citizen accounts" value={fmtNum(d.accounts.total)} hint="Optional accounts · counts only" tone="gray" />
+          <StatCard label="New accounts this month" value={fmtNum(d.accounts.new_this_month)} hint={`${fmtNum(d.accounts.active_30_days)} signed in during the last 30 days`} tone="gray" />
+          <StatCard label="Sign-in method" value={`${fmtNum(d.accounts.google)} Google`} hint={`${fmtNum(d.accounts.password)} username & password`} tone="gray" />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Card title="Assessment demand" subtitle="Completed assessments per month · last 6 months" className="xl:col-span-2" actions={<Link href="/admin/analytics" className="text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300">Open heatmap →</Link>}>

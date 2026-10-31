@@ -33,6 +33,7 @@ const I = {
   mail: "M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zM3 7l9 6 9-6",
   shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4",
   key: "M15 7a4 4 0 11-3.9 4.9L3 20v1h3l1-1v-2h2v-2h2l1.1-1.1A4 4 0 0115 7zM16 9h.01",
+  person: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z",
 };
 
 export const NAV: NavSection[] = [
@@ -58,6 +59,8 @@ export const NAV: NavSection[] = [
     items: [
       { href: "/admin/analytics", label: "Vulnerability Heatmap", icon: I.map, roles: ["welfare", "executive", "sysadmin"] },
       { href: "/admin/partners", label: "Partner Registry", icon: I.handshake, roles: ["welfare", "executive", "sysadmin"] },
+      // Optional citizen accounts: anonymous counts only (no names, answers or actions on accounts).
+      { href: "/admin/citizen-accounts", label: "Citizen Accounts", icon: I.person, roles: ["welfare", "executive", "sysadmin"] },
       { href: "/admin/reports", label: "Reports & Exports", icon: I.report, roles: ["executive", "sysadmin"] },
     ],
   },
@@ -65,8 +68,7 @@ export const NAV: NavSection[] = [
     title: "System",
     items: [
       { href: "/admin/system", label: "System Health", icon: I.pulse, roles: ["sysadmin"] },
-      { href: "/admin/users", label: "Staff Credentials", icon: I.users, roles: ["sysadmin"] },
-      { href: "/admin/email-gateway", label: "Email Gateway", icon: I.mail, roles: ["sysadmin"] },
+      { href: "/admin/users", label: "Staff Credentials", icon: I.users, roles: ["sysadmin"] },      { href: "/admin/email-gateway", label: "Email Gateway", icon: I.mail, roles: ["sysadmin"] },
       // SMS is a future enhancement (see lib/features.ts); the page stays in the code.
       ...(SMS_ENABLED ? [{ href: "/admin/sms-gateway", label: "SMS Gateway", icon: I.sms, roles: ["sysadmin"] as RoleGroup[] }] : []),
       { href: "/admin/security", label: "Security Policy", icon: I.shield, roles: ["sysadmin"] },
