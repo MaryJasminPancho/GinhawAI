@@ -47,6 +47,7 @@ function ChatInner() {
         setSessionId(s.session_id);
         s.messages.forEach((m) => addMessage("assistant", m));
         setChips(s.quick_replies);
+        setComplete(!!s.is_complete); // a signed-in citizen whose saved answers are complete
         // Remember the session in the address so a refresh can find it again.
         const url = new URL(window.location.href);
         url.searchParams.set("lang", s.language);
@@ -129,6 +130,7 @@ function ChatInner() {
           subtitle={LANG_LABELS[lang]}
           step={2}
           totalSteps={4}
+          back={`/language?lang=${lang}`}
           action={
             sessionId && (
               <button

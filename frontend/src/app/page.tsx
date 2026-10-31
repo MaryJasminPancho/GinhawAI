@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import AccountLink from "@/components/AccountLink";
 import Backdrop from "@/components/Backdrop";
 import { buttonClasses } from "@/components/Button";
 import TextSize from "@/components/TextSize";
@@ -53,6 +54,7 @@ export default function SplashScreen() {
             <Link href="/programs" className="text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300">
               Or browse all programs first
             </Link>
+            <AccountLink />
             <p className="text-xs text-gray-500 dark:text-gray-500">Takes about 3 minutes · Fil · Bisaya · English</p>
           </div>
         </div>
@@ -74,7 +76,7 @@ export default function SplashScreen() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
-            Anonymous: no name or ID needed, and answers are deleted after your session.
+            No account needed: without one, answers are deleted after your session. An optional account keeps them for you.
           </li>
         </ol>
       </main>

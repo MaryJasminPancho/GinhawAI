@@ -16,60 +16,69 @@ from app.scoring import CRISIS_VALUES, EMPLOYMENT_VALUES, HOUSING_VALUES
 
 LANGS = ("fil", "ceb", "en")
 
-# Order matters: this is the order questions are asked in.
+# Order matters: this is the order questions are asked in. General questions first (where you
+# live, who lives with you, you, work and money, home), then the specific situations, and the
+# most sensitive one (a crisis) last (2nd consultation: "generic first, then specific").
 SLOTS = [
     "barangay",
     "household_size",
-    "monthly_income",
-    "employment_status",
     "age",
+    "employment_status",
+    "monthly_income",
     "housing_type",
     "has_children_0_18",
+    "has_pregnant",
     "has_pwd",
     "has_senior",
     "is_solo_parent",
     "crisis_type",
 ]
 
-BOOL_SLOTS = {"has_children_0_18", "has_pwd", "has_senior", "is_solo_parent"}
+BOOL_SLOTS = {"has_children_0_18", "has_pregnant", "has_pwd", "has_senior", "is_solo_parent"}
 INT_SLOTS = {"household_size", "age"}
 ENUMS = {"employment_status": EMPLOYMENT_VALUES, "housing_type": HOUSING_VALUES, "crisis_type": CRISIS_VALUES}
 
+# One idea per question, everyday words, and an example or "tap one below" where it helps.
 QUESTIONS = {
     "barangay": {
-        "fil": "Saang barangay po kayo nakatira?",
-        "ceb": "Asa nga barangay ka nagpuyo?",
-        "en": "Which barangay do you live in?",
+        "fil": "Saang barangay sa Cebu City po kayo nakatira? (halimbawa: Lahug, Mabolo)",
+        "ceb": "Asa nga barangay sa Cebu City ka nagpuyo? (pananglitan: Lahug, Mabolo)",
+        "en": "Which barangay in Cebu City do you live in? (e.g. Lahug, Mabolo)",
     },
     "household_size": {
-        "fil": "Ilan po kayong nakatira sa bahay, kasama na kayo?",
-        "ceb": "Pila mo kabuok ang nagpuyo sa balay, apil na ka?",
-        "en": "How many people live in your household, including you?",
-    },
-    "monthly_income": {
-        "fil": "Magkano po ang kabuuang kita ng pamilya kada buwan? (halimbawa: 8000)",
-        "ceb": "Pila ang kinatibuk-ang kita sa pamilya kada bulan? (pananglitan: 8000)",
-        "en": "About how much does your whole household earn per month, in pesos? (e.g. 8000)",
-    },
-    "employment_status": {
-        "fil": "Ano po ang kalagayan ng trabaho ng pangunahing kumikita sa pamilya?",
-        "ceb": "Unsa ang kahimtang sa trabaho sa nag-unang nagtrabaho sa pamilya?",
-        "en": "What is the work situation of the main earner in your household?",
+        "fil": "Ilan po kayong nakatira sa bahay, kasama na kayo? (halimbawa: 5)",
+        "ceb": "Pila mo kabuok ang nagpuyo sa balay, apil na ka? (pananglitan: 5)",
+        "en": "How many people live in your home, including you? (e.g. 5)",
     },
     "age": {
         "fil": "Ilang taon na po kayo?",
         "ceb": "Pila na ang imong edad?",
         "en": "How old are you?",
     },
+    "employment_status": {
+        "fil": "Ano po ang trabaho ng pinakamalaking kumikita sa inyong bahay? Pumili sa ibaba.",
+        "ceb": "Unsa ang trabaho sa labing dako ang kita sa inyong balay? Pili sa ubos.",
+        "en": "What kind of work does the person who earns the most in your home have? Tap one below.",
+    },
+    "monthly_income": {
+        "fil": "Mga magkano po ang kinikita ng buong pamilya sa isang buwan? Pagsamahin ang kita ng lahat. (halimbawa: 8000)",
+        "ceb": "Mga pila ang kita sa tibuok pamilya sa usa ka bulan? Isumada ang kita sa tanan. (pananglitan: 8000)",
+        "en": "About how much does your whole household earn in a month? Add up everyone's pay. (e.g. 8000)",
+    },
     "housing_type": {
-        "fil": "Ano po ang inyong tirahan?",
-        "ceb": "Unsa ang inyong puy-anan?",
-        "en": "What is your housing situation?",
+        "fil": "Saan po kayo nakatira ngayon? Pumili sa ibaba.",
+        "ceb": "Asa ka nagpuyo karon? Pili sa ubos.",
+        "en": "Where do you live now? Tap one below.",
     },
     "has_children_0_18": {
-        "fil": "May anak po ba kayong 0–18 taong gulang, o may buntis sa pamilya?",
-        "ceb": "Aduna ba moy anak nga 0–18 anyos, o adunay mabdos sa pamilya?",
-        "en": "Do you have children aged 0–18, or a pregnant member in the household?",
+        "fil": "May mga bata po bang 0 hanggang 18 taong gulang na nakatira sa inyo?",
+        "ceb": "Aduna bay mga bata nga 0 hangtod 18 anyos nga nagpuyo uban ninyo?",
+        "en": "Are there children aged 0 to 18 living with you?",
+    },
+    "has_pregnant": {
+        "fil": "May buntis po ba ngayon sa inyong pamilya?",
+        "ceb": "Aduna bay mabdos karon sa inyong pamilya?",
+        "en": "Is anyone in your household pregnant right now?",
     },
     "has_pwd": {
         "fil": "May miyembro po ba ng pamilya na may kapansanan (PWD)?",
@@ -82,14 +91,14 @@ QUESTIONS = {
         "en": "Is anyone in your household 60 or older?",
     },
     "is_solo_parent": {
-        "fil": "Kayo po ba ay solo parent?",
-        "ceb": "Solo parent ba ka?",
-        "en": "Are you a solo parent?",
+        "fil": "Kayo po ba ay mag-isang nagpapalaki ng anak (solo parent)?",
+        "ceb": "Ikaw ba nag-inusarang nagpadako sa imong anak (solo parent)?",
+        "en": "Are you raising your children on your own (solo parent)?",
     },
     "crisis_type": {
-        "fil": "May kinakaharap po ba kayong krisis ngayon?",
-        "ceb": "Aduna ba moy giatubang nga krisis karon?",
-        "en": "Are you facing a crisis right now?",
+        "fil": "May pinagdadaanan po bang emergency ang pamilya ngayon? (halimbawa: gastos sa ospital, may namatay, sunog, baha) Pumili sa ibaba.",
+        "ceb": "Aduna bay emerhensya nga giagian sa pamilya karon? (pananglitan: gasto sa ospital, naay namatay, sunog, baha) Pili sa ubos.",
+        "en": "Is your family going through an emergency right now? (e.g. hospital bills, a death, fire, flood) Tap one below.",
     },
 }
 
@@ -123,9 +132,28 @@ CHIPS = {
                ("calamity", "Flood / typhoon"), ("job_loss", "Sudden loss of income")],
     },
     "has_children_0_18": YES_NO,
+    "has_pregnant": YES_NO,
     "has_pwd": YES_NO,
     "has_senior": YES_NO,
     "is_solo_parent": YES_NO,
+}
+
+# Signed-in citizen with saved answers (optional account).
+WELCOME_BACK = {
+    "fil": "Maligayang pagbabalik, {name}! Inilagay ko na ang inyong mga naka-save na sagot. Maaari ninyong baguhin ang alinman sa susunod na pahina.",
+    "ceb": "Maayong pagbalik, {name}! Gibutang na nako ang imong mga na-save nga tubag. Mahimo nimo usbon bisan unsa niini sa sunod nga panid.",
+    "en": "Welcome back, {name}! I've filled in your saved answers. You can change any of them on the next page.",
+}
+ALL_SAVED = {
+    "fil": "Kumpleto na ang inyong mga sagot. Pindutin ang \"Tingnan ang mga sagot\" para suriin o baguhin ang mga ito.",
+    "ceb": "Kompleto na ang imong mga tubag. Pindota ang \"Tan-awa ang mga tubag\" aron susihon o usbon kini.",
+    "en": "All your answers are filled in. Tap \"Review your answers\" to check or change them.",
+}
+# Signed in, nothing saved yet: unlike the anonymous greeting, answers ARE kept (in their account).
+SIGNED_IN = {
+    "fil": "Kumusta, {name}! Ako si GinhawAI. Magtatanong ako ng ilang bagay para malaman kung aling mga programa ng tulong ang para sa inyo. Dahil naka-log in kayo, ise-save ang inyong mga sagot sa inyong account.",
+    "ceb": "Kumusta, {name}! Ako si GinhawAI. Mangutana ko og pipila ka butang aron mahibal-an kung unsang mga programa sa tabang ang para nimo. Kay naka-log in ka, i-save ang imong mga tubag sa imong account.",
+    "en": "Hi {name}! I'm GinhawAI. I'll ask a few questions to find which assistance programs may fit your household. Since you're logged in, your answers will be saved to your account.",
 }
 
 GREETING = {

@@ -484,3 +484,43 @@ ALTER TABLE barangays ADD CONSTRAINT barangays_hazard_levels_check CHECK (
     (landslide_level IS NULL OR landslide_level IN ('none', 'low', 'moderate', 'high')) AND
     (storm_surge_level IS NULL OR storm_surge_level IN ('none', 'low', 'moderate', 'high'))
 );
+
+-- ---------------------------------------------------------------------------
+-- Optional citizen accounts (2nd consultation, 2026-10-30). The chat still works
+-- without one; an account only saves the citizen's own answers and past results
+-- so they can come back and change them. Sign-in by username + password or by
+-- Google. Created only with explicit consent (RA 10173); deleting the account
+-- deletes everything below (ON DELETE CASCADE).
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS citizen_accounts (
+    citizen_id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username           VARCHAR(40) UNIQUE,
+    password_hash      TEXT,
+    google_sub         VARCHAR(64) UNIQUE,
+    email              VARCHAR(254),
+    display_name       VARCHAR(100),
+    consent_at         TIMESTAMPTZ NOT NULL,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_login_at      TIMESTAMPTZ,
+    failed_attempts    INT NOT NULL DEFAULT 0,
+    locked_until       TIMESTAMPTZ,
+    CONSTRAINT citizen_has_sign_in CHECK (password_hash IS NOT NULL OR google_sub IS NOT NULL)
+);
+
+CREATE TABLE IF NOT EXISTS citizen_profiles (
+    citizen_id   UUID PRIMARY KEY REFERENCES citizen_accounts(citizen_id) ON DELETE CASCADE,
+    language     VARCHAR(3),
+    entities     JSONB NOT NULL DEFAULT '{}'::jsonb,
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS citizen_assessments (
+    assessment_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    citizen_id     UUID NOT NULL REFERENCES citizen_accounts(citizen_id) ON DELETE CASCADE,
+    entities       JSONB NOT NULL,
+    tier           VARCHAR(10),
+    score          INT,
+    programs       JSONB NOT NULL DEFAULT '[]'::jsonb,  -- [{program_name, status}]
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_citizen_assessments_citizen ON citizen_assessments (citizen_id, created_at DESC);

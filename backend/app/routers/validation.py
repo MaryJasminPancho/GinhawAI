@@ -36,6 +36,7 @@ def synthetic_profile(rng: random.Random, barangays: list[str]) -> dict:
         "age": rng.randint(18, 75),
         "housing_type": rng.choice(HOUSING_VALUES),
         "has_children_0_18": rng.random() < 0.6 if size > 1 else False,
+        "has_pregnant": rng.random() < 0.08 if size > 1 else False,
         "has_pwd": rng.random() < 0.15,
         "has_senior": rng.random() < 0.3 if size > 1 else False,
         "is_solo_parent": rng.random() < 0.15 if size > 1 else False,

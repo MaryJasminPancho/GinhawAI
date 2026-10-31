@@ -6,6 +6,64 @@ import type { Entities, Lang } from "./api";
 export const LANG_LABELS: Record<Lang, string> = { fil: "Filipino", ceb: "Bisaya", en: "English" };
 
 const T = {
+  // Optional citizen account
+  acctLoginOrSignup: { fil: "Mag-log in o mag-sign up (opsyonal)", ceb: "Mag-log in o mag-sign up (opsyonal)", en: "Log in or sign up (optional)" },
+  acctMyAccount: { fil: "Aking account", ceb: "Akong account", en: "My account" },
+  acctHi: { fil: "Kumusta", ceb: "Kumusta", en: "Hi" },
+  acctTitle: { fil: "Account", ceb: "Account", en: "Account" },
+  acctWhy: {
+    fil: "Opsyonal ito. Magagamit pa rin ang GinhawAI nang walang account. Sa account, nase-save ang inyong mga sagot at resulta para mabago ninyo ang mga ito sa susunod.",
+    ceb: "Opsyonal kini. Magamit gihapon ang GinhawAI bisan walay account. Sa account, ma-save ang imong mga tubag ug resulta aron mausab nimo kini sunod.",
+    en: "This is optional. You can use GinhawAI without an account. With one, your answers and results are saved so you can come back and change them.",
+  },
+  acctLogin: { fil: "Mag-log in", ceb: "Mag-log in", en: "Log in" },
+  acctSignup: { fil: "Mag-sign up", ceb: "Mag-sign up", en: "Sign up" },
+  acctUsername: { fil: "Username", ceb: "Username", en: "Username" },
+  acctPassword: { fil: "Password", ceb: "Password", en: "Password" },
+  acctName: { fil: "Pangalan na itatawag sa inyo (opsyonal)", ceb: "Ngalan nga itawag nimo (opsyonal)", en: "Name to call you (optional)" },
+  acctUserHint: { fil: "4–40 letra o numero", ceb: "4–40 ka letra o numero", en: "4–40 letters or numbers" },
+  acctPassHint: { fil: "Hindi bababa sa 8 karakter", ceb: "Dili moubos sa 8 ka karakter", en: "At least 8 characters" },
+  acctConsent: {
+    fil: "Pumapayag akong i-save ng GinhawAI ang aking mga sagot at resulta sa aking account. Maaari kong burahin ang account anumang oras. (RA 10173)",
+    ceb: "Mouyon ko nga i-save sa GinhawAI ang akong mga tubag ug resulta sa akong account. Mahimo nakong papason ang account bisan kanus-a. (RA 10173)",
+    en: "I agree that GinhawAI may save my answers and results in my account. I can delete my account at any time. (RA 10173)",
+  },
+  acctOr: { fil: "o", ceb: "o", en: "or" },
+  acctNoAccount: { fil: "Gamitin nang walang account", ceb: "Gamita nga walay account", en: "Continue without an account" },
+  acctLogout: { fil: "Mag-log out", ceb: "Mag-log out", en: "Log out" },
+  acctDelete: { fil: "Burahin ang aking account", ceb: "Papasa ang akong account", en: "Delete my account" },
+  acctDeleteConfirm: {
+    fil: "Buburahin nang tuluyan ang inyong account, mga sagot at resulta. Ituloy?",
+    ceb: "Papason sa hingpit ang imong account, mga tubag ug resulta. Padayon?",
+    en: "This permanently deletes your account, answers and results. Continue?",
+  },
+  acctSavedAnswers: { fil: "Mga naka-save na sagot", ceb: "Mga na-save nga tubag", en: "Saved answers" },
+  acctNoSaved: {
+    fil: "Wala pang naka-save. Tapusin ang chat nang isang beses at mase-save dito ang inyong mga sagot.",
+    ceb: "Wala pay na-save. Humana ang chat makausa ug ma-save diri ang imong mga tubag.",
+    en: "Nothing saved yet. Finish the chat once and your answers are saved here.",
+  },
+  acctCheckAgain: { fil: "Suriin muli gamit ang mga ito", ceb: "Susiha pag-usab gamit kini", en: "Check again with these answers" },
+  acctNewCheck: { fil: "Magsimula ng pagtatasa", ceb: "Sugdi ang pagsusi", en: "Start an assessment" },
+  acctEditHint: {
+    fil: "Para baguhin ang isang sagot, pindutin ang “Suriin muli” at i-edit ito sa pahina ng mga sagot.",
+    ceb: "Aron usbon ang usa ka tubag, pindota ang “Susiha pag-usab” ug i-edit kini sa panid sa mga tubag.",
+    en: "To change an answer, tap “Check again” and edit it on the review page.",
+  },
+  acctHistory: { fil: "Mga nakaraang resulta", ceb: "Mga miaging resulta", en: "Past results" },
+  acctNoHistory: { fil: "Wala pang resulta.", ceb: "Wala pay resulta.", en: "No results yet." },
+  acctQualified: { fil: "maaaring makakuha", ceb: "mahimong makakuha", en: "may qualify" },
+  acctSignedInWith: { fil: "Naka-sign in gamit ang", ceb: "Naka-sign in gamit ang", en: "Signed in with" },
+  acctGoogleConsent: {
+    fil: "Unang beses ninyo gamit ang Google account na ito. Lagyan ng tsek ang pahintulot sa ibaba, pagkatapos ay pindutin muli ang Google.",
+    ceb: "Unang higayon nimo gamit kining Google account. I-tsek ang pagtugot sa ubos, unya pindota pag-usab ang Google.",
+    en: "First time with this Google account: tick the consent box below, then tap Google again.",
+  },
+  acctSavePrompt: {
+    fil: "Gusto ninyong i-save ang resultang ito para mabago ninyo sa susunod? Gumawa ng libreng account.",
+    ceb: "Gusto nimo i-save kining resulta aron mausab nimo sunod? Paghimo og libreng account.",
+    en: "Want to keep this result and change your answers later? Create a free account.",
+  },
   startOver: { fil: "Magsimula muli", ceb: "Sugod pag-usab", en: "Start over" },
   loading: { fil: "Naglo-load…", ceb: "Nagkarga…", en: "Loading…" },
   sessionEnded: { fil: "Natapos na ang session. Magsimula muli.", ceb: "Nahuman na ang session. Sugod pag-usab.", en: "Your session has ended. Please start again." },
@@ -32,18 +90,43 @@ const T = {
   resultTitle: { fil: "Ang inyong resulta", ceb: "Ang imong resulta", en: "Your result" },
   whyThisScore: { fil: "Bakit ganito ang resulta", ceb: "Nganong mao kini ang resulta", en: "Why you got this result" },
   scoreNote: {
-    fil: "Isa itong tantya para makapagmungkahi ng mga programa. Hindi ito opisyal na desisyon — ang opisina ng LGU ang magkukumpirma.",
-    ceb: "Usa kini ka banabana aron makasugyot og mga programa. Dili kini opisyal nga desisyon — ang opisina sa LGU ang mokumpirma.",
-    en: "This score is an estimate used to suggest programs. It is not an official decision — your LGU office confirms eligibility.",
+    fil: "Ipinapakita ng score kung gaano kalaki ang pangangailangan ng inyong pamilya. Hindi ito ang tsansa ninyong makakuha ng programa: sa susunod na pahina, makikita sa bawat programa kung ilang kailangan ang natugunan ninyo. Ang opisina ng LGU ang magpapasya.",
+    ceb: "Gipakita sa score kung unsa kadako ang panginahanglan sa inyong pamilya. Dili kini ang tsansa nimo nga makakuha og programa: sa sunod nga panid, makita sa matag programa kung pila ka kinahanglanon ang imong natuman. Ang opisina sa LGU ang modesisyon.",
+    en: "The score shows how much help your household needs. It is not your chance of getting a program: on the next page, each program shows how many of its requirements you meet. Your LGU office makes the final decision.",
   },
   seePrograms: { fil: "Tingnan ang mga programa", ceb: "Tan-awa ang mga programa", en: "See recommended programs" },
   outOf100: { fil: "sa 100", ceb: "sa 100", en: "out of 100" },
+  bandLow: { fil: "Mababa", ceb: "Ubos", en: "Low" },
+  raisedScore: { fil: "Nagpataas sa score", ceb: "Nagpataas sa score", en: "What raised your score" },
+  loweredScore: { fil: "Nagpababa sa score", ceb: "Nagpaubos sa score", en: "What lowered it" },
+  effectBig: { fil: "Malaking epekto", ceb: "Dakong epekto", en: "Big effect" },
+  effectSome: { fil: "May epekto", ceb: "Naay epekto", en: "Some effect" },
+  effectSmall: { fil: "Maliit na epekto", ceb: "Gamay nga epekto", en: "Small effect" },
+  planButton: { fil: "Tingnan ang aking action plan", ceb: "Tan-awa ang akong action plan", en: "See my action plan" },
+  planTitle: { fil: "Aking action plan", ceb: "Akong action plan", en: "My action plan" },
+  planIntro: {
+    fil: "Narito ang mga hakbang para sa bawat programang maaari ninyong aplayan: ano ang ihahanda, saan pupunta, at ano ang mangyayari doon.",
+    ceb: "Ania ang mga lakang para sa matag programa nga mahimo nimong aplayan: unsa ang andamon, asa moadto, ug unsa ang mahitabo didto.",
+    en: "Here are the steps for each program you can apply for: what to prepare, where to go, and what happens there.",
+  },
+  planPrint: { fil: "I-print o i-save bilang PDF", ceb: "I-print o i-save isip PDF", en: "Print or save as PDF" },
+  planBackToPrograms: { fil: "Bumalik sa mga programa", ceb: "Balik sa mga programa", en: "Back to my programs" },
+  planNote: {
+    fil: "Mga gabay lamang ang bayad at lugar; maaaring magbago. Kumpirmahin sa opisina bago pumunta.",
+    ceb: "Giya lamang ang bayad ug lugar; mahimong mausab. Kumpirma sa opisina sa dili pa moadto.",
+    en: "Fees and places are guides and may change. Confirm with the office before you go.",
+  },
+  urgentTitle: { fil: "Kailangan ng tulong ngayon?", ceb: "Kinahanglan og tabang karon?", en: "Need help right now?" },
+  inSimpleWords: { fil: "Sa madaling salita", ceb: "Sa yanong pulong", en: "In simple words" },
+  bandModerate: { fil: "Katamtaman", ceb: "Kasarangan", en: "Moderate" },
+  bandHigh: { fil: "Mataas", ceb: "Taas", en: "High" },
 
   programsTitle: { fil: "Mga programa para sa inyo", ceb: "Mga programa para nimo", en: "Programs for you" },
   qualified: { fil: "Kwalipikado", ceb: "Kwalipikado", en: "Qualified" },
-  partial: { fil: "Posibleng kwalipikado", ceb: "Posibleng kwalipikado", en: "Likely qualified" },
+  partial: { fil: "Maaaring kwalipikado", ceb: "Mahimong kwalipikado", en: "May qualify" },
   notQualified: { fil: "Hindi kwalipikado", ceb: "Dili kwalipikado", en: "Not qualified" },
-  likelihood: { fil: "tsansa", ceb: "tsansa", en: "match" },
+  reqMet: { fil: "Natugunan ang {met} sa {total} na kailangan", ceb: "Natuman ang {met} sa {total} ka kinahanglanon", en: "Meets {met} of {total} requirements" },
+  reqVerify: { fil: "{n} susuriin sa opisina", ceb: "{n} susihon sa opisina", en: "{n} to check at the office" },
   whyTitle: { fil: "Bakit?", ceb: "Ngano?", en: "Why?" },
   toVerify: { fil: "Susuriin sa opisina", ceb: "Susihon sa opisina", en: "Checked at the office" },
   documentsTitle: { fil: "Mga dokumentong dadalhin", ceb: "Mga dokumento nga dad-on", en: "Documents to bring" },
@@ -138,11 +221,12 @@ export const t = (lang: Lang, key: Key) => T[key][lang] ?? T[key].en;
 export const FIELD_LABELS: Record<keyof Omit<Entities, "barangay_code">, Record<Lang, string>> = {
   barangay: { fil: "Barangay", ceb: "Barangay", en: "Barangay" },
   household_size: { fil: "Bilang ng nakatira", ceb: "Gidaghanon sa nagpuyo", en: "People in household" },
-  monthly_income: { fil: "Kita kada buwan", ceb: "Kita kada bulan", en: "Monthly income" },
-  employment_status: { fil: "Trabaho", ceb: "Trabaho", en: "Work situation" },
   age: { fil: "Edad", ceb: "Edad", en: "Age" },
+  employment_status: { fil: "Trabaho", ceb: "Trabaho", en: "Work situation" },
+  monthly_income: { fil: "Kita kada buwan", ceb: "Kita kada bulan", en: "Monthly income" },
   housing_type: { fil: "Tirahan", ceb: "Puy-anan", en: "Housing" },
-  has_children_0_18: { fil: "May anak 0–18 / buntis", ceb: "Naay anak 0–18 / mabdos", en: "Children 0–18 / pregnant" },
+  has_children_0_18: { fil: "May anak 0–18", ceb: "Naay anak 0–18", en: "Children 0–18" },
+  has_pregnant: { fil: "May buntis", ceb: "Naay mabdos", en: "Pregnant member" },
   has_pwd: { fil: "May PWD sa pamilya", ceb: "Naay PWD sa pamilya", en: "PWD in household" },
   has_senior: { fil: "May 60 pataas sa pamilya", ceb: "Naay 60 pataas sa pamilya", en: "Someone 60+ in household" },
   is_solo_parent: { fil: "Solo parent", ceb: "Solo parent", en: "Solo parent" },
@@ -177,7 +261,7 @@ export const CHOICES: Record<string, { value: string; label: Record<Lang, string
   ],
 };
 
-export const BOOL_FIELDS = new Set(["has_children_0_18", "has_pwd", "has_senior", "is_solo_parent"]);
+export const BOOL_FIELDS = new Set(["has_children_0_18", "has_pregnant", "has_pwd", "has_senior", "is_solo_parent"]);
 export const NUMBER_FIELDS = new Set(["household_size", "monthly_income", "age"]);
 
 export function displayValue(field: string, value: unknown, lang: Lang): string {

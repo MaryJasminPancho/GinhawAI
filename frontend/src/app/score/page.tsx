@@ -37,6 +37,65 @@ const LEVELS: Record<Tier, { label: Record<Lang, string>; from: string; to: stri
 const RADIUS = 52;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
+// "Why this score", for citizens: what raised it and what lowered it, each answer as a bar with
+// big / some / small effect (no numbers), from the model's exact per-answer contributions.
+function ScoreBreakdown({ items, lang }: { items: { text: string; direction: "up" | "down"; share: number }[]; lang: Lang }) {
+  // share = effect compared with the strongest answer shown (100)
+  const effect = (share: number) => t(lang, share >= 60 ? "effectBig" : share >= 30 ? "effectSome" : "effectSmall");
+  const group = (dir: "up" | "down") => items.filter((i) => i.direction === dir);
+  return (
+    <section className="relative z-10 mt-4 space-y-5 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10">
+      <h2 className="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">{t(lang, "whyThisScore")}</h2>
+      {(["up", "down"] as const).map((dir) =>
+        group(dir).length === 0 ? null : (
+          <div key={dir}>
+            <h3 className={`mb-2.5 flex items-center gap-1.5 text-[0.875rem] font-semibold ${dir === "up" ? "text-red-700 dark:text-red-300" : "text-brand-700 dark:text-brand-300"}`}>
+              <span aria-hidden="true">{dir === "up" ? "▲" : "▼"}</span>
+              {t(lang, dir === "up" ? "raisedScore" : "loweredScore")}
+            </h3>
+            <ul className="space-y-3">
+              {group(dir).map((f, i) => (
+                <li key={i}>
+                  <p className="text-[0.875rem] leading-snug text-gray-800 dark:text-gray-200">{f.text}</p>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                      <div className={`h-full rounded-full ${dir === "up" ? "bg-red-500" : "bg-brand-500"}`} style={{ width: `${Math.max(8, f.share)}%` }} />
+                    </div>
+                    <span className="w-24 shrink-0 text-right text-[0.75rem] font-medium text-gray-500 dark:text-gray-400">{effect(f.share)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ),
+      )}
+    </section>
+  );
+}
+
+// The three need levels and their score ranges; the household's own level is highlighted.
+function ScoreBands({ tier, lang }: { tier: "low" | "moderate" | "high"; lang: Lang }) {
+  const bands = [
+    { key: "low", range: "0–33", label: t(lang, "bandLow"), on: "bg-brand-600 text-white" },
+    { key: "moderate", range: "34–66", label: t(lang, "bandModerate"), on: "bg-amber-500 text-white" },
+    { key: "high", range: "67–100", label: t(lang, "bandHigh"), on: "bg-red-600 text-white" },
+  ] as const;
+  return (
+    <div className="grid w-full max-w-xs grid-cols-3 gap-1.5" aria-label="Score ranges">
+      {bands.map((b) => (
+        <div
+          key={b.key}
+          aria-current={b.key === tier ? "true" : undefined}
+          className={`rounded-xl px-1 py-1.5 text-center ${b.key === tier ? `${b.on} shadow-sm` : "bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-400"}`}
+        >
+          <p className="text-[0.75rem] font-bold leading-tight">{b.label}</p>
+          <p className="text-[0.6875rem] tabular-nums leading-tight opacity-90">{b.range}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ScoreRing({ score, from, to, label }: { score: number; from: string; to: string; label: string }) {
   const pct = Math.min(Math.max(score, 0), 100);
   // Start empty, then animate to the target offset once mounted (fill-in effect).
@@ -111,6 +170,7 @@ function ScoreInner() {
           {v && level && (
             <>
               <ScoreRing score={v.score} from={level.from} to={level.to} label={t(lang, "outOf100")} />
+              <ScoreBands tier={v.tier} lang={lang} />
               <span className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ${level.badge}`}>
                 <span className={`h-1.5 w-1.5 rounded-full ${level.dot}`} />
                 {level.label[lang]}
@@ -120,7 +180,9 @@ function ScoreInner() {
           )}
         </section>
 
-        {v && v.top_factors.length > 0 && (
+        {v && v.breakdown && v.breakdown.length > 0 && <ScoreBreakdown items={v.breakdown} lang={lang} />}
+
+        {v && !v.breakdown?.length && v.top_factors.length > 0 && (
           <section className="relative z-10 mt-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 dark:bg-white/4 dark:ring-white/10">
             <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">{t(lang, "whyThisScore")}</h2>
             <ol className="space-y-2.5">

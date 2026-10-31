@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
 import Button, { buttonClasses } from "@/components/Button";
-import { assess, Assessment, endSession, getChannels, getSession, Lang, ProgramResult, sendDocumentChecks, sendEmail, sendSms, SessionExpiredError } from "@/lib/api";
+import UrgentHelp from "@/components/UrgentHelp";
+import { assess, Assessment, endSession, getChannels, getCitizenToken, getSession, haveKey, Lang, ProgramResult, sendDocumentChecks, sendEmail, sendSms, SessionExpiredError } from "@/lib/api";
 import { t } from "@/lib/i18n";
 
 // Figs. 19–22: ranked programs (green / amber / red), the explainable
@@ -53,10 +54,17 @@ function ProgramCard({ p, lang, have, onToggleDoc }: { p: ProgramResult; lang: L
               <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
               {t(lang, st.key)}
             </span>
-            <span className="text-xs font-semibold tabular-nums text-gray-500 dark:text-gray-400">
-              {p.likelihood}% {t(lang, "likelihood")}
+            <span className="text-xs font-semibold tabular-nums text-gray-600 dark:text-gray-300">
+              {t(lang, "reqMet").replace("{met}", String(p.requirements_met)).replace("{total}", String(p.requirements_total))}
+              {p.requirements_to_verify > 0 && ` · ${t(lang, "reqVerify").replace("{n}", String(p.requirements_to_verify))}`}
             </span>
           </div>
+          {p.summary && (
+            <p className="mt-2.5 rounded-xl bg-gray-50 px-3 py-2 text-[0.875rem] leading-relaxed text-gray-700 dark:bg-white/[0.04] dark:text-gray-200">
+              <span className="sr-only">{t(lang, "inSimpleWords")}: </span>
+              {p.summary}
+            </p>
+          )}
         </div>
         <svg className="mt-1 shrink-0 text-gray-300 transition group-open:rotate-180 dark:text-gray-600" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" aria-hidden="true">
           <path d="M6 9l6 6 6-6" />
@@ -131,9 +139,17 @@ function RecommendationsInner() {
   const router = useRouter();
   const sessionId = useSearchParams().get("session");
   const [lang, setLang] = useState<Lang>("en");
+  const signedIn = useSyncExternalStore(() => () => {}, () => !!getCitizenToken(), () => true);
   const [result, setResult] = useState<Assessment | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [have, setHave] = useState<Set<string>>(new Set());
+  // "I have this" ticks, kept in this tab so they survive a trip to the Action Plan and back.
+  const [have, setHave] = useState<Set<string>>(() => {
+    try {
+      return new Set(sessionId && typeof window !== "undefined" ? JSON.parse(sessionStorage.getItem(haveKey(sessionId)) || "[]") : []);
+    } catch {
+      return new Set();
+    }
+  });
   const [touched, setTouched] = useState<Set<string>>(new Set()); // programs whose checklist the citizen used
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -167,6 +183,10 @@ function RecommendationsInner() {
       const n = new Set(h);
       if (n.has(docId)) n.delete(docId);
       else n.add(docId);
+      // The Action Plan shows these as ready (kept in this tab only).
+      try {
+        if (sessionId) sessionStorage.setItem(haveKey(sessionId), JSON.stringify([...n]));
+      } catch {}
       return n;
     });
     setTouched((s) => new Set(s).add(programId));
@@ -207,6 +227,12 @@ function RecommendationsInner() {
 
       <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-2xl lg:max-w-5xl sm:rounded-4xl sm:bg-white/80 sm:p-8 sm:shadow-2xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
         <PageHeader title={t(lang, "programsTitle")} subtitle={result?.barangay ? `Brgy. ${result.barangay}` : undefined} />
+
+        {result?.urgent && result.urgent.length > 0 && (
+          <div className="relative z-10 mt-6">
+            <UrgentHelp title={t(lang, "urgentTitle")} contacts={result.urgent} />
+          </div>
+        )}
 
         <div className="relative z-10 mt-6 space-y-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0">
           {!sessionId && <p className="text-sm text-red-600 lg:col-span-2 dark:text-red-400">{t(lang, "sessionEnded")}</p>}
@@ -319,9 +345,22 @@ function RecommendationsInner() {
           </section>
         )}
 
+        {result && sessionId && !signedIn && (
+          <Link
+            href={`/account?lang=${lang}&mode=signup&claim=${sessionId}&next=/me`}
+            className="relative z-10 mt-6 block rounded-3xl bg-brand-50 p-4 text-sm leading-relaxed text-brand-900 ring-1 ring-brand-200 transition hover:bg-brand-100 print:hidden dark:bg-brand-500/10 dark:text-brand-200 dark:ring-brand-500/20"
+          >
+            {t(lang, "acctSavePrompt")} <span className="font-semibold underline">{t(lang, "acctSignup")} →</span>
+          </Link>
+        )}
         <p className="relative z-10 mt-4 text-xs leading-relaxed text-gray-400 dark:text-gray-500">{t(lang, "disclaimer")}</p>
 
         <div className="relative z-10 mt-6 flex flex-col gap-3 print:hidden">
+          {result && matched.length > 0 && sessionId && (
+            <Link href={`/plan?session=${sessionId}`} className={buttonClasses("primary", "w-full text-center")}>
+              {t(lang, "planButton")} →
+            </Link>
+          )}
           {result && matched.length > 0 && (
             <Button variant="secondary" onClick={() => window.print()} className="w-full">
               {t(lang, "saveChecklist")}

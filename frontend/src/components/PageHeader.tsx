@@ -1,5 +1,6 @@
 import type React from "react";
 import Image from "next/image";
+import BackButton from "./BackButton";
 import TextSize from "./TextSize";
 
 type Props = {
@@ -10,11 +11,13 @@ type Props = {
   totalSteps?: number;
   /** Optional small control shown at the top right (e.g. the chat's "Start over"). */
   action?: React.ReactNode;
+  /** Where "Back" goes when there is no previous GinhawAI page (default: the home page). Pass false to hide it. */
+  back?: string | false;
 };
 
 /** Small top bar used on every screen after the splash: logo tile, title, and
  * an optional step progress bar for the assessment flow. */
-export default function PageHeader({ title, subtitle, step, totalSteps, action }: Props) {
+export default function PageHeader({ title, subtitle, step, totalSteps, action, back = "/" }: Props) {
   const showProgress = !!step && !!totalSteps;
 
   return (
@@ -22,7 +25,9 @@ export default function PageHeader({ title, subtitle, step, totalSteps, action }
       {/* Row 1: logo + title, and the text-size control (always in reach for older users) */}
       <div className="flex items-center justify-between gap-3 pt-1">
         <div className="flex min-w-0 items-center gap-2.5">
-          <div className="shrink-0 rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-black/5">
+          {back !== false && <BackButton fallback={back} />}
+          {/* On phones the Back button takes the logo's place, so the title keeps its room */}
+          <div className={`shrink-0 rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-black/5 ${back !== false ? "hidden sm:block" : ""}`}>
             <Image src="/logo.png" alt="GinhawAI" width={243} height={313} priority className="h-7 w-auto" />
           </div>
           <div className="min-w-0">

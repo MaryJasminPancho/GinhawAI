@@ -16,13 +16,14 @@ export type Entities = {
   age?: number;
   housing_type?: string;
   has_children_0_18?: boolean;
+  has_pregnant?: boolean;
   has_pwd?: boolean;
   has_senior?: boolean;
   is_solo_parent?: boolean;
   crisis_type?: string;
 };
 
-export type StartResponse = { session_id: string; language: Lang; messages: string[]; asking: string | null; quick_replies: QuickReply[] };
+export type StartResponse = { session_id: string; language: Lang; messages: string[]; asking: string | null; quick_replies: QuickReply[]; is_complete?: boolean };
 
 export type MessageResponse = {
   reply: string;
@@ -44,14 +45,32 @@ export type ProgramResult = {
   agency: string;
   scope: string;
   status: "qualified" | "partial" | "not_qualified";
-  likelihood: number;
+  /** One plain-language sentence: why they can or can't apply. */
+  summary: string;
+  /** How many of the program's requirements the household meets (counted, not weighted). */
+  requirements_met: number;
+  requirements_total: number;
+  /** Requirements only the office can confirm (e.g. documents). */
+  requirements_to_verify: number;
   criteria: CriterionResult[];
   documents: DocumentItem[];
   schedules: ScheduleItem[];
 };
 
+export type UrgentContact = { name: string; phone: string | null; address: string | null; what: string };
+
 export type Assessment = {
-  vulnerability: { score: number; tier: Tier; message: string; top_factors: string[]; engine: string };
+  /** Who to call right now, when the citizen reported a crisis (empty otherwise). */
+  urgent?: UrgentContact[];
+  vulnerability: {
+    score: number;
+    tier: Tier;
+    message: string;
+    top_factors: string[];
+    /** What raised and what lowered the score; share = % of the push in that direction. */
+    breakdown?: { text: string; direction: "up" | "down"; share: number }[];
+    engine: string;
+  };
   programs: ProgramResult[];
   offices: OfficeItem[];
   barangay: string | null;
@@ -69,11 +88,53 @@ export type SessionState = {
 
 export class SessionExpiredError extends Error {}
 
+// ---------------------------------------------------------------------------
+// Optional citizen account (2nd consultation). The token is kept on this device only.
+// ---------------------------------------------------------------------------
+const CITIZEN_KEY = "citizenToken";
+const CITIZEN_NAME = "citizenName";
+export function getCitizenToken(): string | null {
+  try {
+    return typeof window === "undefined" ? null : localStorage.getItem(CITIZEN_KEY);
+  } catch {
+    return null;
+  }
+}
+export function getCitizenName(): string | null {
+  try {
+    return typeof window === "undefined" ? null : localStorage.getItem(CITIZEN_NAME);
+  } catch {
+    return null;
+  }
+}
+function keepCitizen(s: { token: string; display_name: string | null }) {
+  try {
+    localStorage.setItem(CITIZEN_KEY, s.token);
+    localStorage.setItem(CITIZEN_NAME, s.display_name ?? "");
+  } catch {
+    // Storage blocked (private mode): the account works for this page only.
+  }
+}
+export function citizenLogout() {
+  try {
+    localStorage.removeItem(CITIZEN_KEY);
+    localStorage.removeItem(CITIZEN_NAME);
+  } catch {
+    // nothing stored
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
     // Give up after 20 s so the screen never sits on "Loading…" forever.
-    res = await fetch(`${BASE}${path}`, { ...init, signal: AbortSignal.timeout(20000), headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
+    // A signed-in citizen (optional account) sends their token, so the chat can use saved answers.
+    const citizen = getCitizenToken();
+    res = await fetch(`${BASE}${path}`, {
+      ...init,
+      signal: AbortSignal.timeout(20000),
+      headers: { "Content-Type": "application/json", ...(citizen ? { Authorization: `Bearer ${citizen}` } : {}), ...(init?.headers ?? {}) },
+    });
   } catch {
     throw new Error("Can't connect right now. Please check your internet and try again.");
   }
@@ -156,5 +217,51 @@ export type Catalog = {
 /** Every Cebu City barangay, for picking one instead of typing it. */
 export const getBarangays = () => request<{ barangay_code: string; barangay_name: string }[]>("/api/barangays");
 export const getCatalog = (lang: Lang) => request<Catalog>(`/api/catalog?lang=${lang}`);
+export type CitizenAccount = {
+  display_name: string | null;
+  username: string | null;
+  email: string | null;
+  signed_in_with: "google" | "password";
+  member_since: string;
+  profile: { language: Lang | null; entities: Entities; updated_at: string } | null;
+  history: { assessment_id: string; tier: Tier | null; score: number | null; programs: { program_name: string; status: ProgramResult["status"] }[]; created_at: string }[];
+};
+type CitizenSession = { token: string; display_name: string | null };
+const kept = (s: CitizenSession) => {
+  keepCitizen(s);
+  return s;
+};
+export const getCitizenConfig = () => request<{ google_client_id: string | null }>("/api/citizen/config");
+export const citizenSignup = (username: string, password: string, display_name: string, consent: boolean) =>
+  request<CitizenSession>("/api/citizen/signup", post({ username, password, display_name, consent })).then(kept);
+export const citizenLogin = (username: string, password: string) =>
+  request<CitizenSession>("/api/citizen/login", post({ username, password })).then(kept);
+export const citizenGoogle = (credential: string, consent: boolean) =>
+  request<CitizenSession>("/api/citizen/google", post({ credential, consent })).then(kept);
+/** Keep this (anonymous) chat in the account the citizen just signed in to. */
+export const claimSession = (sessionId: string) => request<{ saved: boolean }>(`/api/sessions/${sessionId}/claim`, { method: "POST" });
+/** Step-by-step Action Plan for the programs the household can or may apply for. */
+export type ActionPlan = {
+  urgent: UrgentContact[];
+  urgent_title: string;
+  labels: { docs: string; docs_all: string; go: string; there: string; dates: string };
+  programs: {
+    program_id: string;
+    program_name: string;
+    status: ProgramResult["status"];
+    documents: { document_name: string; have: boolean; how: string | null; is_mandatory: boolean }[];
+    all_documents_ready: boolean;
+    office: { name: string; address: string | null; hours: string | null; phone: string | null } | null;
+    office_note: string | null;
+    what_happens: string;
+    schedules: { start_date: string; end_date: string; notes: string | null; office_name: string }[];
+  }[];
+};
+export const getPlan = (sessionId: string, have: string[]) => request<ActionPlan>(`/api/sessions/${sessionId}/plan`, post({ have }));
+/** Where the results page keeps the "I have this" ticks for the Action Plan (this tab only). */
+export const haveKey = (sessionId: string) => `have-${sessionId}`;
+export const getMyAccount = () => request<CitizenAccount>("/api/citizen/me");
+export const deleteMyAccount = () => request<void>("/api/citizen/me", { method: "DELETE" }).then(citizenLogout);
+
 export const endSession = (sessionId: string) => request<{ purged: boolean }>(`/api/sessions/${sessionId}`, { method: "DELETE" });
 export const submitFeedback = (answers: number[], comment: string) => request<{ sus_score: number }>("/api/feedback", post({ answers, comment }));
