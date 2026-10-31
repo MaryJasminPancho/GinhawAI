@@ -430,6 +430,25 @@ export async function resetStaffPassword(userId: string): Promise<string> {
 }
 
 // ===========================================================================
+// CITIZEN ACCOUNTS (optional accounts made by citizens)
+// Privacy: counts for every analytics role; a masked support list for the System
+// Administrator only. Answers, names and results are never returned by these calls.
+// ===========================================================================
+export type CitizenAccountCounts = {
+  total: number;
+  google: number;
+  password: number;
+  new_this_month: number;
+  active_30_days: number;
+  monthly: { month: string; count: number }[];
+  /** Months without a sign-in after which an account is deleted automatically. */
+  retention_months: number;
+  /** Accounts within a month of that limit (they are deleted soon unless the citizen signs in). */
+  deleting_soon: number;
+};
+export const getCitizenAccountCounts = (months = 12) => request<CitizenAccountCounts>(`/api/analytics/citizen-accounts?months=${months}`);
+
+// ===========================================================================
 // ANALYTICS (anonymized aggregates)
 // ===========================================================================
 export type Tier = "high" | "moderate" | "low";

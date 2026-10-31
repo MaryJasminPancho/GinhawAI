@@ -10,7 +10,7 @@ from redis.exceptions import ConnectionError as RedisConnectionError, TimeoutErr
 from app.cache import create_redis_client
 from app.database import create_db_pool
 from app import jargon
-from app.routers import admin_users, analytics, audit_logs, auth, catalog, citizens, feedback, health, jargon_terms, localization, partners, programs, sessions, system, validation
+from app.routers import admin_users, analytics, audit_logs, auth, catalog, citizen_accounts, citizens, feedback, health, jargon_terms, localization, partners, programs, sessions, system, validation
 from app.settings import DEFAULTS, load_settings
 
 # Shared list object: the CORS middleware reads it on every request, so the
@@ -41,7 +41,10 @@ async def lifespan(app: FastAPI):
     app.state.cors_origins = CORS_ORIGINS
     CORS_ORIGINS[:] = app.state.settings.get("allowed_origins") or DEFAULTS["allowed_origins"]
     app.state.warmup_task = asyncio.create_task(warm_up_models())  # background: the server starts at once
+    # Permanently deletes citizen accounts whose 30-day grace period (set by "Deactivate") is over.
+    app.state.purge_task = asyncio.create_task(citizen_accounts.purge_loop(app))
     yield
+    app.state.purge_task.cancel()
     await app.state.db_pool.close()
     await app.state.redis.aclose()
 
@@ -99,5 +102,6 @@ app.include_router(citizens.router)
 app.include_router(feedback.router)
 app.include_router(audit_logs.router)
 app.include_router(analytics.router)
+app.include_router(citizen_accounts.router)
 app.include_router(validation.router)
 app.include_router(system.router)

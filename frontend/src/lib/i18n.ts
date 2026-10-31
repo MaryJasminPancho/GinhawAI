@@ -24,9 +24,9 @@ const T = {
   acctUserHint: { fil: "4–40 letra o numero", ceb: "4–40 ka letra o numero", en: "4–40 letters or numbers" },
   acctPassHint: { fil: "Hindi bababa sa 8 karakter", ceb: "Dili moubos sa 8 ka karakter", en: "At least 8 characters" },
   acctConsent: {
-    fil: "Pumapayag akong i-save ng GinhawAI ang aking mga sagot at resulta sa aking account. Maaari kong burahin ang account anumang oras. (RA 10173)",
-    ceb: "Mouyon ko nga i-save sa GinhawAI ang akong mga tubag ug resulta sa akong account. Mahimo nakong papason ang account bisan kanus-a. (RA 10173)",
-    en: "I agree that GinhawAI may save my answers and results in my account. I can delete my account at any time. (RA 10173)",
+    fil: "Pumapayag akong i-save ng GinhawAI ang aking mga sagot at resulta sa aking account. Maaari kong burahin ang account anumang oras. Kung hindi ako mag-sign in nang 12 buwan, kusa itong buburahin. (RA 10173)",
+    ceb: "Mouyon ko nga i-save sa GinhawAI ang akong mga tubag ug resulta sa akong account. Mahimo nakong papason ang account bisan kanus-a. Kung dili ko mo-sign in sulod sa 12 ka bulan, awtomatiko kini nga papason. (RA 10173)",
+    en: "I agree that GinhawAI may save my answers and results in my account. I can delete my account at any time. If I do not sign in for 12 months, it is deleted automatically. (RA 10173)",
   },
   acctOr: { fil: "o", ceb: "o", en: "or" },
   acctNoAccount: { fil: "Gamitin nang walang account", ceb: "Gamita nga walay account", en: "Continue without an account" },
