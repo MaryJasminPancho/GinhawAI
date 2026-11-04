@@ -524,3 +524,12 @@ CREATE TABLE IF NOT EXISTS citizen_assessments (
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS ix_citizen_assessments_citizen ON citizen_assessments (citizen_id, created_at DESC);
+
+-- "My document checklist" (signed-in citizens only): the documents the citizen ticked as
+-- "I have this". A row means "has it"; unticking deletes the row. Removed with the account.
+CREATE TABLE IF NOT EXISTS citizen_documents (
+    citizen_id  UUID NOT NULL REFERENCES citizen_accounts(citizen_id) ON DELETE CASCADE,
+    doc_id      UUID NOT NULL REFERENCES document_requirements(doc_id) ON DELETE CASCADE,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (citizen_id, doc_id)
+);

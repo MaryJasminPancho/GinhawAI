@@ -22,7 +22,7 @@ from app.config import GOOGLE_CLIENT_ID, JWT_ALGORITHM, SECRET_KEY
 
 router = APIRouter()
 
-TOKEN_DAYS = 30
+TOKEN_MINUTES = 30  # a citizen sign-in lasts 30 minutes; after that the citizen logs in again
 MAX_FAILED = 5
 LOCK_MINUTES = 15
 USERNAME = re.compile(r"^[A-Za-z0-9._-]{4,40}$")
@@ -52,7 +52,7 @@ class ProfileIn(BaseModel):
 
 def create_citizen_token(citizen_id: str) -> str:
     now = datetime.now(timezone.utc)
-    return jwt.encode({"sub": citizen_id, "typ": "citizen", "iat": int(now.timestamp()), "exp": now + timedelta(days=TOKEN_DAYS)},
+    return jwt.encode({"sub": citizen_id, "typ": "citizen", "iat": int(now.timestamp()), "exp": now + timedelta(minutes=TOKEN_MINUTES)},
                       SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
