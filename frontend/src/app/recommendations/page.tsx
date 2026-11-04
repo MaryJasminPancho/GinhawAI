@@ -7,7 +7,7 @@ import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
 import Button, { buttonClasses } from "@/components/Button";
 import UrgentHelp from "@/components/UrgentHelp";
-import { assess, Assessment, endSession, getChannels, getCitizenToken, getSession, haveKey, Lang, ProgramResult, sendDocumentChecks, sendEmail, sendSms, SessionExpiredError } from "@/lib/api";
+import { assess, Assessment, endSession, getChannels, getCitizenToken, getMyDocuments, getSession, haveKey, Lang, ProgramResult, sendDocumentChecks, sendEmail, sendSms, SessionExpiredError, setMyDocument } from "@/lib/api";
 import { t } from "@/lib/i18n";
 
 // Figs. 19–22: ranked programs (green / amber / red), the explainable
@@ -175,10 +175,20 @@ function RecommendationsInner() {
       .catch(() => {});
   }, [sessionId]);
 
+  // Signed-in citizens: documents ticked in an earlier visit are already ticked here.
+  useEffect(() => {
+    if (!signedIn) return;
+    getMyDocuments()
+      .then((r) => setHave((h) => new Set([...h, ...r.have])))
+      .catch(() => {}); // the checklist still works for this visit
+  }, [signedIn]);
+
   const matched = result?.programs.filter((p) => p.status !== "not_qualified") ?? [];
   const others = result?.programs.filter((p) => p.status === "not_qualified") ?? [];
 
   function toggleDoc(programId: string, docId: string) {
+    // Signed in: also save the tick to the account (a failed save is ignored; the tab still remembers it).
+    if (signedIn) setMyDocument(docId, !have.has(docId)).catch(() => {});
     setHave((h) => {
       const n = new Set(h);
       if (n.has(docId)) n.delete(docId);

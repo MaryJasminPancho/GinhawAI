@@ -93,34 +93,92 @@ export class SessionExpiredError extends Error {}
 // ---------------------------------------------------------------------------
 const CITIZEN_KEY = "citizenToken";
 const CITIZEN_NAME = "citizenName";
+const CITIZEN_NOTICE = "citizenNotice";
+const AUTH_EVENT = "citizen-auth";
+
+// Security: the sign-in is kept in sessionStorage, so closing the tab signs the citizen out
+// (safer on shared or barangay computers), and the token itself stops working after 30 minutes
+// (backend: TOKEN_MINUTES in routers/citizens.py). After that the citizen has to log in again.
+
+/** When a login token stops working (ms since epoch), read from the token's own "exp" claim. */
+function tokenExpiry(token: string): number | null {
+  try {
+    const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const exp = JSON.parse(atob(payload)).exp;
+    return typeof exp === "number" ? exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+function removeCitizen() {
+  try {
+    sessionStorage.removeItem(CITIZEN_KEY);
+    sessionStorage.removeItem(CITIZEN_NAME);
+    // Older versions kept the login in localStorage for 30 days; make sure none is left behind.
+    localStorage.removeItem(CITIZEN_KEY);
+    localStorage.removeItem(CITIZEN_NAME);
+  } catch {
+    // nothing stored
+  }
+}
 export function getCitizenToken(): string | null {
   try {
-    return typeof window === "undefined" ? null : localStorage.getItem(CITIZEN_KEY);
+    if (typeof window === "undefined") return null;
+    const token = sessionStorage.getItem(CITIZEN_KEY);
+    if (!token) return null;
+    const exp = tokenExpiry(token);
+    if (exp !== null && exp <= Date.now()) {
+      removeCitizen();
+      sessionStorage.setItem(CITIZEN_NOTICE, "expired"); // the login page tells the citizen why
+      return null;
+    }
+    return token;
   } catch {
     return null;
   }
 }
 export function getCitizenName(): string | null {
   try {
-    return typeof window === "undefined" ? null : localStorage.getItem(CITIZEN_NAME);
+    return typeof window === "undefined" ? null : sessionStorage.getItem(CITIZEN_NAME);
   } catch {
     return null;
   }
 }
+/** One-time message for the login page: true if the last login ended because the 30 minutes ran out. */
+export function takeSessionEndedNotice(): boolean {
+  try {
+    const ended = sessionStorage.getItem(CITIZEN_NOTICE) === "expired";
+    sessionStorage.removeItem(CITIZEN_NOTICE);
+    return ended;
+  } catch {
+    return false;
+  }
+}
+/** For useSyncExternalStore: re-check the login on sign in / sign out and every 15 seconds (to catch expiry). */
+export function subscribeCitizen(cb: () => void) {
+  window.addEventListener(AUTH_EVENT, cb);
+  const timer = setInterval(cb, 15000);
+  return () => {
+    window.removeEventListener(AUTH_EVENT, cb);
+    clearInterval(timer);
+  };
+}
 function keepCitizen(s: { token: string; display_name: string | null }) {
   try {
-    localStorage.setItem(CITIZEN_KEY, s.token);
-    localStorage.setItem(CITIZEN_NAME, s.display_name ?? "");
+    sessionStorage.removeItem(CITIZEN_NOTICE);
+    sessionStorage.setItem(CITIZEN_KEY, s.token);
+    sessionStorage.setItem(CITIZEN_NAME, s.display_name ?? "");
+    window.dispatchEvent(new Event(AUTH_EVENT));
   } catch {
     // Storage blocked (private mode): the account works for this page only.
   }
 }
 export function citizenLogout() {
+  removeCitizen();
   try {
-    localStorage.removeItem(CITIZEN_KEY);
-    localStorage.removeItem(CITIZEN_NAME);
+    window.dispatchEvent(new Event(AUTH_EVENT));
   } catch {
-    // nothing stored
+    // not in a browser
   }
 }
 
@@ -261,6 +319,17 @@ export const getPlan = (sessionId: string, have: string[]) => request<ActionPlan
 /** Where the results page keeps the "I have this" ticks for the Action Plan (this tab only). */
 export const haveKey = (sessionId: string) => `have-${sessionId}`;
 export const getMyAccount = () => request<CitizenAccount>("/api/citizen/me");
+/** "My document checklist" (signed-in citizens): documents ticked as "I have this", saved to the account. */
+export type ChecklistProgram = {
+  program_name: string;
+  ready: number;
+  total: number;
+  documents: { doc_id: string; document_name: string; is_mandatory: boolean; notes: string | null; have: boolean }[];
+};
+export const getMyChecklist = () => request<{ checked_on: string | null; programs: ChecklistProgram[] }>("/api/citizen/checklist");
+export const getMyDocuments = () => request<{ have: string[] }>("/api/citizen/documents");
+export const setMyDocument = (docId: string, have: boolean) =>
+  request<void>(`/api/citizen/documents/${docId}`, { ...post({ have }), method: "PUT" });
 export const deleteMyAccount = () => request<void>("/api/citizen/me", { method: "DELETE" }).then(citizenLogout);
 
 export const endSession = (sessionId: string) => request<{ purged: boolean }>(`/api/sessions/${sessionId}`, { method: "DELETE" });

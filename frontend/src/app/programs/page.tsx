@@ -158,7 +158,8 @@ function BrowseInner() {
         )}
 
         <div className="relative z-10 mt-6 flex flex-col gap-2">
-          <Link href={`/chat?lang=${lang}`} className={buttonClasses("primary", "w-full text-center")}>
+          {/* Starting an assessment always begins at the language page. */}
+          <Link href="/language" className={buttonClasses("primary", "w-full text-center")}>
             {t(lang, "checkIfQualify")}
           </Link>
           <p className="text-center text-xs text-gray-400 dark:text-gray-500">{t(lang, "disclaimer")}</p>

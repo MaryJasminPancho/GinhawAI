@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
 import Button, { buttonClasses } from "@/components/Button";
-import { citizenGoogle, citizenLogin, citizenSignup, claimSession, getCitizenConfig, getCitizenToken, Lang } from "@/lib/api";
+import { citizenGoogle, citizenLogin, citizenSignup, claimSession, getCitizenConfig, getCitizenToken, Lang, takeSessionEndedNotice } from "@/lib/api";
 import { LANG_LABELS, t } from "@/lib/i18n";
 
 // Optional citizen account (2nd consultation): log in or sign up with a username and
@@ -53,6 +53,12 @@ function AccountInner() {
     if (claim) await claimSession(claim).catch(() => {}); // an expired session just isn't kept
     router.replace(`${next}${next.includes("?") ? "&" : "?"}lang=${lang}`);
   }, [router, next, lang, claim]);
+
+  // The page that sent the citizen here may have found the 30-minute login over; say so once.
+  const [sessionEnded, setSessionEnded] = useState(false);
+  useEffect(() => {
+    if (takeSessionEndedNotice()) setSessionEnded(true);
+  }, []);
 
   useEffect(() => {
     if (getCitizenToken()) void done();
@@ -117,6 +123,9 @@ function AccountInner() {
             ))}
           </div>
 
+          {sessionEnded && (
+            <p role="status" className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/20">{t(lang, "acctSessionEnded")}</p>
+          )}
           <p className="rounded-2xl bg-brand-50 px-4 py-3 text-sm leading-relaxed text-brand-900 ring-1 ring-brand-200 dark:bg-brand-500/10 dark:text-brand-200 dark:ring-brand-500/20">{t(lang, "acctWhy")}</p>
 
           <div role="tablist" className="flex gap-1 rounded-full bg-gray-100 p-1 dark:bg-white/5">
@@ -169,7 +178,8 @@ function AccountInner() {
             </>
           )}
 
-          <Link href={`/chat?lang=${lang}`} className={buttonClasses("ghost", "w-full")}>
+          {/* Starting an assessment always begins at the language page. */}
+          <Link href="/language" className={buttonClasses("ghost", "w-full")}>
             {t(lang, "acctNoAccount")}
           </Link>
         </div>
