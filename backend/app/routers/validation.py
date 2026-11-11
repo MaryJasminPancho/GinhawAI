@@ -15,7 +15,7 @@ from app.audit import write_audit
 from app.auth import WELFARE_EDIT_ROLES, SYSTEM_ADMIN, WELFARE_ROLES, require_roles
 from app.schemas import RatingIn
 from app.routers.sessions import barangay_hazards
-from app.scoring import CRISIS_VALUES, EMPLOYMENT_VALUES, HOUSING_VALUES, derive_profile, score_vulnerability
+from app.scoring import CRISIS_VALUES, EMPLOYMENT_VALUES, HELP_VALUES, HOUSING_VALUES, derive_profile, score_vulnerability
 
 router = APIRouter()
 welfare = require_roles(WELFARE_ROLES)
@@ -41,6 +41,7 @@ def synthetic_profile(rng: random.Random, barangays: list[str]) -> dict:
         "has_senior": rng.random() < 0.3 if size > 1 else False,
         "is_solo_parent": rng.random() < 0.15 if size > 1 else False,
         "crisis_type": rng.choice(CRISIS_VALUES[1:]) if rng.random() < 0.25 else "none",
+        "help_needed": rng.choice(HELP_VALUES[1:]) if rng.random() < 0.3 else "none",
     }
 
 

@@ -61,14 +61,15 @@ async def my_checklist(request: Request, me: dict = Depends(current_citizen)):
         names = [p["program_name"] for p in (last["programs"] or []) if p.get("status") in ("qualified", "partial")]
         if not names:
             return {"checked_on": last["created_at"], "programs": []}
-        crisis = (last["entities"] or {}).get("crisis_type")
+        answers = last["entities"] or {}
+        situation = [v for v in (answers.get("crisis_type"), answers.get("help_needed")) if v]
         rows = await conn.fetch(
             "SELECT p.program_name, d.doc_id, d.document_name, d.is_mandatory, d.notes, (cd.doc_id IS NOT NULL) AS have "
             "FROM programs p JOIN document_requirements d ON d.program_id = p.program_id "
             "LEFT JOIN citizen_documents cd ON cd.doc_id = d.doc_id AND cd.citizen_id = $1 "
-            "WHERE p.is_active AND p.program_name = ANY($2::text[]) AND (d.for_crisis IS NULL OR d.for_crisis = $3::text) "  # same rule as the results page
+            "WHERE p.is_active AND p.program_name = ANY($2::text[]) AND (d.for_crisis IS NULL OR d.for_crisis = ANY($3::text[])) "  # same rule as the results page
             "ORDER BY p.program_name, d.is_mandatory DESC, d.document_name;",
-            me["citizen_id"], names, crisis,
+            me["citizen_id"], names, situation,
         )
     programs: dict[str, list] = {n: [] for n in names}
     for r in rows:

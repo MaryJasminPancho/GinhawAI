@@ -9,6 +9,7 @@ Eligibility is evaluated directly against the rules stored in
 eligibility_criteria — the same rows LGU staff edit in the admin console.
 """
 
+import re
 from datetime import date
 
 # PSA 2023 poverty statistics (approximate monthly, per person).
@@ -38,6 +39,7 @@ ATTRIBUTE_LABELS = {
     "is_solo_parent": "Solo parent",
     "crisis_type": "Current crisis",
     "has_crisis": "Currently facing a crisis",
+    "help_needed": "Help needed",
     "is_unemployed": "Currently without work",
     "is_indigent_or_vulnerable": "Low-income or vulnerable household",
     "belongs_to_priority_worker_group": "Belongs to a priority worker group",
@@ -71,6 +73,7 @@ ATTRIBUTE_LABELS_LOCAL = {
         "is_solo_parent": "Solo parent",
         "crisis_type": "Kasalukuyang krisis",
         "has_crisis": "May kinakaharap na krisis ngayon",
+        "help_needed": "Kailangang tulong",
         "is_unemployed": "Walang trabaho ngayon",
         "is_indigent_or_vulnerable": "Mababa ang kita o bulnerableng pamilya",
         "belongs_to_priority_worker_group": "Kabilang sa priority na grupo ng manggagawa",
@@ -100,6 +103,7 @@ ATTRIBUTE_LABELS_LOCAL = {
         "is_solo_parent": "Solo parent",
         "crisis_type": "Krisis karon",
         "has_crisis": "Adunay krisis karon",
+        "help_needed": "Tabang nga gikinahanglan",
         "is_unemployed": "Walay trabaho karon",
         "is_indigent_or_vulnerable": "Ubos ang kita o bulnerable nga pamilya",
         "belongs_to_priority_worker_group": "Sakop sa priority nga grupo sa mga mamumuo",
@@ -155,7 +159,7 @@ def value_label(v: str, lang: str = "en") -> str:
     lang = _lang(lang)
     if lang != "en":
         from app.chatflow import CHIPS  # chatflow imports this module, so import lazily
-        for slot in ("employment_status", "housing_type", "crisis_type"):
+        for slot in ("employment_status", "housing_type", "crisis_type", "help_needed"):
             for value, label in CHIPS[slot][lang]:
                 if value == v:
                     return label[0].lower() + label[1:] if label[:2] != label[:2].upper() else label
@@ -165,13 +169,18 @@ def value_label(v: str, lang: str = "en") -> str:
 # Attributes the evaluator can compute from the chat answers (shown in the admin rule form).
 COMPUTED_ATTRIBUTES = [
     "monthly_income", "household_size", "per_capita_income", "age", "employment_status", "housing_type",
-    "barangay_code", "has_children_0_18", "has_pregnant_member", "has_pwd", "has_senior_member", "is_solo_parent", "crisis_type", "has_crisis",
+    "barangay_code", "has_children_0_18", "has_pregnant_member", "has_member_age_0_18_or_pregnant", "has_pwd", "has_senior_member", "is_solo_parent", "crisis_type", "has_crisis",
     "is_unemployed", "is_indigent_or_vulnerable", "belongs_to_priority_worker_group",
 ]
 
 EMPLOYMENT_VALUES = ["employed", "self_employed", "informal", "seasonal", "underemployed", "unemployed", "displaced"]
 HOUSING_VALUES = ["owned", "rented", "with_relatives", "informal_settler"]
 CRISIS_VALUES = ["none", "medical", "death", "fire", "calamity", "job_loss"]
+# What the citizen needs help paying for. AICS asks for different papers for each (FO VII CC 2026 p. 150-155).
+# "medical" and "death" match the crisis answers, so those AICS papers show for either question.
+HELP_VALUES = ["none", "medical", "death", "transport", "education", "food", "assistive_device", "other_help"]
+# Values a document can be limited to (document_requirements.for_crisis).
+DOC_CONDITION_VALUES = CRISIS_VALUES[1:] + [v for v in HELP_VALUES[1:] if v not in CRISIS_VALUES]
 
 VALUE_LABELS = {
     "employed": "regular job", "self_employed": "self-employed / small business", "informal": "informal / daily wage",
@@ -179,6 +188,8 @@ VALUE_LABELS = {
     "owned": "own house", "rented": "renting", "with_relatives": "living with relatives", "informal_settler": "informal settler",
     "none": "none", "medical": "medical emergency", "death": "death in the family", "fire": "fire", "calamity": "flood / typhoon / calamity",
     "job_loss": "sudden loss of income",
+    "transport": "fare or transport", "education": "school expenses", "food": "food",
+    "assistive_device": "a wheelchair, hearing aid or other device", "other_help": "other help",
 }
 
 
@@ -224,6 +235,7 @@ def derive_profile(entities: dict) -> dict:
         "is_solo_parent": solo,
         "crisis_type": crisis,
         "has_crisis": (crisis not in (None, "none")) if crisis is not None else None,
+        "help_needed": entities.get("help_needed"),
         "is_unemployed": (employment in ("unemployed", "displaced")) if employment else None,
         # Barangay hazard exposure (filled in by the assessment from the barangays table).
         "flood_level": entities.get("flood_level"),
@@ -365,12 +377,29 @@ def _lowering_text(field: str, profile: dict, lang: str) -> str | None:
     return None
 
 
-def _breakdown(raising: list[tuple[str, float]], lowering: list[tuple[str, float]]) -> list[dict]:
+# Model answers whose Tree SHAP effect is smaller than this (log-odds) are left out of the
+# explanation: they barely moved the score, and showing them ("you are 66", effect ~0) is noise.
+MIN_MODEL_EFFECT = 0.05
+
+
+def _pin_first(items: list, keep: str | None, limit: int, text=lambda item: item) -> list:
+    """The first `limit` items, but always including `keep` (if present): it takes the last place
+    instead of being cut. Used so a reported emergency is never missing from "why this score"."""
+    shown = items[:limit]
+    if keep is None or any(text(i) == keep for i in shown):
+        return shown
+    pinned = next((i for i in items if text(i) == keep), None)
+    return shown if pinned is None else shown[: limit - 1] + [pinned]
+
+
+def _breakdown(raising: list[tuple[str, float]], lowering: list[tuple[str, float]], keep: str | None = None) -> list[dict]:
     """"Why this score", for citizens: up to 4 answers that raised it and 2 that lowered it. "share" is
     each answer's effect compared with the strongest one shown (= 100), on ONE scale for both
     directions, so a small "lowered" answer never looks bigger than a strong "raised" one.
+    `keep` (the emergency sentence) is always among the raised ones when it raised the score.
     The page turns it into big / some / small effect, not numbers."""
-    shown = [("up", t, v) for t, v in raising[:4]] + [("down", t, v) for t, v in lowering[:2]]
+    up = _pin_first(raising, keep, 4, text=lambda i: i[0])
+    shown = [("up", t, v) for t, v in up] + [("down", t, v) for t, v in lowering[:2]]
     strongest = max((v for _, _, v in shown), default=0) or 1
     return [{"text": t, "direction": d, "share": round(100 * v / strongest)} for d, t, v in shown]
 
@@ -389,23 +418,22 @@ def _score_with_model(profile: dict, lang: str) -> dict | None:
     for field, value in result["contributions"].items():
         key = "per_capita_income" if field in ("per_capita_income", "monthly_income", "household_size") else field
         grouped[key] = grouped.get(key, 0.0) + value
-    top: list[str] = []
-    for field, value in sorted(grouped.items(), key=lambda kv: -kv[1]):
-        if value <= 0 or len(top) == 3:
-            break
-        text = _model_factor_text(field, profile, lang)
-        if text:
-            top.append(text)
+    # A reported emergency is always explained when it raised the score, even if other answers
+    # weighed more (or its effect was small); answers that barely moved the score are left out.
+    crisis = _model_factor_text("crisis_type", profile, lang) if grouped.get("crisis_type", 0) > 0 else None
+    raising = [(t, v) for f, v in sorted(grouped.items(), key=lambda kv: -kv[1])
+               if v > 0 and (t := _model_factor_text(f, profile, lang)) and (v >= MIN_MODEL_EFFECT or t == crisis)]
+    lowering = [(t, -v) for f, v in sorted(grouped.items(), key=lambda kv: kv[1])
+                if v <= -MIN_MODEL_EFFECT and (t := _lowering_text(f, profile, lang))]
+    top = [t for t, _ in _pin_first(raising, crisis, 3, text=lambda i: i[0])]
     if not top:
         top = [t for t in [_income_text(profile, lang)] if t]
-    raising = [(t, v) for f, v in sorted(grouped.items(), key=lambda kv: -kv[1]) if v > 0 and (t := _model_factor_text(f, profile, lang))]
-    lowering = [(t, -v) for f, v in sorted(grouped.items(), key=lambda kv: kv[1]) if v < 0 and (t := _lowering_text(f, profile, lang))]
     return {
         "score": band_score(result["tier"], result["score"], MODEL_RAW_RANGE[result["tier"]]),
         "tier": result["tier"],
         "message": TIER_MESSAGE[result["tier"]][lang],
         "top_factors": top,
-        "breakdown": _breakdown(raising, lowering),
+        "breakdown": _breakdown(raising, lowering, keep=crisis),
         "probabilities": result["probabilities"],
         "engine": ml_scoring.describe(),
     }
@@ -483,7 +511,9 @@ def rule_based_score(profile: dict, lang: str = "en") -> dict:
 
     score = min(100, sum(p for p, _ in factors))
     tier = "high" if score >= 60 else "moderate" if score >= 35 else "low"
-    top = [text for pts, text in sorted(factors, key=lambda f: -f[0]) if pts > 0][:3]
+    crisis = FACTOR_TEXT["crisis"][lang].format(v=value_label(profile["crisis_type"], lang)) if profile.get("has_crisis") else None
+    raised = [(text, pts) for pts, text in sorted(factors, key=lambda f: -f[0]) if pts > 0]
+    top = [t for t, _ in _pin_first(raised, crisis, 3, text=lambda i: i[0])]
     if not top and factors:
         top = [factors[0][1]]
     return {
@@ -491,7 +521,7 @@ def rule_based_score(profile: dict, lang: str = "en") -> dict:
         "tier": tier,
         "message": TIER_MESSAGE[tier][lang],
         "top_factors": top,
-        "breakdown": _breakdown([(text, pts) for pts, text in sorted(factors, key=lambda f: -f[0]) if pts > 0], []),
+        "breakdown": _breakdown(raised, [], keep=crisis),
         "engine": "Rule-based score (trained model not found)",
     }
 
@@ -617,7 +647,7 @@ def evaluate_program(program: dict, criteria: list[dict], profile: dict, lang: s
         "agency": program["agency"],
         "scope": program["scope"],
         "status": status,
-        "summary": program_summary(status, results, lang) if criteria else "",
+        "summary": program_summary(status, results, lang, program.get("program_name", "")) if criteria else "",
         "requirements_met": met,
         "requirements_total": len(results),
         "requirements_to_verify": to_verify,
@@ -628,6 +658,16 @@ def evaluate_program(program: dict, criteria: list[dict], profile: dict, lang: s
 # One plain sentence per program, shown before the details (2nd consultation: "explain it like
 # you're explaining to a 10-year-old why they qualify or not").
 SUMMARY_TEXT = {
+    "selected_qualified": {
+        "en": "Good news! Your household fits what this program looks for. You don't sign up for it yourself: DSWD selects the households. Ask the office if yours is listed or can be assessed.",
+        "fil": "Magandang balita! Pasok ang inyong pamilya sa hinahanap ng programang ito. Hindi ito sinasalihan nang kusa: DSWD ang pumipili ng mga pamilya. Itanong sa opisina kung nakalista na kayo o kung maaari kayong masuri.",
+        "ceb": "Maayong balita! Pasok ang inyong pamilya sa gipangita niining programa. Dili ka mismo ang mopalista: DSWD ang mopili sa mga pamilya. Pangutana sa opisina kung nalista na ba mo o kung masusi ba mo.",
+    },
+    "selected_partial": {
+        "en": "So far so good: nothing you told us rules you out. You don't sign up for this program yourself: DSWD selects the households and still has to check {things}. Ask the office if yours is listed or can be assessed.",
+        "fil": "Sa ngayon, walang sagot ninyo na hindi pasok. Hindi ito sinasalihan nang kusa: DSWD ang pumipili ng mga pamilya at kailangan pa nitong suriin ang {things}. Itanong sa opisina kung nakalista na kayo o kung maaari kayong masuri.",
+        "ceb": "Sa pagkakaron, walay tubag nimo nga dili pasok. Dili ka mismo ang mopalista: DSWD ang mopili sa mga pamilya ug kinahanglan pa niini susihon ang {things}. Pangutana sa opisina kung nalista na ba mo o kung masusi ba mo.",
+    },
     "qualified": {
         "en": "Good news! Your household meets everything this program asks for, so you can apply. Bring the documents listed below.",
         "fil": "Magandang balita! Natugunan ng inyong pamilya ang lahat ng hinihingi ng programang ito, kaya maaari kayong mag-apply. Dalhin ang mga dokumento sa ibaba.",
@@ -659,12 +699,13 @@ SUMMARY_TEXT = {
 }
 
 
-def program_summary(status: str, criteria: list[dict], lang: str) -> str:
+def program_summary(status: str, criteria: list[dict], lang: str, program_name: str = "") -> str:
+    prefix = "selected_" if re.search(r"pantawid|4ps", program_name, re.I) else ""
     if status == "qualified":
-        return SUMMARY_TEXT["qualified"][lang]
+        return SUMMARY_TEXT[prefix + "qualified"][lang]
     if status == "partial":
         things = ", ".join(f"“{c['label']}”" for c in criteria if c["status"] == "unknown") or "—"
-        return SUMMARY_TEXT["partial"][lang].format(things=things)
+        return SUMMARY_TEXT[prefix + "partial"][lang].format(things=things)
     failed = [c for c in criteria if c["status"] == "fail"]
     first = failed[0]
     if first["requirement"] == RULE_TEXT["yes"][lang]:

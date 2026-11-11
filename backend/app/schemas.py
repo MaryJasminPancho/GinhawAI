@@ -35,7 +35,7 @@ class DocumentRequirementCreate(BaseModel):
     is_mandatory: bool = True
     notes: str | None = None
     # Only show this document when the citizen's crisis is this type (None = always).
-    for_crisis: str | None = Field(default=None, pattern=r"^(medical|death|fire|calamity|job_loss)$")
+    for_crisis: str | None = Field(default=None, pattern=r"^(medical|death|fire|calamity|job_loss|transport|education|food|assistive_device|other_help)$")
 
 
 # ---- Localization ----
