@@ -65,9 +65,9 @@ const T = {
     en: "First time with this Google account: tick the consent box below, then tap Google again.",
   },
   acctSavePrompt: {
-    fil: "Gusto ninyong i-save ang resultang ito para mabago ninyo sa susunod? Gumawa ng libreng account.",
-    ceb: "Gusto nimo i-save kining resulta aron mausab nimo sunod? Paghimo og libreng account.",
-    en: "Want to keep this result and change your answers later? Create a free account.",
+    fil: "Gumawa ng libreng account para ma-save ang resultang ito, masubaybayan ang inyong mga aplikasyon, at makatanggap ng paalala sa email tungkol sa mga iskedyul, pag-renew ng ID, at kung kailan dapat magsuri muli.",
+    ceb: "Paghimo og libreng account aron ma-save kining resulta, masubay ang imong mga aplikasyon, ug makadawat og pahinumdom sa email bahin sa mga iskedyul, pag-renew sa ID, ug kanus-a magsusi pag-usab.",
+    en: "Create a free account to save this result, track your applications, and get email reminders about schedules, ID renewals and when to check again.",
   },
   // Signed-in home screen (/me)
   dashWelcome: { fil: "Maligayang pagbabalik", ceb: "Maayong pagbalik", en: "Welcome back" },

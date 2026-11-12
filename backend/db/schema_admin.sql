@@ -373,6 +373,15 @@ WHERE NOT EXISTS (SELECT 1 FROM system_config WHERE key = 'jargon_seeded')
 ON CONFLICT DO NOTHING;
 INSERT INTO system_config (key, value) VALUES ('jargon_seeded', 'true') ON CONFLICT (key) DO NOTHING;
 
+-- Mixed-language "no work" answers (Nov 2026), added once like the list above.
+INSERT INTO jargon_terms (slot, value, term)
+SELECT 'employment_status', 'unemployed', v.term FROM (VALUES
+('wala koy trabaho'), ('wala akong trabaho'), ('wala koy work'), ('walay work'), ('walang work'), ('wala work'), ('no job')
+) AS v(term)
+WHERE NOT EXISTS (SELECT 1 FROM system_config WHERE key = 'jargon_seeded_2026_11')
+ON CONFLICT DO NOTHING;
+INSERT INTO system_config (key, value) VALUES ('jargon_seeded_2026_11', 'true') ON CONFLICT (key) DO NOTHING;
+
 -- ---------------------------------------------------------------------------
 -- Feedback resolution tracking (Appendix R #70). Feedback stays anonymous:
 -- only the staff side (status, note, who updated it) is added.
@@ -533,4 +542,32 @@ CREATE TABLE IF NOT EXISTS citizen_documents (
     doc_id      UUID NOT NULL REFERENCES document_requirements(doc_id) ON DELETE CASCADE,
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (citizen_id, doc_id)
+);
+-- ---------------------------------------------------------------------------
+-- Signed-in citizens only (answer to "That's all?", 2nd consultation):
+--   * an application tracker: where the citizen is with each program
+--   * email reminders (opt-in): barangay visit dates, ID renewals, "check again"
+-- Everything is deleted with the account (ON DELETE CASCADE).
+-- ---------------------------------------------------------------------------
+ALTER TABLE citizen_accounts ADD COLUMN IF NOT EXISTS reminders_on BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE citizen_accounts ADD COLUMN IF NOT EXISTS reminder_email VARCHAR(254);
+ALTER TABLE citizen_accounts ADD COLUMN IF NOT EXISTS reminders_consent_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS citizen_applications (
+    citizen_id   UUID NOT NULL REFERENCES citizen_accounts(citizen_id) ON DELETE CASCADE,
+    program_id   UUID NOT NULL REFERENCES programs(program_id) ON DELETE CASCADE,
+    status       VARCHAR(20) NOT NULL DEFAULT 'not_started'
+                 CHECK (status IN ('not_started', 'papers_ready', 'applied', 'approved')),
+    valid_until  DATE,          -- when an approved ID or benefit must be renewed (optional)
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (citizen_id, program_id)
+);
+
+-- One row per reminder already emailed, so the same reminder is never sent twice.
+CREATE TABLE IF NOT EXISTS citizen_reminders_sent (
+    citizen_id  UUID NOT NULL REFERENCES citizen_accounts(citizen_id) ON DELETE CASCADE,
+    kind        VARCHAR(20) NOT NULL,   -- schedule | renew30 | renew7 | recheck | age60
+    ref         VARCHAR(100) NOT NULL,  -- which schedule / program+date / check it was about
+    sent_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (citizen_id, kind, ref)
 );

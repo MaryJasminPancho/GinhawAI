@@ -77,7 +77,9 @@ def _norm(name: str) -> str:
     name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()  # "Niño" -> "Nino"
     name = re.sub(r"^(brgy\.?|barangay|bgy\.?)\s+", "", name.strip(), flags=re.I)
     name = re.sub(r"\b([12])\b", lambda m: ROMAN[m.group(1)], name.lower())
-    name = re.sub(r"[^a-z0-9]", "", name)
+    # Locals spell many names with either C or K ("Kamputhaw" for PSA's "Camputhaw", "Calunasan"
+    # for "Kalunasan"), so both count as the same letter. No two Cebu City barangays clash this way.
+    name = re.sub(r"[^a-z0-9]", "", name).replace("k", "c")
     return re.sub(r"([b-df-hj-np-tv-z])\1+", r"\1", name)  # "Hipodromo" = "Hippodromo" (but keep "II")
 
 
@@ -126,7 +128,7 @@ async def _resolve_barangay(request: Request, text: str) -> tuple[str, str | Non
     # A short sentence that names one ("taga Guadalupe ko", "sa Lahug po"): the longest
     # barangay name (or alias) found as whole words wins, so "Pahina Central" beats "Central".
     def words(s: str) -> str:
-        s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode().lower()
+        s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode().lower().replace("k", "c")  # C = K, as in _norm
         return " " + re.sub(r"\b([12])\b", lambda m: ROMAN[m.group(1)], re.sub(r"[^a-z0-9]+", " ", s)).strip() + " "
 
     said = words(str(text))

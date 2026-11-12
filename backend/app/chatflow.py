@@ -218,7 +218,9 @@ NO_WORDS = {"no", "n", "nope", "hindi", "wala", "dili", "none", "false", "wa", "
 
 ENUM_SYNONYMS = {
     "employment_status": {
-        "unemployed": ["walang trabaho", "walay trabaho", "no work", "jobless", "wala trabaho", "unemployed"],
+        "unemployed": ["walang trabaho", "walay trabaho", "no work", "jobless", "wala trabaho", "unemployed",
+                       # mixed Cebuano/Filipino/English ("wala koy work karon")
+                       "wala koy trabaho", "wala akong trabaho", "wala koy work", "walay work", "walang work", "wala work", "no job"],
         "displaced": ["natanggal", "tinanggal", "natangtang", "laid off", "lost my job", "lost job", "displaced"],
         "informal": ["arawan", "daily", "extra", "sideline", "odd job", "construction", "tricycle", "habal", "labandera"],
         "seasonal": ["seasonal", "pana-panahon", "harvest"],
@@ -286,15 +288,35 @@ def question(slot: str, lang: str) -> str:
     return QUESTIONS[slot][lang]
 
 
+# Number words in Cebuano, Filipino and English ("lima kami", "walo ka libo", "five").
+NUMBER_WORDS = {
+    "usa": 1, "isa": 1, "one": 1,
+    "duha": 2, "dalawa": 2, "two": 2,
+    "tulo": 3, "tatlo": 3, "three": 3,
+    "upat": 4, "apat": 4, "four": 4,
+    "lima": 5, "five": 5,
+    "unom": 6, "anim": 6, "six": 6,
+    "pito": 7, "seven": 7,
+    "walo": 8, "eight": 8,
+    "siyam": 9, "nine": 9,
+    "napulo": 10, "sampu": 10, "ten": 10,
+}
+# "8k", "8 thousand", "8 libo", "walo ka libo", "walong libo": the suffix must be a whole word,
+# so the "k" in "5 kami" isn't read as "5,000".
+THOUSAND = r"(?:k|thousand|libo|mil)\b"
+
+
 def _parse_number(text: str):
     t = text.lower().replace(",", "").replace("₱", "").replace("php", "")
-    m = re.search(r"(\d+(?:\.\d+)?)\s*(k|thousand|libo|mil)?", t)
-    if not m:
-        return None
-    value = float(m.group(1))
-    if m.group(2):
-        value *= 1000
-    return value
+    m = re.search(rf"(\d+(?:\.\d+)?)\s*({THOUSAND})?", t)
+    if m:
+        return float(m.group(1)) * (1000 if m.group(2) else 1)
+    words = "|".join(sorted(NUMBER_WORDS, key=len, reverse=True))
+    # "walong" = "walo" + the Filipino linker "-ng"; "ka" is the Cebuano linker ("walo ka libo").
+    m = re.search(rf"\b({words})(?:ng)?\b(?:\s+(?:ka\s+)?({THOUSAND}))?", t)
+    if m:
+        return float(NUMBER_WORDS[m.group(1)]) * (1000 if m.group(2) else 1)
+    return None
 
 
 def _parse_bool(text: str):

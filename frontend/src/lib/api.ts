@@ -333,6 +333,27 @@ export const getMyChecklist = () => request<{ checked_on: string | null; program
 export const getMyDocuments = () => request<{ have: string[] }>("/api/citizen/documents");
 export const setMyDocument = (docId: string, have: boolean) =>
   request<void>(`/api/citizen/documents/${docId}`, { ...post({ have }), method: "PUT" });
+/** Application tracker (signed-in citizens): where they are with each program they may qualify for. */
+export type AppStatus = "not_started" | "papers_ready" | "applied" | "approved";
+export type TrackedProgram = {
+  program_id: string;
+  program_name: string;
+  status: AppStatus;
+  valid_until: string | null;
+  ready: number;
+  total: number;
+  next_schedule: { start_date: string; end_date: string; office_name: string; address: string | null } | null;
+};
+/** reasons: "old" (no check for 90 days), "age60" (the applicant may have turned 60 since). */
+export type Tracker = { programs: TrackedProgram[]; recheck: { checked_on: string | null; days_since: number | null; reasons: ("old" | "age60")[] } };
+export const getMyTracker = () => request<Tracker>("/api/citizen/tracker");
+export const setMyApplication = (programId: string, status: AppStatus, valid_until: string | null) =>
+  request<void>(`/api/citizen/tracker/${programId}`, { ...post({ status, valid_until }), method: "PUT" });
+/** Email reminders (opt-in): visit dates, renewals, "check again". */
+export type Reminders = { on: boolean; email: string | null; account_email: string | null; email_ready: boolean };
+export const getMyReminders = () => request<Reminders>("/api/citizen/reminders");
+export const setMyReminders = (on: boolean, email: string | null) =>
+  request<{ on: boolean; email: string | null }>("/api/citizen/reminders", { ...post({ on, email }), method: "PUT" });
 export const deleteMyAccount = () => request<void>("/api/citizen/me", { method: "DELETE" }).then(citizenLogout);
 
 export const endSession = (sessionId: string) => request<{ purged: boolean }>(`/api/sessions/${sessionId}`, { method: "DELETE" });
