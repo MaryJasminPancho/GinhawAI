@@ -12,7 +12,8 @@ MODEL_FOLDERS = {
     "employment_status": "employment_model",
     "housing_type": "housing_type_model",
     "crisis_type": "crisis_type_model",
-    "yes_no": "yes_no_model",   # shared by has_children_0_18, has_pwd, is_solo_parent
+    "yes_no": "yes_no_model",   # shared by has_children_0_18, has_pwd, has_senior, is_solo_parent
+    "intent": "intent_model",   # module 19: answer / question / skip / greeting / off_topic (not used by the chat yet)
 }
 
 _loaded = {}  # model key -> (tokenizer, model); each model loads once, then is reused
