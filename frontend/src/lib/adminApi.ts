@@ -162,13 +162,18 @@ export type AdminProgram = { program_id: string; program_name: string; agency: s
 export type Criterion = { criteria_id: string; attribute: string; operator: string; threshold_value: string; weight: number };
 /** for_crisis: show only when the citizen's crisis is this type (null = always). */
 export type DocumentReq = { doc_id: string; document_name: string; is_mandatory: boolean; notes: string | null; for_crisis: CrisisType | null };
-export type CrisisType = "medical" | "death" | "fire" | "calamity" | "job_loss";
+export type CrisisType = "medical" | "death" | "fire" | "calamity" | "job_loss" | "transport" | "education" | "food" | "assistive_device" | "other_help";
 export const CRISIS_LABELS: Record<CrisisType, string> = {
   medical: "Medical / hospital",
   death: "Death in the family",
   fire: "Fire",
   calamity: "Flood / typhoon / calamity",
   job_loss: "Sudden loss of income",
+  transport: "Help needed: fare / travel",
+  education: "Help needed: school expenses",
+  food: "Help needed: food",
+  assistive_device: "Help needed: wheelchair, hearing aid or other device",
+  other_help: "Help needed: something else",
 };
 export type AttributeMeta = { attribute: string; label: string; computed: boolean };
 

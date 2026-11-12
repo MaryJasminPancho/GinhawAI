@@ -266,6 +266,7 @@ export const FIELD_LABELS: Record<keyof Omit<Entities, "barangay_code">, Record<
   has_senior: { fil: "May 60 pataas sa pamilya", ceb: "Naay 60 pataas sa pamilya", en: "Someone 60+ in household" },
   is_solo_parent: { fil: "Solo parent", ceb: "Solo parent", en: "Solo parent" },
   crisis_type: { fil: "Krisis ngayon", ceb: "Krisis karon", en: "Current crisis" },
+  help_needed: { fil: "Kailangang tulong", ceb: "Tabang nga gikinahanglan", en: "Help needed" },
 };
 
 export const FIELD_ORDER = Object.keys(FIELD_LABELS) as (keyof typeof FIELD_LABELS)[];
@@ -293,6 +294,16 @@ export const CHOICES: Record<string, { value: string; label: Record<Lang, string
     { value: "fire", label: { fil: "Nasunugan", ceb: "Nasunogan", en: "Fire" } },
     { value: "calamity", label: { fil: "Baha / bagyo", ceb: "Baha / bagyo", en: "Flood / typhoon" } },
     { value: "job_loss", label: { fil: "Biglang nawalan ng kita", ceb: "Kalit nawad-an og kita", en: "Sudden loss of income" } },
+  ],
+  help_needed: [
+    { value: "none", label: { fil: "Wala sa ngayon", ceb: "Wala karon", en: "Nothing right now" } },
+    { value: "medical", label: { fil: "Gamot / ospital", ceb: "Tambal / ospital", en: "Medicine / hospital" } },
+    { value: "death", label: { fil: "Libing / burol", ceb: "Lubong / haya", en: "Funeral / burial" } },
+    { value: "transport", label: { fil: "Pamasahe / biyahe", ceb: "Plete / biyahe", en: "Fare / travel" } },
+    { value: "education", label: { fil: "Gastos sa eskwela", ceb: "Gasto sa eskwelahan", en: "School expenses" } },
+    { value: "food", label: { fil: "Pagkain", ceb: "Pagkaon", en: "Food" } },
+    { value: "assistive_device", label: { fil: "Wheelchair, hearing aid o iba pang gamit", ceb: "Wheelchair, hearing aid o uban pang gamit", en: "Wheelchair, hearing aid or other device" } },
+    { value: "other_help", label: { fil: "Iba pa", ceb: "Uban pa", en: "Something else" } },
   ],
 };
 

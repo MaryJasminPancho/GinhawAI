@@ -14,6 +14,7 @@ import re
 
 from app.amounts import parse_count, parse_monthly_income
 from app.scoring import CRISIS_VALUES, EMPLOYMENT_VALUES, HOUSING_VALUES
+from app.scoring import CRISIS_VALUES, EMPLOYMENT_VALUES, HELP_VALUES, HOUSING_VALUES
 
 LANGS = ("fil", "ceb", "en")
 
@@ -33,11 +34,12 @@ SLOTS = [
     "has_senior",
     "is_solo_parent",
     "crisis_type",
+    "help_needed",
 ]
 
 BOOL_SLOTS = {"has_children_0_18", "has_pregnant", "has_pwd", "has_senior", "is_solo_parent"}
 INT_SLOTS = {"household_size", "age"}
-ENUMS = {"employment_status": EMPLOYMENT_VALUES, "housing_type": HOUSING_VALUES, "crisis_type": CRISIS_VALUES}
+ENUMS = {"employment_status": EMPLOYMENT_VALUES, "housing_type": HOUSING_VALUES, "crisis_type": CRISIS_VALUES, "help_needed": HELP_VALUES}
 
 # One idea per question, everyday words, and an example or "tap one below" where it helps.
 QUESTIONS = {
@@ -101,6 +103,12 @@ QUESTIONS = {
         "ceb": "Aduna bay emerhensya nga giagian sa pamilya karon? (pananglitan: gasto sa ospital, naay namatay, sunog, baha) Pili sa ubos.",
         "en": "Is your family going through an emergency right now? (e.g. hospital bills, a death, fire, flood) Tap one below.",
     },
+    # AICS asks for different papers for each kind of help, so this decides which ones to show.
+    "help_needed": {
+        "fil": "Para saan po ang tulong na kailangan ninyo ngayon? Pumili sa ibaba.",
+        "ceb": "Para asa ang tabang nga imong gikinahanglan karon? Pili sa ubos.",
+        "en": "What do you need help paying for right now? Tap one below.",
+    },
 }
 
 YES_NO = {
@@ -131,6 +139,14 @@ CHIPS = {
                 ("calamity", "Baha / bagyo"), ("job_loss", "Kalit nawad-an og kita")],
         "en": [("none", "None"), ("medical", "Medical / hospital"), ("death", "Death in the family"), ("fire", "Fire"),
                ("calamity", "Flood / typhoon"), ("job_loss", "Sudden loss of income")],
+    },
+    "help_needed": {
+        "fil": [("none", "Wala sa ngayon"), ("medical", "Gamot / ospital"), ("death", "Libing / burol"), ("transport", "Pamasahe / biyahe"),
+                ("education", "Gastos sa eskwela"), ("food", "Pagkain"), ("assistive_device", "Wheelchair, hearing aid o iba pang gamit"), ("other_help", "Iba pa")],
+        "ceb": [("none", "Wala karon"), ("medical", "Tambal / ospital"), ("death", "Lubong / haya"), ("transport", "Plete / biyahe"),
+                ("education", "Gasto sa eskwelahan"), ("food", "Pagkaon"), ("assistive_device", "Wheelchair, hearing aid o uban pang gamit"), ("other_help", "Uban pa")],
+        "en": [("none", "Nothing right now"), ("medical", "Medicine / hospital"), ("death", "Funeral / burial"), ("transport", "Fare / travel"),
+               ("education", "School expenses"), ("food", "Food"), ("assistive_device", "Wheelchair, hearing aid or other device"), ("other_help", "Something else")],
     },
     "has_children_0_18": YES_NO,
     "has_pregnant": YES_NO,
@@ -210,6 +226,16 @@ ENUM_SYNONYMS = {
         "calamity": ["baha", "bagyo", "flood", "typhoon", "lindol", "earthquake", "calamity"],
         "job_loss": ["nawalan ng kita", "nawad-an", "lost income", "job loss", "wala nang kita", "wala na kaming kita", "wala na koy kita", "wala nay kita", "walay kita", "walang kita", "no income"],
     },
+    "help_needed": {
+        "none": ["wala", "none", "no", "dili", "hindi", "nothing"],
+        "medical": ["ospital", "hospital", "gamot", "tambal", "medicine", "medical", "operasyon", "dialysis", "checkup"],
+        "death": ["libing", "lubong", "burol", "haya", "funeral", "burial", "patay", "namatay"],
+        "transport": ["pamasahe", "plete", "fare", "transport", "biyahe", "ticket", "stranded"],
+        "education": ["eskwela", "eskwelahan", "school", "tuition", "matrikula", "enrollment"],
+        "food": ["pagkain", "pagkaon", "food", "bigas", "rice", "groceries"],
+        "assistive_device": ["wheelchair", "hearing aid", "saklay", "crutches", "salamin", "eyeglasses", "device"],
+        "other_help": ["iba pa", "uban pa", "something else", "ofw"],
+    },
 }
 
 
@@ -288,7 +314,7 @@ def parse_for_slot(slot: str, text: str, lang: str, synonyms: dict | None = None
     """Parse a direct answer to `slot`. Returns None when it can't tell.
 
     `synonyms` is the staff-managed word list (app.jargon); defaults to the built-in one."""
-    synonyms = synonyms or ENUM_SYNONYMS
+    synonyms = {**ENUM_SYNONYMS, **(synonyms or {})}
     raw = text.strip()
     low = raw.lower()
     if not low:

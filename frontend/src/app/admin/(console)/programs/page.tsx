@@ -497,12 +497,12 @@ function DocumentModal({ programId, value, onClose, onSaved }: { programId: stri
         <Field label="Notes for citizens" hint="Plain language — this is shown in the checklist citizens see and receive.">
           {(id) => <textarea id={id} rows={3} className={inputClass} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Where to get it, what to bring…" />}
         </Field>
-        <Field label="Show this document" hint="E.g. AICS: a death certificate only matters when there was a death in the family.">
+        <Field label="Show this document" hint="E.g. AICS: a death certificate only matters when there was a death in the family or burial help is needed. Matches either the crisis answer or the help-needed answer.">
           {(id) => (
             <select id={id} className={inputClass} value={form.for_crisis} onChange={(e) => setForm({ ...form, for_crisis: e.target.value as CrisisType | "" })}>
               <option value="">To everyone</option>
               {(Object.keys(CRISIS_LABELS) as CrisisType[]).map((c) => (
-                <option key={c} value={c}>Only if the crisis is: {CRISIS_LABELS[c]}</option>
+                <option key={c} value={c}>Only if: {CRISIS_LABELS[c]}</option>
               ))}
             </select>
           )}

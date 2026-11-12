@@ -21,6 +21,7 @@ export type Entities = {
   has_senior?: boolean;
   is_solo_parent?: boolean;
   crisis_type?: string;
+  help_needed?: string;
 };
 
 export type StartResponse = { session_id: string; language: Lang; messages: string[]; asking: string | null; quick_replies: QuickReply[]; is_complete?: boolean };
