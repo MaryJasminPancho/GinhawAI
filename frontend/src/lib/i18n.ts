@@ -65,9 +65,9 @@ const T = {
     en: "First time with this Google account: tick the consent box below, then tap Google again.",
   },
   acctSavePrompt: {
-    fil: "Gusto ninyong i-save ang resultang ito para mabago ninyo sa susunod? Gumawa ng libreng account.",
-    ceb: "Gusto nimo i-save kining resulta aron mausab nimo sunod? Paghimo og libreng account.",
-    en: "Want to keep this result and change your answers later? Create a free account.",
+    fil: "Gumawa ng libreng account para ma-save ang resultang ito, masubaybayan ang inyong mga aplikasyon, at makatanggap ng paalala sa email tungkol sa mga iskedyul, pag-renew ng ID, at kung kailan dapat magsuri muli.",
+    ceb: "Paghimo og libreng account aron ma-save kining resulta, masubay ang imong mga aplikasyon, ug makadawat og pahinumdom sa email bahin sa mga iskedyul, pag-renew sa ID, ug kanus-a magsusi pag-usab.",
+    en: "Create a free account to save this result, track your applications, and get email reminders about schedules, ID renewals and when to check again.",
   },
   // Signed-in home screen (/me)
   dashWelcome: { fil: "Maligayang pagbabalik", ceb: "Maayong pagbalik", en: "Welcome back" },
@@ -120,6 +120,9 @@ const T = {
   checking: { fil: "Sinusuri…", ceb: "Gisusi…", en: "Checking…" },
   yes: { fil: "Oo", ceb: "Oo", en: "Yes" },
   no: { fil: "Hindi", ceb: "Dili", en: "No" },
+  // Answers to "Is there...?" questions (the chat's buttons use the same words).
+  have: { fil: "Mayroon", ceb: "Naa", en: "Yes" },
+  none: { fil: "Wala", ceb: "Wala", en: "No" },
   notAnswered: { fil: "Wala pang sagot", ceb: "Wala pay tubag", en: "Not answered yet" },
 
   resultTitle: { fil: "Ang inyong resulta", ceb: "Ang imong resulta", en: "Your result" },
@@ -264,6 +267,7 @@ export const FIELD_LABELS: Record<keyof Omit<Entities, "barangay_code">, Record<
   has_pregnant: { fil: "May buntis", ceb: "Naay mabdos", en: "Pregnant member" },
   has_pwd: { fil: "May PWD sa pamilya", ceb: "Naay PWD sa pamilya", en: "PWD in household" },
   has_senior: { fil: "May 60 pataas sa pamilya", ceb: "Naay 60 pataas sa pamilya", en: "Someone 60+ in household" },
+  can_do_physical_work: { fil: "Kayang gumawa ng pisikal na trabaho", ceb: "Makahimo og pisikal nga trabaho", en: "Can do light physical work" },
   is_solo_parent: { fil: "Solo parent", ceb: "Solo parent", en: "Solo parent" },
   crisis_type: { fil: "Krisis ngayon", ceb: "Krisis karon", en: "Current crisis" },
   help_needed: { fil: "Kailangang tulong", ceb: "Tabang nga gikinahanglan", en: "Help needed" },
@@ -307,12 +311,16 @@ export const CHOICES: Record<string, { value: string; label: Record<Lang, string
   ],
 };
 
-export const BOOL_FIELDS = new Set(["has_children_0_18", "has_pregnant", "has_pwd", "has_senior", "is_solo_parent"]);
+// "Is there...?" questions are answered Mayroon / Naa / Wala; "Are you...?" ones Oo / Hindi / Dili.
+export const HAVE_FIELDS = new Set(["has_children_0_18", "has_pregnant", "has_pwd", "has_senior"]);
+export const boolLabel = (field: string, value: boolean, lang: Lang) =>
+  t(lang, HAVE_FIELDS.has(field) ? (value ? "have" : "none") : value ? "yes" : "no");
+export const BOOL_FIELDS = new Set(["has_children_0_18", "has_pregnant", "has_pwd", "has_senior", "is_solo_parent", "can_do_physical_work"]);
 export const NUMBER_FIELDS = new Set(["household_size", "monthly_income", "age"]);
 
 export function displayValue(field: string, value: unknown, lang: Lang): string {
   if (value === undefined || value === null || value === "") return t(lang, "notAnswered");
-  if (BOOL_FIELDS.has(field)) return value ? t(lang, "yes") : t(lang, "no");
+  if (BOOL_FIELDS.has(field)) return boolLabel(field, Boolean(value), lang);
   if (field === "monthly_income") return `₱${Number(value).toLocaleString("en-PH")}`;
   const choice = CHOICES[field]?.find((c) => c.value === value);
   return choice ? choice.label[lang] : String(value);

@@ -32,6 +32,7 @@ From the citizen's message below, extract these fields as JSON (use null for any
 - has_pwd (boolean, true if a household member has a disability)
 - has_senior (boolean, true if anyone in the household is 60 years old or older)
 - is_solo_parent (boolean)
+- can_do_physical_work (boolean, true if the citizen can do light physical work)
 - crisis_type (one of: "none", "medical", "death", "fire", "calamity", "job_loss")
 - help_needed (what they need help paying for; one of: "none", "medical", "death" (funeral or burial), "transport", "education", "food", "assistive_device", "other_help")
 

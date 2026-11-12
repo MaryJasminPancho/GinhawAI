@@ -148,3 +148,17 @@ FROM programs p JOIN (VALUES
      'Only if there is an unpaid balance for the burial. Signed by the funeral parlor''s staff, dated within the last 3 months. [FO VII CC 2026 p. 151]', 'death')
 ) AS v(name, req, notes, help) ON p.program_name = 'Assistance to Individuals in Crisis Situations (AICS)'
 WHERE NOT EXISTS (SELECT 1 FROM document_requirements d WHERE d.program_id = p.program_id AND d.document_name = v.name);
+
+-- AICS: "has the papers for the type of help" is the document list, not a qualification
+-- (the papers are already listed under the program), so it no longer leaves every AICS
+-- result at "may qualify".
+DELETE FROM eligibility_criteria c USING programs p
+WHERE c.program_id = p.program_id AND p.program_name = 'Assistance to Individuals in Crisis Situations (AICS)'
+  AND c.attribute = 'has_supporting_documents_for_assistance_type';
+
+-- Citizens see these notes, so drop the source tags ("[CC p. 307]", "[DSWD, via Cebu Daily
+-- News 2026]") and staff reminders ("VERIFY with PDAO."). The sources stay in the seed files.
+-- Keep this block last.
+UPDATE document_requirements SET
+    notes = NULLIF(btrim(regexp_replace(regexp_replace(notes, '\s*\[[^]]*\]', '', 'g'), '\s*VERIFY[^.]*\.', '', 'g')), '')
+WHERE notes ~ '\[[^]]*\]' OR notes ~ 'VERIFY';
