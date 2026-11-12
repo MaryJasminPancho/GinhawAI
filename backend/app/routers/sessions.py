@@ -409,10 +409,10 @@ async def assess(session_id: str, request: Request):
         evaluations = rank_programs([evaluate_program(dict(p), by_program.get(str(p["program_id"]), []), profile, lang) for p in programs])
 
         docs_by_program: dict[str, list] = {}
-        crisis = profile.get("crisis_type")
+        situation = {profile.get("crisis_type"), profile.get("help_needed")}
         for d in docs:
-            if d["for_crisis"] and d["for_crisis"] != crisis:
-                continue  # e.g. AICS burial papers only when there was a death
+            if d["for_crisis"] and d["for_crisis"] not in situation:
+                continue  # e.g. AICS burial papers only when there was a death or burial help is needed
             docs_by_program.setdefault(str(d["program_id"]), []).append(
                 {"doc_id": str(d["doc_id"]), "document_name": d["document_name"], "is_mandatory": d["is_mandatory"], "notes": d["notes"]}
             )

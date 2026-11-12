@@ -21,6 +21,86 @@ def _t(d: dict, lang: str) -> str:
 # --- How to get each document (matched by words in the document's name) -------------------
 # "{hall}" is replaced with the citizen's own barangay hall when we know it.
 DOC_GUIDE = [
+    (r"school enrollment", {
+        "en": "From the registrar of your child's school.",
+        "fil": "Mula sa registrar ng paaralan ng inyong anak.",
+        "ceb": "Gikan sa registrar sa eskwelahan sa imong anak.",
+    }),
+    (r"health center", {
+        "en": "From your barangay health center.",
+        "fil": "Mula sa inyong barangay health center.",
+        "ceb": "Gikan sa inyong barangay health center.",
+    }),
+    (r"voter", {
+        "en": "From the Commission on Elections (Comelec) office.",
+        "fil": "Mula sa opisina ng Commission on Elections (Comelec).",
+        "ceb": "Gikan sa opisina sa Commission on Elections (Comelec).",
+    }),
+    (r"cedula", {
+        "en": "From the Cebu City Treasurer's Office. It must be issued in Cebu City.",
+        "fil": "Mula sa Cebu City Treasurer's Office. Dapat galing sa Cebu City.",
+        "ceb": "Gikan sa Cebu City Treasurer's Office. Kinahanglan gikan sa Cebu City.",
+    }),
+    (r"marriage", {
+        "en": "From the PSA or the Cebu City Civil Registrar.",
+        "fil": "Mula sa PSA o sa Cebu City Civil Registrar.",
+        "ceb": "Gikan sa PSA o sa Cebu City Civil Registrar.",
+    }),
+    (r"sketch", {
+        "en": "Draw it yourself on the back of the application form.",
+        "fil": "Kayo ang gumuhit nito sa likod ng application form.",
+        "ceb": "Ikaw ang modrowing niini sa likod sa application form.",
+    }),
+    (r"registry form", {
+        "en": "Ask the office for a copy when you apply.",
+        "fil": "Humingi ng kopya sa opisina pag-apply ninyo.",
+        "ceb": "Pangayo og kopya sa opisina inig aplay nimo.",
+    }),
+    (r"fit to work", {
+        "en": "From your local health unit or a private health office.",
+        "fil": "Mula sa local health unit o pribadong health office.",
+        "ceb": "Gikan sa local health unit o pribadong health office.",
+    }),
+    (r"request for the assistive device", {
+        "en": "From the attending doctor at a hospital or clinic, dated within the last 3 months, with the doctor's name, license number and signature.",
+        "fil": "Mula sa doktor sa ospital o klinika, may petsang pasok sa huling 3 buwan, at may pangalan, license number at pirma ng doktor.",
+        "ceb": "Gikan sa doktor sa ospital o klinika, may petsa nga sulod sa miaging 3 ka bulan, ug may ngalan, license number ug pirma sa doktor.",
+    }),
+    (r"price quotation", {
+        "en": "From the pharmacy, hospital or supplier giving the price, dated within the last 3 months, with the issuing officer's name and signature.",
+        "fil": "Mula sa botika, ospital o supplier na nagbigay ng presyo, may petsang pasok sa huling 3 buwan, at may pangalan at pirma ng nag-isyu.",
+        "ceb": "Gikan sa botika, ospital o supplier nga naghatag sa presyo, may petsa nga sulod sa miaging 3 ka bulan, ug may ngalan ug pirma sa nag-isyu.",
+    }),
+    (r"transport help", {
+        "en": "Bring the one that fits why you're traveling: a police blotter, a doctor's certificate saying you're fit to travel, a jail release order, a court order or subpoena, or a death certificate.",
+        "fil": "Dalhin ang tugma sa dahilan ng inyong biyahe: police blotter, sertipiko ng doktor na kaya ninyong bumiyahe, release order mula sa kulungan, court order o subpoena, o death certificate.",
+        "ceb": "Dad-a ang mohaum sa rason sa imong biyahe: police blotter, sertipiko sa doktor nga makabiyahe ka, release order gikan sa prisohan, court order o subpoena, o death certificate.",
+    }),
+    (r"statement of account|school id", {
+        "en": "From the school registrar or the office where the student is enrolled. Any one of these is enough.",
+        "fil": "Mula sa registrar ng paaralan o sa opisina kung saan naka-enroll ang estudyante. Sapat na ang isa sa mga ito.",
+        "ceb": "Gikan sa registrar sa eskwelahan o sa opisina diin naka-enroll ang estudyante. Igo na ang usa niini.",
+    }),
+    (r"papers for your situation", {
+        "en": "Overseas workers in distress: a passport or travel papers and a certificate from OWWA or the barangay. Rescued persons: a social worker's certificate. Stranded travelers without an ID: a medical certificate or a PNP travel authority. The office will tell you exactly what to bring.",
+        "fil": "Overseas worker na nangangailangan: passport o travel papers at sertipiko mula sa OWWA o barangay. Na-rescue: sertipiko mula sa social worker. Stranded na walang ID: medical certificate o travel authority mula sa PNP. Sasabihin ng opisina kung ano mismo ang dadalhin.",
+        "ceb": "Overseas worker nga nanginahanglan: passport o travel papers ug sertipiko gikan sa OWWA o barangay. Na-rescue: sertipiko gikan sa social worker. Stranded nga walay ID: medical certificate o travel authority gikan sa PNP. Isulti sa opisina kung unsa gyud ang dad-on.",
+    }),
+    (r"promissory note from the funeral parlor", {
+        "en": "Only if there is an unpaid balance for the burial. From the funeral parlor, signed by its staff and by you.",
+        "fil": "Kung may natitira lang na babayaran sa libing. Mula sa punerarya, may pirma ng kanilang staff at ninyo.",
+        "ceb": "Kung naay nahabilin pa nga bayranan sa lubong. Gikan sa punerarya, may pirma sa ilang staff ug nimo.",
+    }),
+    (r"certificate of balance|promissory", {
+        "en": "Only if the patient has already left the hospital. From the hospital's billing or credit and collection office.",
+        "fil": "Kung nakalabas na lang ng ospital ang pasyente. Mula sa billing o credit and collection office ng ospital.",
+        "ceb": "Kung nakagawas na lang sa ospital ang pasyente. Gikan sa billing o credit and collection office sa ospital.",
+    }),
+    (r"authorization letter", {
+        "en": "Written and signed by the person getting the help. An immediate family member doesn't need one.",
+        "fil": "Isinulat at pinirmahan ng taong tutulungan. Hindi ito kailangan ng malapit na kapamilya.",
+        "ceb": "Gisulat ug gipirmahan sa tawo nga tabangan. Dili kini kinahanglan sa suod nga pamilya.",
+    }),
     (r"barangay cert|indigency|certification of the incident|barangay certification", {
         "en": "At {hall}. Bring a valid ID. Usually free or a small fee; if you can't pay, ask for a Certificate of Indigency.",
         "fil": "Sa {hall}. Magdala ng valid ID. Kadalasang libre o maliit na bayad; kung hindi kaya, humingi ng Certificate of Indigency.",
@@ -37,9 +117,9 @@ DOC_GUIDE = [
         "ceb": "Bisan unsang government ID: National ID (PhilID), UMID, lisensya, postal ID o voter's ID. Wala pay ID? Libre ang National ID; pangutana sa {hall} kanus-a ang rehistrasyon.",
     }),
     (r"photo", {
-        "en": "Any photo studio (usually ₱50–100), or a clear recent photo on a plain background.",
-        "fil": "Sa kahit anong photo studio (mga ₱50–100), o malinaw na bagong litrato na plain ang background.",
-        "ceb": "Sa bisan unsang photo studio (mga ₱50–100), o klaro nga bag-ong litrato nga plain ang background.",
+        "en": "Any photo studio, or a clear recent photo on a plain background.",
+        "fil": "Sa kahit anong photo studio, o malinaw na bagong litrato na plain ang background.",
+        "ceb": "Sa bisan unsang photo studio, o klaro nga bag-ong litrato nga plain ang background.",
     }),
     (r"medical|clinical|hospital bill|prescription|laboratory|disability", {
         "en": "From the hospital or clinic treating the patient: ask the records or billing section, or the attending doctor.",
@@ -72,9 +152,9 @@ DOC_GUIDE = [
         "ceb": "Ihatag kanimo sa opisina inig aplay nimo.",
     }),
     (r"solo parent id", {
-        "en": "From the Cebu City Department of Social Welfare and Services (City Hall). Bring proof that you raise your child alone and a barangay certificate.",
-        "fil": "Mula sa Cebu City Department of Social Welfare and Services (City Hall). Magdala ng patunay na mag-isa kayong nagpapalaki ng anak at barangay certificate.",
-        "ceb": "Gikan sa Cebu City Department of Social Welfare and Services (City Hall). Pagdala og pamatuod nga nag-inusara ka sa pagpadako sa anak ug barangay certificate.",
+        "en": "Free, from the Solo Parent Office of the Cebu City Department of Social Welfare and Services. Bring your children's birth certificates and a sworn affidavit that you raise them alone and don't live with a partner. Other papers depend on your situation, like your spouse's death certificate. It's ready within 7 working days and is renewed every year.",
+        "fil": "Libre, mula sa Solo Parent Office ng Cebu City Department of Social Welfare and Services. Magdala ng birth certificate ng mga anak at sinumpaang salaysay na mag-isa ninyo silang pinapalaki at wala kayong kinakasama. Ang ibang papeles ay depende sa inyong sitwasyon, gaya ng death certificate ng asawa. Handa ito sa loob ng 7 araw ng trabaho at nire-renew taon-taon.",
+        "ceb": "Libre, gikan sa Solo Parent Office sa Cebu City Department of Social Welfare and Services. Pagdala og birth certificate sa mga anak ug sinumpaang pamahayag nga ikaw ra ang nagpadako nila ug wala kay kauban nga partner. Ang ubang papeles depende sa imong kahimtang, sama sa death certificate sa bana o asawa. Andam kini sulod sa 7 ka adlaw sa trabaho ug i-renew matag tuig.",
     }),
     (r"osca", {
         "en": "From the Office of Senior Citizens Affairs (OSCA). Bring proof of age and a barangay certificate.",
@@ -122,6 +202,11 @@ STEP = {
         "en": "Say you want to apply for {program}. Staff will check your documents and may ask a few questions, like the ones in this chat. They make the final decision and tell you the next step.",
         "fil": "Sabihing gusto ninyong mag-apply sa {program}. Susuriin ng staff ang mga dokumento at maaaring magtanong, katulad ng nasa chat. Sila ang magpapasya at magsasabi ng susunod na hakbang.",
         "ceb": "Ingna nga gusto ka moaplay sa {program}. Susihon sa staff ang mga dokumento ug basin mangutana, sama sa naa sa chat. Sila ang modesisyon ug mosulti sa sunod nga lakang.",
+    },
+    "there_text_selected": {
+        "en": "Ask if your household is already listed for {program} or can be assessed. DSWD selects the households, so staff will tell you what happens next and what to bring.",
+        "fil": "Itanong kung nakalista na ang inyong pamilya sa {program} o kung maaari itong masuri. DSWD ang pumipili ng mga pamilya, kaya sasabihin ng staff ang susunod na mangyayari at kung ano ang dadalhin.",
+        "ceb": "Pangutana kung nalista na ang inyong pamilya sa {program} o kung masusi ba kini. DSWD ang mopili sa mga pamilya, busa isulti sa staff ang sunod nga mahitabo ug unsa ang dad-on.",
     },
     "dates": {"en": "Upcoming dates", "fil": "Mga paparating na petsa", "ceb": "Mga umaabot nga petsa"},
 }
@@ -211,7 +296,7 @@ def build_plan(assessment: dict, crisis: str | None, have: set[str], directory: 
             "all_documents_ready": bool(docs) and all(d["have"] for d in docs),
             "office": office,
             "office_note": office_note,
-            "what_happens": _t(STEP["there_text"], lang).format(program=name),
+            "what_happens": _t(STEP["there_text_selected" if re.search(r"pantawid|4ps", name, re.I) else "there_text"], lang).format(program=name),
             "schedules": p.get("schedules", []),
         })
     return {

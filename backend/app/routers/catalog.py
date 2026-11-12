@@ -11,7 +11,7 @@ import re
 from fastapi import APIRouter, Request
 
 from app.routers.partners import public_partners
-from app.scoring import CRISIS_VALUES, _fmt_requirement, _lang, attribute_label, value_label
+from app.scoring import DOC_CONDITION_VALUES, _fmt_requirement, _lang, attribute_label, value_label
 
 router = APIRouter()
 
@@ -60,7 +60,7 @@ async def program_catalog(request: Request, lang: str = "en"):
                     "document_name": d["document_name"],
                     "is_mandatory": d["is_mandatory"],
                     "notes": d["notes"],
-                    "only_if": value_label(d["for_crisis"], lang) if d["for_crisis"] in CRISIS_VALUES else None,
+                    "only_if": value_label(d["for_crisis"], lang) if d["for_crisis"] in DOC_CONDITION_VALUES else None,
                 }),
                 "schedules": rows_for(schedules, p["program_id"], lambda s: {
                     "start_date": s["start_date"].isoformat(), "end_date": s["end_date"].isoformat(),
