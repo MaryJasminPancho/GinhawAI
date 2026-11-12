@@ -30,12 +30,13 @@ SLOTS = [
     "has_pregnant",
     "has_pwd",
     "has_senior",
+    "can_do_physical_work",
     "is_solo_parent",
     "crisis_type",
     "help_needed",
 ]
 
-BOOL_SLOTS = {"has_children_0_18", "has_pregnant", "has_pwd", "has_senior", "is_solo_parent"}
+BOOL_SLOTS = {"has_children_0_18", "has_pregnant", "has_pwd", "has_senior", "is_solo_parent", "can_do_physical_work"}
 INT_SLOTS = {"household_size", "age"}
 ENUMS = {"employment_status": EMPLOYMENT_VALUES, "housing_type": HOUSING_VALUES, "crisis_type": CRISIS_VALUES, "help_needed": HELP_VALUES}
 
@@ -91,6 +92,12 @@ QUESTIONS = {
         "ceb": "Aduna bay miyembro sa pamilya nga 60 anyos pataas (senior citizen)?",
         "en": "Is anyone in your household 60 or older?",
     },
+    # TUPAD is short-term community work (DOLE DO 239-23 Sec. 8: seniors may join if fit).
+    "can_do_physical_work": {
+        "fil": "Kaya po ba ninyong gumawa ng magaang pisikal na trabaho, gaya ng paglilinis ng kalsada o kanal?",
+        "ceb": "Makahimo ba ka og gaan nga pisikal nga trabaho, sama sa paglimpyo sa dalan o kanal?",
+        "en": "Can you do light physical work, like cleaning streets or canals?",
+    },
     "is_solo_parent": {
         "fil": "Kayo po ba ay mag-isang nagpapalaki ng anak (solo parent)?",
         "ceb": "Ikaw ba nag-inusarang nagpadako sa imong anak (solo parent)?",
@@ -109,9 +116,17 @@ QUESTIONS = {
     },
 }
 
+# The answer words follow the question: "Is there...?" ("May... ba?" / "Aduna bay...?") is answered
+# Mayroon / Wala, Naa / Wala; "Are you...?" ("Kayo po ba...?" / "Ikaw ba...?") is answered
+# Oo / Hindi, Oo / Dili. Typing any of these words works for either kind.
+HAVE_NONE = {
+    "fil": [("true", "Mayroon"), ("false", "Wala")],
+    "ceb": [("true", "Naa"), ("false", "Wala")],
+    "en": [("true", "Yes"), ("false", "No")],
+}
 YES_NO = {
-    "fil": [("true", "Oo / Mayroon"), ("false", "Wala / Hindi")],
-    "ceb": [("true", "Oo / Naa"), ("false", "Wala / Dili")],
+    "fil": [("true", "Oo"), ("false", "Hindi")],
+    "ceb": [("true", "Oo"), ("false", "Dili")],
     "en": [("true", "Yes"), ("false", "No")],
 }
 
@@ -146,11 +161,12 @@ CHIPS = {
         "en": [("none", "Nothing right now"), ("medical", "Medicine / hospital"), ("death", "Funeral / burial"), ("transport", "Fare / travel"),
                ("education", "School expenses"), ("food", "Food"), ("assistive_device", "Wheelchair, hearing aid or other device"), ("other_help", "Something else")],
     },
-    "has_children_0_18": YES_NO,
-    "has_pregnant": YES_NO,
-    "has_pwd": YES_NO,
-    "has_senior": YES_NO,
+    "has_children_0_18": HAVE_NONE,
+    "has_pregnant": HAVE_NONE,
+    "has_pwd": HAVE_NONE,
+    "has_senior": HAVE_NONE,
     "is_solo_parent": YES_NO,
+    "can_do_physical_work": YES_NO,
 }
 
 # Signed-in citizen with saved answers (optional account).

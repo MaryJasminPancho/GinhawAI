@@ -7,7 +7,7 @@ import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
 import Button, { buttonClasses } from "@/components/Button";
 import { assess, editEntities, Entities, getBarangays, getSession, Lang, SessionExpiredError } from "@/lib/api";
-import { BOOL_FIELDS, CHOICES, displayValue, FIELD_LABELS, FIELD_ORDER, NUMBER_FIELDS, t } from "@/lib/i18n";
+import { BOOL_FIELDS, boolLabel, CHOICES, displayValue, FIELD_LABELS, FIELD_ORDER, NUMBER_FIELDS, t } from "@/lib/i18n";
 
 // Fig. 17 — Data Confirmation: review every answer, fix any of them with
 // "I-edit / Edit" without restarting, then "Kumpirmahin at Isumite".
@@ -57,7 +57,7 @@ function Editor({ field, value, lang, onSave, onCancel }: { field: string; value
       <div className="flex gap-2">
         {[true, false].map((b) => (
           <button key={String(b)} type="button" onClick={() => onSave(b)} className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold ring-1 ${value === b ? "bg-brand-700 text-white ring-brand-700" : "bg-white text-gray-700 ring-gray-200 dark:bg-white/4 dark:text-gray-200 dark:ring-white/10"}`}>
-            {t(lang, b ? "yes" : "no")}
+            {boolLabel(field, b, lang)}
           </button>
         ))}
       </div>

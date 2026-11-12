@@ -20,6 +20,7 @@ export type Entities = {
   has_pwd?: boolean;
   has_senior?: boolean;
   is_solo_parent?: boolean;
+  can_do_physical_work?: boolean;
   crisis_type?: string;
   help_needed?: string;
 };
@@ -35,7 +36,8 @@ export type MessageResponse = {
   missing_fields: string[];
 };
 
-export type CriterionResult = { attribute: string; label: string; status: "pass" | "fail" | "unknown"; actual: string | null; requirement: string; explanation: string };
+/** note: a plain warning for a rule the chat doesn't ask about (e.g. government employees can't join). */
+export type CriterionResult = { attribute: string; label: string; status: "pass" | "fail" | "unknown"; actual: string | null; requirement: string; explanation: string; note?: string | null };
 export type DocumentItem = { doc_id: string; document_name: string; is_mandatory: boolean; notes: string | null };
 export type ScheduleItem = { schedule_id: string; start_date: string; end_date: string; notes: string | null; office_name: string; address: string | null };
 export type OfficeItem = { office_id: string; office_name: string; address: string | null; barangay_code: string | null; contact_number: string | null; operating_hours: string | null };

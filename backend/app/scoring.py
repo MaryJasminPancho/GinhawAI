@@ -171,6 +171,7 @@ COMPUTED_ATTRIBUTES = [
     "monthly_income", "household_size", "per_capita_income", "age", "employment_status", "housing_type",
     "barangay_code", "has_children_0_18", "has_pregnant_member", "has_member_age_0_18_or_pregnant", "has_pwd", "has_senior_member", "is_solo_parent", "crisis_type", "has_crisis",
     "is_unemployed", "is_indigent_or_vulnerable", "belongs_to_priority_worker_group",
+    "physically_fit_for_assigned_task",
 ]
 
 EMPLOYMENT_VALUES = ["employed", "self_employed", "informal", "seasonal", "underemployed", "unemployed", "displaced"]
@@ -236,6 +237,8 @@ def derive_profile(entities: dict) -> dict:
         "crisis_type": crisis,
         "has_crisis": (crisis not in (None, "none")) if crisis is not None else None,
         "help_needed": entities.get("help_needed"),
+        # TUPAD rule that used to be "checked at the office" (DOLE DO 239-23 Sec. 8: seniors may join if fit).
+        "physically_fit_for_assigned_task": entities.get("can_do_physical_work"),
         "is_unemployed": (employment in ("unemployed", "displaced")) if employment else None,
         # Barangay hazard exposure (filled in by the assessment from the barangays table).
         "flood_level": entities.get("flood_level"),
@@ -608,6 +611,30 @@ def _fmt_requirement(attr: str, op: str, threshold: str, lang: str = "en") -> st
     return OP_TEXT.get(op, OP_TEXT["="])[lang].format(v=v)
 
 
+# Rules the chat doesn't ask about, with a plain note so the citizen can judge for themselves.
+# The rule stays "checked at the office"; the note says what happens if it applies to them.
+RULE_NOTES = {
+    "not_government_employee_or_elected_official": {
+        "en": "If you work for the government or hold an elected position, you're automatically not qualified.",
+        "fil": "Kung nagtatrabaho kayo sa gobyerno o may hawak kayong halal na posisyon, awtomatiko kayong hindi kwalipikado.",
+        "ceb": "Kung nagtrabaho ka sa gobyerno o naghupot og napiling posisyon, awtomatiko nga dili ka kwalipikado.",
+    },
+}
+# TUPAD also counts anyone the government pays a regular honorarium or allowance (DOLE DO 239-23 Sec. 8).
+TUPAD_GOV_NOTE = {
+    "en": " This includes anyone paid a regular honorarium or allowance by the government, like a barangay tanod or health worker.",
+    "fil": " Kasama rito ang sinumang binabayaran ng gobyerno ng regular na honorarium o allowance, gaya ng barangay tanod o health worker.",
+    "ceb": " Apil niini ang bisan kinsa nga gibayran sa gobyerno og regular nga honorarium o allowance, sama sa barangay tanod o health worker.",
+}
+
+
+def _rule_note(attr: str, program_name: str, lang: str) -> str | None:
+    note = RULE_NOTES.get(attr, {}).get(lang)
+    if note and attr == "not_government_employee_or_elected_official" and re.search(r"tupad", program_name, re.I):
+        note += TUPAD_GOV_NOTE[lang]
+    return note
+
+
 def evaluate_program(program: dict, criteria: list[dict], profile: dict, lang: str = "en") -> dict:
     lang = _lang(lang)
     results = []
@@ -617,7 +644,7 @@ def evaluate_program(program: dict, criteria: list[dict], profile: dict, lang: s
         requirement = _fmt_requirement(attr, c["operator"], c["threshold_value"], lang)
         if attr not in profile:
             results.append({"attribute": attr, "label": label, "status": "unknown", "actual": None, "requirement": requirement,
-                            "explanation": RULE_TEXT["unknown"][lang]})
+                            "explanation": RULE_TEXT["unknown"][lang], "note": _rule_note(attr, program.get("program_name", ""), lang)})
             continue
         ok = compare(profile[attr], c["operator"], c["threshold_value"])
         actual = _fmt(attr, profile[attr], lang)

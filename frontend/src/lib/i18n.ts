@@ -120,6 +120,9 @@ const T = {
   checking: { fil: "Sinusuri…", ceb: "Gisusi…", en: "Checking…" },
   yes: { fil: "Oo", ceb: "Oo", en: "Yes" },
   no: { fil: "Hindi", ceb: "Dili", en: "No" },
+  // Answers to "Is there...?" questions (the chat's buttons use the same words).
+  have: { fil: "Mayroon", ceb: "Naa", en: "Yes" },
+  none: { fil: "Wala", ceb: "Wala", en: "No" },
   notAnswered: { fil: "Wala pang sagot", ceb: "Wala pay tubag", en: "Not answered yet" },
 
   resultTitle: { fil: "Ang inyong resulta", ceb: "Ang imong resulta", en: "Your result" },
@@ -264,6 +267,7 @@ export const FIELD_LABELS: Record<keyof Omit<Entities, "barangay_code">, Record<
   has_pregnant: { fil: "May buntis", ceb: "Naay mabdos", en: "Pregnant member" },
   has_pwd: { fil: "May PWD sa pamilya", ceb: "Naay PWD sa pamilya", en: "PWD in household" },
   has_senior: { fil: "May 60 pataas sa pamilya", ceb: "Naay 60 pataas sa pamilya", en: "Someone 60+ in household" },
+  can_do_physical_work: { fil: "Kayang gumawa ng pisikal na trabaho", ceb: "Makahimo og pisikal nga trabaho", en: "Can do light physical work" },
   is_solo_parent: { fil: "Solo parent", ceb: "Solo parent", en: "Solo parent" },
   crisis_type: { fil: "Krisis ngayon", ceb: "Krisis karon", en: "Current crisis" },
   help_needed: { fil: "Kailangang tulong", ceb: "Tabang nga gikinahanglan", en: "Help needed" },
@@ -307,12 +311,16 @@ export const CHOICES: Record<string, { value: string; label: Record<Lang, string
   ],
 };
 
-export const BOOL_FIELDS = new Set(["has_children_0_18", "has_pregnant", "has_pwd", "has_senior", "is_solo_parent"]);
+// "Is there...?" questions are answered Mayroon / Naa / Wala; "Are you...?" ones Oo / Hindi / Dili.
+export const HAVE_FIELDS = new Set(["has_children_0_18", "has_pregnant", "has_pwd", "has_senior"]);
+export const boolLabel = (field: string, value: boolean, lang: Lang) =>
+  t(lang, HAVE_FIELDS.has(field) ? (value ? "have" : "none") : value ? "yes" : "no");
+export const BOOL_FIELDS = new Set(["has_children_0_18", "has_pregnant", "has_pwd", "has_senior", "is_solo_parent", "can_do_physical_work"]);
 export const NUMBER_FIELDS = new Set(["household_size", "monthly_income", "age"]);
 
 export function displayValue(field: string, value: unknown, lang: Lang): string {
   if (value === undefined || value === null || value === "") return t(lang, "notAnswered");
-  if (BOOL_FIELDS.has(field)) return value ? t(lang, "yes") : t(lang, "no");
+  if (BOOL_FIELDS.has(field)) return boolLabel(field, Boolean(value), lang);
   if (field === "monthly_income") return `₱${Number(value).toLocaleString("en-PH")}`;
   const choice = CHOICES[field]?.find((c) => c.value === value);
   return choice ? choice.label[lang] : String(value);
