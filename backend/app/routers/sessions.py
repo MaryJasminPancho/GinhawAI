@@ -41,9 +41,10 @@ SLOT_MODELS = {
     "employment_status": "employment_status",
     "housing_type": "housing_type",   # 92% on the hand-written test (25 sentences)
     "crisis_type": "crisis_type",   # 85.7% on the hand-written test (28 sentences)
-    # "has_children_0_18": "yes_no",
-    # "has_pwd": "yes_no",
-    # "is_solo_parent": "yes_no",
+    "has_children_0_18": "yes_no",   # yes_no: 90% on the hand-written test (30 sentences); low confidence falls back to Gemini
+    "has_pwd": "yes_no",
+    "has_senior": "yes_no",
+    "is_solo_parent": "yes_no",
 }
 # Minimum confidence before we trust a model's answer (below this we fall back to Gemini)
 MODEL_MIN_CONF = 0.5

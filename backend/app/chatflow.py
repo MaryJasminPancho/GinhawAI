@@ -12,6 +12,8 @@ also keeps the chat working if the AI call fails.
 
 import re
 
+from app.amounts import parse_count, parse_monthly_income
+from app.scoring import CRISIS_VALUES, EMPLOYMENT_VALUES, HOUSING_VALUES
 from app.scoring import CRISIS_VALUES, EMPLOYMENT_VALUES, HELP_VALUES, HOUSING_VALUES
 
 LANGS = ("fil", "ceb", "en")
@@ -222,7 +224,7 @@ ENUM_SYNONYMS = {
         "death": ["namatay", "patay", "death", "died", "lamay", "burial", "funeral"],
         "fire": ["sunog", "sunugan", "nasunog", "fire"],
         "calamity": ["baha", "bagyo", "flood", "typhoon", "lindol", "earthquake", "calamity"],
-        "job_loss": ["nawalan ng kita", "nawad-an", "lost income", "job loss"],
+        "job_loss": ["nawalan ng kita", "nawad-an", "lost income", "job loss", "wala nang kita", "wala na kaming kita", "wala na koy kita", "wala nay kita", "walay kita", "walang kita", "no income"],
     },
     "help_needed": {
         "none": ["wala", "none", "no", "dili", "hindi", "nothing"],
@@ -281,8 +283,26 @@ def _parse_number(text: str):
     return value
 
 
+# Words that mean the person is not giving an answer ("hindi ko alam" = "I don't know", not "no").
+UNSURE_WORDS = {"alam", "sure", "sigurado", "kahibalo", "kabalo", "ewan", "ambot", "basin", "baka"}
+# Negation words. A keyword next to one of these can mean the opposite ("wala koy sakit" = no illness).
+NEGATORS = {"wala", "walay", "walang", "dili", "hindi", "di", "no", "not", "none", "wa"}
+
+
+# Crisis words used by the negation rule in parse_for_slot (medicine words are left out on purpose:
+# "walang gamot" = no medicine, which is a medical need, not "no crisis").
+_CRISIS_WORD = re.compile(r"sakit|ospital|hospital|namatay|patay|sunog|sunugan|\bbaha\b|binaha|nabahaan|bagyo|flood|typhoon|lindol|sickness|illness|\bsick\b|death|\bdied\b")
+_NEGATED_CRISIS = re.compile(r"\b(?:wala|walay|walang|dili|hindi|di|no|not|wa)\b\s+(?:[\w'-]+\s+)?[\w'-]*(?:" + _CRISIS_WORD.pattern + r")[\w'-]*")
+
+
 def _parse_bool(text: str):
     words = set(re.findall(r"[a-z']+", text.lower()))
+    # Ambiguity guard: unsure words, or a negation inside a longer sentence ("Wala akong asawa, ako ang nag-aalaga"
+    # is a YES for solo parent), are not safe to decide by keyword -> return None so the XLM-R model / Gemini decides.
+    if words & UNSURE_WORDS:
+        return None
+    if words & NO_WORDS and len(words) > 3:
+        return None
     if words & NO_WORDS and not words & (YES_WORDS - {"may"}):
         return False
     if words & YES_WORDS:
@@ -310,19 +330,40 @@ def parse_for_slot(slot: str, text: str, lang: str, synonyms: dict | None = None
     if slot in BOOL_SLOTS:
         return _parse_bool(low)
     if slot in INT_SLOTS or slot == "monthly_income":
-        n = _parse_number(low)
+        # amounts.py understands number words ("labinlimang libo"), pay periods ("kada adlaw", "kinsenas") and
+        # "walang kita". If it can't read the answer confidently it returns None and the model / Gemini decides
+        # (the old "first number wins" rule is no longer used: it turned "500 kada adlaw" into a monthly 500).
+        n = parse_monthly_income(low) if slot == "monthly_income" else parse_count(low, slot)
         if n is None:
             return None
         return coerce(slot, n)
     if slot in synonyms:
         # Longest (most specific) word first, so "nawalan ng kita" beats a shorter word inside it.
         pairs = sorted(((w.lower(), v) for v, ws in synonyms[slot].items() if v != "none" for w in ws), key=lambda p: -len(p[0]))
+        low_words = set(re.findall(r"[a-z']+", low))
+        has_negator = bool(low_words & NEGATORS)
+        if slot == "crisis_type":
+            # Negated crisis ("walang sakit", "walay namatay", "no sickness") means NO crisis. Only 0-1 words may sit between
+            # the negation and the keyword, so "wala kaming pambayad sa ospital" (can't pay the hospital) is NOT caught.
+            neg = _NEGATED_CRISIS.search(low)
+            if neg:
+                rest = low[:neg.start()] + " " + low[neg.end():]
+                # another crisis word elsewhere ("walang sunog pero binaha kami") -> unsure, let the model decide
+                return None if _CRISIS_WORD.search(rest) else "none"
         for word, value in pairs:  # "none" is checked last, as whole words only ("no" is inside "nasunog")
             if word and word in low:
+                # "wala na kaming kita" next to a death/illness/fire word is the result of that event, not job loss itself
+                if slot == "crisis_type" and value == "job_loss" and _CRISIS_WORD.search(low):
+                    continue
+                # Ambiguity guard: a negation next to a plain keyword ("wala koy sakit", "walang namatay") flips its
+                # meaning, so don't decide by keyword. Phrases that carry their own negation ("walang trabaho") are fine.
+                if has_negator and not set(re.findall(r"[a-z']+", word)) & NEGATORS:
+                    return None
                 return value
-        if slot in ("crisis_type", "help_needed") and any(re.search(rf"\b{re.escape(w.lower())}\b", low) for w in synonyms[slot].get("none", [])):
-            return "none"
-        if slot in ("crisis_type", "help_needed") and _parse_bool(low) is False:
+        if slot == "crisis_type" and any(re.search(rf"\b{re.escape(w.lower())}\b", low) for w in synonyms[slot].get("none", [])):
+            # "wala" alone means none, but inside a longer sentence ("wala na koy kita") it can mean something else.
+            return "none" if len(low_words) <= 3 else None
+        if slot == "crisis_type" and _parse_bool(low) is False:
             return "none"
         return None
     if slot == "barangay":
