@@ -94,9 +94,9 @@ QUESTIONS = {
     },
     # TUPAD is short-term community work (DOLE DO 239-23 Sec. 8: seniors may join if fit).
     "can_do_physical_work": {
-        "fil": "Kaya po ba ninyong gumawa ng magaang pisikal na trabaho, gaya ng paglilinis ng kalsada o kanal?",
-        "ceb": "Makahimo ba ka og gaan nga pisikal nga trabaho, sama sa paglimpyo sa dalan o kanal?",
-        "en": "Can you do light physical work, like cleaning streets or canals?",
+        "fil": "Kaya po ba ninyong gumawa ng magaang pisikal na trabaho, gaya ng paglilinis o pagbubuhat?",
+        "ceb": "Makahimo ba ka og gaan nga pisikal nga trabaho, sama sa paglimpyo o pag-alsa?",
+        "en": "Can you do light physical work, like cleaning or lifting things?",
     },
     "is_solo_parent": {
         "fil": "Kayo po ba ay mag-isang nagpapalaki ng anak (solo parent)?",
