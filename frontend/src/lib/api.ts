@@ -36,7 +36,7 @@ export type MessageResponse = {
   missing_fields: string[];
 };
 
-/** note: a plain warning for a rule the chat doesn't ask about (e.g. government employees can't join). */
+/** note: a warning on a rule the chat doesn't ask about (e.g. the office can still turn down government employees). */
 export type CriterionResult = { attribute: string; label: string; status: "pass" | "fail" | "unknown"; actual: string | null; requirement: string; explanation: string; note?: string | null };
 export type DocumentItem = { doc_id: string; document_name: string; is_mandatory: boolean; notes: string | null };
 export type ScheduleItem = { schedule_id: string; start_date: string; end_date: string; notes: string | null; office_name: string; address: string | null };

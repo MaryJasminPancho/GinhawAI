@@ -611,13 +611,21 @@ def _fmt_requirement(attr: str, op: str, threshold: str, lang: str = "en") -> st
     return OP_TEXT.get(op, OP_TEXT["="])[lang].format(v=v)
 
 
-# Rules the chat doesn't ask about, with a plain note so the citizen can judge for themselves.
-# The rule stays "checked at the office"; the note says what happens if it applies to them.
+# Rules the chat doesn't ask about because nearly every applicant meets them. They count as met
+# (a check mark), with a note on when the office can still turn the citizen down.
 RULE_NOTES = {
     "not_government_employee_or_elected_official": {
-        "en": "If you work for the government or hold an elected position, you're automatically not qualified.",
-        "fil": "Kung nagtatrabaho kayo sa gobyerno o may hawak kayong halal na posisyon, awtomatiko kayong hindi kwalipikado.",
-        "ceb": "Kung nagtrabaho ka sa gobyerno o naghupot og napiling posisyon, awtomatiko nga dili ka kwalipikado.",
+        "en": "The office can still turn you down if you work for the government or hold an elected position.",
+        "fil": "Maaari pa rin kayong hindi tanggapin ng opisina kung nagtatrabaho kayo sa gobyerno o may hawak kayong halal na posisyon.",
+        "ceb": "Mahimo gihapon ka nga dili dawaton sa opisina kung nagtrabaho ka sa gobyerno o naghupot og napiling posisyon.",
+    },
+}
+# Rules that stay "checked at the office" (?), with a note on what to do in the meantime.
+OFFICE_NOTES = {
+    "not_receiving_other_pension": {
+        "en": "If the senior already gets a pension (SSS, GSIS, AFP/PNP or veteran's), they won't qualify. Otherwise, go ahead and gather the documents below.",
+        "fil": "Kung may natatanggap nang pensyon ang senior (SSS, GSIS, AFP/PNP o pang-beterano), hindi siya kwalipikado. Kung wala, ihanda na ang mga dokumento sa ibaba.",
+        "ceb": "Kung naa nay pensyon ang senior (SSS, GSIS, AFP/PNP o sa beterano), dili siya kwalipikado. Kung wala, andama na ang mga dokumento sa ubos.",
     },
 }
 # TUPAD also counts anyone the government pays a regular honorarium or allowance (DOLE DO 239-23 Sec. 8).
@@ -642,9 +650,14 @@ def evaluate_program(program: dict, criteria: list[dict], profile: dict, lang: s
         attr = c["attribute"]
         label = attribute_label(attr, lang)
         requirement = _fmt_requirement(attr, c["operator"], c["threshold_value"], lang)
+        note = _rule_note(attr, program.get("program_name", ""), lang)
+        if attr not in profile and note:
+            results.append({"attribute": attr, "label": label, "status": "pass", "actual": None, "requirement": requirement,
+                            "explanation": "", "note": note})
+            continue
         if attr not in profile:
             results.append({"attribute": attr, "label": label, "status": "unknown", "actual": None, "requirement": requirement,
-                            "explanation": RULE_TEXT["unknown"][lang], "note": _rule_note(attr, program.get("program_name", ""), lang)})
+                            "explanation": RULE_TEXT["unknown"][lang], "note": OFFICE_NOTES.get(attr, {}).get(lang)})
             continue
         ok = compare(profile[attr], c["operator"], c["threshold_value"])
         actual = _fmt(attr, profile[attr], lang)

@@ -81,7 +81,7 @@ function ProgramCard({ p, lang, have, onToggleDoc }: { p: ProgramResult; lang: L
                 <CriterionIcon status={c.status} />
                 <div>
                   <p className="font-medium text-gray-800 dark:text-gray-200">{c.label}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{c.status === "unknown" ? t(lang, "toVerify") : c.explanation}</p>
+                  {(c.status === "unknown" || c.explanation) && <p className="text-xs text-gray-500 dark:text-gray-400">{c.status === "unknown" ? t(lang, "toVerify") : c.explanation}</p>}
                   {c.note && <p className="mt-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">{c.note}</p>}
                 </div>
               </li>
