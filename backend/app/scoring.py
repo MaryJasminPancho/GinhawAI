@@ -171,6 +171,7 @@ COMPUTED_ATTRIBUTES = [
     "monthly_income", "household_size", "per_capita_income", "age", "employment_status", "housing_type",
     "barangay_code", "has_children_0_18", "has_pregnant_member", "has_member_age_0_18_or_pregnant", "has_pwd", "has_senior_member", "is_solo_parent", "crisis_type", "has_crisis",
     "is_unemployed", "is_indigent_or_vulnerable", "belongs_to_priority_worker_group",
+    "physically_fit_for_assigned_task",
 ]
 
 EMPLOYMENT_VALUES = ["employed", "self_employed", "informal", "seasonal", "underemployed", "unemployed", "displaced"]
@@ -236,6 +237,8 @@ def derive_profile(entities: dict) -> dict:
         "crisis_type": crisis,
         "has_crisis": (crisis not in (None, "none")) if crisis is not None else None,
         "help_needed": entities.get("help_needed"),
+        # TUPAD rule that used to be "checked at the office" (DOLE DO 239-23 Sec. 8: seniors may join if fit).
+        "physically_fit_for_assigned_task": entities.get("can_do_physical_work"),
         "is_unemployed": (employment in ("unemployed", "displaced")) if employment else None,
         # Barangay hazard exposure (filled in by the assessment from the barangays table).
         "flood_level": entities.get("flood_level"),
@@ -608,6 +611,38 @@ def _fmt_requirement(attr: str, op: str, threshold: str, lang: str = "en") -> st
     return OP_TEXT.get(op, OP_TEXT["="])[lang].format(v=v)
 
 
+# Rules the chat doesn't ask about because nearly every applicant meets them. They count as met
+# (a check mark), with a note on when the office can still turn the citizen down.
+RULE_NOTES = {
+    "not_government_employee_or_elected_official": {
+        "en": "The office can still turn you down if you work for the government or hold an elected position.",
+        "fil": "Maaari pa rin kayong hindi tanggapin ng opisina kung nagtatrabaho kayo sa gobyerno o may hawak kayong halal na posisyon.",
+        "ceb": "Mahimo gihapon ka nga dili dawaton sa opisina kung nagtrabaho ka sa gobyerno o naghupot og napiling posisyon.",
+    },
+}
+# Rules that stay "checked at the office" (?), with a note on what to do in the meantime.
+OFFICE_NOTES = {
+    "not_receiving_other_pension": {
+        "en": "If the senior already gets a pension (SSS, GSIS, AFP/PNP or veteran's), they won't qualify. Otherwise, go ahead and gather the documents below.",
+        "fil": "Kung may natatanggap nang pensyon ang senior (SSS, GSIS, AFP/PNP o pang-beterano), hindi siya kwalipikado. Kung wala, ihanda na ang mga dokumento sa ibaba.",
+        "ceb": "Kung naa nay pensyon ang senior (SSS, GSIS, AFP/PNP o sa beterano), dili siya kwalipikado. Kung wala, andama na ang mga dokumento sa ubos.",
+    },
+}
+# TUPAD also counts anyone the government pays a regular honorarium or allowance (DOLE DO 239-23 Sec. 8).
+TUPAD_GOV_NOTE = {
+    "en": " This includes anyone paid a regular honorarium or allowance by the government, like a barangay tanod or health worker.",
+    "fil": " Kasama rito ang sinumang binabayaran ng gobyerno ng regular na honorarium o allowance, gaya ng barangay tanod o health worker.",
+    "ceb": " Apil niini ang bisan kinsa nga gibayran sa gobyerno og regular nga honorarium o allowance, sama sa barangay tanod o health worker.",
+}
+
+
+def _rule_note(attr: str, program_name: str, lang: str) -> str | None:
+    note = RULE_NOTES.get(attr, {}).get(lang)
+    if note and attr == "not_government_employee_or_elected_official" and re.search(r"tupad", program_name, re.I):
+        note += TUPAD_GOV_NOTE[lang]
+    return note
+
+
 def evaluate_program(program: dict, criteria: list[dict], profile: dict, lang: str = "en") -> dict:
     lang = _lang(lang)
     results = []
@@ -615,9 +650,14 @@ def evaluate_program(program: dict, criteria: list[dict], profile: dict, lang: s
         attr = c["attribute"]
         label = attribute_label(attr, lang)
         requirement = _fmt_requirement(attr, c["operator"], c["threshold_value"], lang)
+        note = _rule_note(attr, program.get("program_name", ""), lang)
+        if attr not in profile and note:
+            results.append({"attribute": attr, "label": label, "status": "pass", "actual": None, "requirement": requirement,
+                            "explanation": "", "note": note})
+            continue
         if attr not in profile:
             results.append({"attribute": attr, "label": label, "status": "unknown", "actual": None, "requirement": requirement,
-                            "explanation": RULE_TEXT["unknown"][lang]})
+                            "explanation": RULE_TEXT["unknown"][lang], "note": OFFICE_NOTES.get(attr, {}).get(lang)})
             continue
         ok = compare(profile[attr], c["operator"], c["threshold_value"])
         actual = _fmt(attr, profile[attr], lang)

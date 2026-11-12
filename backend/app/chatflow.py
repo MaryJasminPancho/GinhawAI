@@ -32,12 +32,13 @@ SLOTS = [
     "has_pregnant",
     "has_pwd",
     "has_senior",
+    "can_do_physical_work",
     "is_solo_parent",
     "crisis_type",
     "help_needed",
 ]
 
-BOOL_SLOTS = {"has_children_0_18", "has_pregnant", "has_pwd", "has_senior", "is_solo_parent"}
+BOOL_SLOTS = {"has_children_0_18", "has_pregnant", "has_pwd", "has_senior", "is_solo_parent", "can_do_physical_work"}
 INT_SLOTS = {"household_size", "age"}
 ENUMS = {"employment_status": EMPLOYMENT_VALUES, "housing_type": HOUSING_VALUES, "crisis_type": CRISIS_VALUES, "help_needed": HELP_VALUES}
 
@@ -93,6 +94,12 @@ QUESTIONS = {
         "ceb": "Aduna bay miyembro sa pamilya nga 60 anyos pataas (senior citizen)?",
         "en": "Is anyone in your household 60 or older?",
     },
+    # TUPAD is short-term community work (DOLE DO 239-23 Sec. 8: seniors may join if fit).
+    "can_do_physical_work": {
+        "fil": "Kaya po ba ninyong gumawa ng magaang pisikal na trabaho, gaya ng paglilinis ng kalsada o kanal?",
+        "ceb": "Makahimo ba ka og gaan nga pisikal nga trabaho, sama sa paglimpyo sa dalan o kanal?",
+        "en": "Can you do light physical work, like cleaning streets or canals?",
+    },
     "is_solo_parent": {
         "fil": "Kayo po ba ay mag-isang nagpapalaki ng anak (solo parent)?",
         "ceb": "Ikaw ba nag-inusarang nagpadako sa imong anak (solo parent)?",
@@ -111,9 +118,17 @@ QUESTIONS = {
     },
 }
 
+# The answer words follow the question: "Is there...?" ("May... ba?" / "Aduna bay...?") is answered
+# Mayroon / Wala, Naa / Wala; "Are you...?" ("Kayo po ba...?" / "Ikaw ba...?") is answered
+# Oo / Hindi, Oo / Dili. Typing any of these words works for either kind.
+HAVE_NONE = {
+    "fil": [("true", "Mayroon"), ("false", "Wala")],
+    "ceb": [("true", "Naa"), ("false", "Wala")],
+    "en": [("true", "Yes"), ("false", "No")],
+}
 YES_NO = {
-    "fil": [("true", "Oo / Mayroon"), ("false", "Wala / Hindi")],
-    "ceb": [("true", "Oo / Naa"), ("false", "Wala / Dili")],
+    "fil": [("true", "Oo"), ("false", "Hindi")],
+    "ceb": [("true", "Oo"), ("false", "Dili")],
     "en": [("true", "Yes"), ("false", "No")],
 }
 
@@ -148,11 +163,12 @@ CHIPS = {
         "en": [("none", "Nothing right now"), ("medical", "Medicine / hospital"), ("death", "Funeral / burial"), ("transport", "Fare / travel"),
                ("education", "School expenses"), ("food", "Food"), ("assistive_device", "Wheelchair, hearing aid or other device"), ("other_help", "Something else")],
     },
-    "has_children_0_18": YES_NO,
-    "has_pregnant": YES_NO,
-    "has_pwd": YES_NO,
-    "has_senior": YES_NO,
+    "has_children_0_18": HAVE_NONE,
+    "has_pregnant": HAVE_NONE,
+    "has_pwd": HAVE_NONE,
+    "has_senior": HAVE_NONE,
     "is_solo_parent": YES_NO,
+    "can_do_physical_work": YES_NO,
 }
 
 # Signed-in citizen with saved answers (optional account).
@@ -204,7 +220,9 @@ NO_WORDS = {"no", "n", "nope", "hindi", "wala", "dili", "none", "false", "wa", "
 
 ENUM_SYNONYMS = {
     "employment_status": {
-        "unemployed": ["walang trabaho", "walay trabaho", "no work", "jobless", "wala trabaho", "unemployed"],
+        "unemployed": ["walang trabaho", "walay trabaho", "no work", "jobless", "wala trabaho", "unemployed",
+                       # mixed Cebuano/Filipino/English ("wala koy work karon")
+                       "wala koy trabaho", "wala akong trabaho", "wala koy work", "walay work", "walang work", "wala work", "no job"],
         "displaced": ["natanggal", "tinanggal", "natangtang", "laid off", "lost my job", "lost job", "displaced"],
         "informal": ["arawan", "daily", "extra", "sideline", "odd job", "construction", "tricycle", "habal", "labandera"],
         "seasonal": ["seasonal", "pana-panahon", "harvest"],
@@ -272,15 +290,35 @@ def question(slot: str, lang: str) -> str:
     return QUESTIONS[slot][lang]
 
 
+# Number words in Cebuano, Filipino and English ("lima kami", "walo ka libo", "five").
+NUMBER_WORDS = {
+    "usa": 1, "isa": 1, "one": 1,
+    "duha": 2, "dalawa": 2, "two": 2,
+    "tulo": 3, "tatlo": 3, "three": 3,
+    "upat": 4, "apat": 4, "four": 4,
+    "lima": 5, "five": 5,
+    "unom": 6, "anim": 6, "six": 6,
+    "pito": 7, "seven": 7,
+    "walo": 8, "eight": 8,
+    "siyam": 9, "nine": 9,
+    "napulo": 10, "sampu": 10, "ten": 10,
+}
+# "8k", "8 thousand", "8 libo", "walo ka libo", "walong libo": the suffix must be a whole word,
+# so the "k" in "5 kami" isn't read as "5,000".
+THOUSAND = r"(?:k|thousand|libo|mil)\b"
+
+
 def _parse_number(text: str):
     t = text.lower().replace(",", "").replace("₱", "").replace("php", "")
-    m = re.search(r"(\d+(?:\.\d+)?)\s*(k|thousand|libo|mil)?", t)
-    if not m:
-        return None
-    value = float(m.group(1))
-    if m.group(2):
-        value *= 1000
-    return value
+    m = re.search(rf"(\d+(?:\.\d+)?)\s*({THOUSAND})?", t)
+    if m:
+        return float(m.group(1)) * (1000 if m.group(2) else 1)
+    words = "|".join(sorted(NUMBER_WORDS, key=len, reverse=True))
+    # "walong" = "walo" + the Filipino linker "-ng"; "ka" is the Cebuano linker ("walo ka libo").
+    m = re.search(rf"\b({words})(?:ng)?\b(?:\s+(?:ka\s+)?({THOUSAND}))?", t)
+    if m:
+        return float(NUMBER_WORDS[m.group(1)]) * (1000 if m.group(2) else 1)
+    return None
 
 
 # Words that mean the person is not giving an answer ("hindi ko alam" = "I don't know", not "no").

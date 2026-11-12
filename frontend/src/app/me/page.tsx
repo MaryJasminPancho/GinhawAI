@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+import { RecheckCard, RemindersCard, TrackerCard, useTracker } from "@/components/AccountExtras";
 import Backdrop from "@/components/Backdrop";
 import { buttonClasses } from "@/components/Button";
 import {
@@ -12,8 +13,8 @@ import { displayValue, FIELD_LABELS, FIELD_ORDER, t } from "@/lib/i18n";
 
 // The signed-in home screen. It looks different from the start page on purpose (green banner,
 // avatar, "Signed in" badge) so a citizen can see at a glance that they are logged in, and it
-// shows their own data straight away: what changed, the document checklist, saved answers and
-// past results. The login lasts 30 minutes; when it ends this page sends them back to log in.
+// shows their own data straight away: what changed, "did something change?", their applications,
+// the document checklist, reminders, saved answers and past results. The login lasts 30 minutes; when it ends this page sends them back to log in.
 
 const TIER = {
   high: { en: "High need", fil: "Mataas na pangangailangan", ceb: "Taas nga panginahanglan", cls: "bg-red-50 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20" },
@@ -90,6 +91,7 @@ function MeInner() {
   const [checklist, setChecklist] = useState<ChecklistProgram[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tickError, setTickError] = useState(false);
+  const [tracker, setTracker] = useTracker();
 
   // The language is the one used in the last check (the start of every new check asks again).
   const lang: Lang = acct?.profile?.language ?? "en";
@@ -205,6 +207,10 @@ function MeInner() {
                 <Changes history={acct.history} lang={lang} />
               </section>
 
+              <RecheckCard tracker={tracker} lang={lang} />
+
+              <TrackerCard tracker={tracker} setTracker={setTracker} lang={lang} />
+
               <section className={card}>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <h2 className={cardTitle}>{t(lang, "dashChecklistTitle")}</h2>
@@ -258,6 +264,8 @@ function MeInner() {
                   </>
                 )}
               </section>
+
+              <RemindersCard lang={lang} />
 
               <section className={card}>
                 <h2 className={cardTitle}>{t(lang, "acctSavedAnswers")}</h2>
