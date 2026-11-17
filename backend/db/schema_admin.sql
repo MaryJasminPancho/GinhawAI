@@ -637,3 +637,14 @@ CREATE TABLE IF NOT EXISTS citizen_reminders_sent (
     sent_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (citizen_id, kind, ref)
 );
+
+-- ---------------------------------------------------------------------------
+-- Audit flags a System Administrator has looked at ("Flag Anomalous Access Patterns").
+-- Flags are worked out from audit_logs when the page loads; audit_logs itself stays
+-- untouched (immutable), so "reviewed" lives here. Each review is also audit-logged.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS audit_flag_reviews (
+    audit_id     UUID PRIMARY KEY REFERENCES audit_logs(audit_id) ON DELETE CASCADE,
+    reviewed_by  UUID NOT NULL REFERENCES admin_users(user_id),
+    reviewed_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);

@@ -33,6 +33,8 @@ export default function FeedbackPage() {
     return c;
   }, [items, commentsOnly]);
   const shown = (items ?? []).filter((f) => (filter === "all" || f.status === filter) && (!commentsOnly || f.qualitative_feedback));
+  // Score-only feedback (no written comment) hidden by the checkbox, so staff know it exists.
+  const hidden = commentsOnly ? (items ?? []).filter((f) => (filter === "all" || f.status === filter) && !f.qualitative_feedback).length : 0;
 
   function replace(f: Feedback) {
     setItems((all) => all?.map((x) => (x.feedback_id === f.feedback_id ? f : x)) ?? null);
@@ -74,11 +76,16 @@ export default function FeedbackPage() {
             <label className="flex items-center gap-2 text-[13px] text-gray-600 dark:text-gray-300">
               <input type="checkbox" checked={commentsOnly} onChange={(e) => setCommentsOnly(e.target.checked)} className="h-4 w-4 accent-brand-600" />
               Only feedback with a written comment
+              {hidden > 0 && <span className="text-gray-400">({hidden} with only a score hidden)</span>}
             </label>
           </div>
 
           {shown.length === 0 ? (
-            <EmptyState title="Nothing here">No feedback matches this filter.</EmptyState>
+            <EmptyState title="Nothing here">
+              {hidden > 0
+                ? `${hidden} feedback with only a usability score (no written comment) ${hidden === 1 ? "is" : "are"} hidden. Untick "Only feedback with a written comment" to see ${hidden === 1 ? "it" : "them"}.`
+                : "No feedback matches this filter."}
+            </EmptyState>
           ) : (
             <div className="space-y-3">
               {shown.map((f) => <FeedbackItem key={f.feedback_id} f={f} onSaved={replace} />)}
