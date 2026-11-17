@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { NAV_COUNT_KEY } from "@/components/NavTracker";
 
 /** "← Back": returns to the previous GinhawAI page, or to `fallback` when the page
  * was opened directly (from a link, bookmark or a new tab). */
@@ -8,8 +9,13 @@ export default function BackButton({ fallback = "/" }: { fallback?: string }) {
   const router = useRouter();
 
   function back() {
-    const cameFromHere = document.referrer.startsWith(window.location.origin);
-    if (cameFromHere && window.history.length > 1) router.back();
+    // More than one GinhawAI page opened in this tab means there is a page to go back to
+    // (see NavTracker). Otherwise the page was opened directly, so go to the fallback.
+    let pages = 0;
+    try {
+      pages = Number(sessionStorage.getItem(NAV_COUNT_KEY) || 0);
+    } catch {}
+    if (pages > 1 && window.history.length > 1) router.back();
     else router.push(fallback);
   }
 

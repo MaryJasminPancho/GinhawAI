@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
+import SiteFooter from "@/components/SiteFooter";
 
 // CHECK: the `code` values are sent to the backend as the session language.
 // Make sure they match the codes in backend/db/seed_localization.sql.
@@ -56,6 +57,8 @@ export default function LanguageSelection() {
             ))}
           </nav>
         </div>
+
+        <SiteFooter className="mt-8" />
       </main>
     </div>
   );

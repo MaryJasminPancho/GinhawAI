@@ -29,10 +29,24 @@ const T = {
     en: "I agree that GinhawAI may save my answers and results in my account. I can delete my account at any time. If I do not sign in for 12 months, it is deleted automatically. (RA 10173)",
   },
   acctSessionEnded: {
-    fil: "Natapos na ang inyong session pagkalipas ng 30 minuto. Mag-log in muli.",
-    ceb: "Natapos na ang imong session human sa 30 ka minuto. Palihog og log in pag-usab.",
-    en: "Your session ended after 30 minutes. Please log in again.",
+    fil: "Natapos na ang inyong session. Mag-log in muli.",
+    ceb: "Natapos na ang imong session. Palihog og log in pag-usab.",
+    en: "Your session ended. Please log in again.",
   },
+  // Signed out after 5 minutes without activity (IdleGuard)
+  acctSessionIdle: {
+    fil: "Na-sign out po kayo dahil matagal kayong walang ginawa. Para sa inyong seguridad, mag-log in muli.",
+    ceb: "Na-sign out ka tungod kay dugay kang walay gihimo. Para sa imong seguridad, palihog og log in pag-usab.",
+    en: "You were signed out because you were inactive for a while. For your safety, please log in again.",
+  },
+  idleTitle: { fil: "Nandiyan pa po ba kayo?", ceb: "Naa pa ka ba?", en: "Are you still there?" },
+  idleText: {
+    fil: "Para sa inyong seguridad, masa-sign out kayo sa loob ng {s} segundo.",
+    ceb: "Para sa imong seguridad, ma-sign out ka sulod sa {s} segundo.",
+    en: "For your safety, you will be signed out in {s} seconds.",
+  },
+  idleStay: { fil: "Manatiling naka-sign in", ceb: "Pabilin nga naka-sign in", en: "Stay signed in" },
+  idleSignOut: { fil: "Mag-sign out", ceb: "Mag-sign out", en: "Sign out" },
   acctOr: { fil: "o", ceb: "o", en: "or" },
   acctNoAccount: { fil: "Gamitin nang walang account", ceb: "Gamita nga walay account", en: "Continue without an account" },
   acctLogout: { fil: "Mag-log out", ceb: "Mag-log out", en: "Log out" },
@@ -216,6 +230,10 @@ const T = {
   toVerify: { fil: "Susuriin sa opisina", ceb: "Susihon sa opisina", en: "Checked at the office" },
   documentsTitle: { fil: "Mga dokumentong dadalhin", ceb: "Mga dokumento nga dad-on", en: "Documents to bring" },
   iHaveThis: { fil: "Mayroon na ako", ceb: "Naa na ko", en: "I have this" },
+  // Site footer (Privacy Notice and Terms links)
+  footerPrivacy: { fil: "Paunawa sa Privacy", ceb: "Pahibalo sa Privacy", en: "Privacy Notice" },
+  footerTerms: { fil: "Mga Tuntunin", ceb: "Mga Termino", en: "Terms of Use" },
+  footerTagline: { fil: "Pagsusuri ng welfare, katuwang ang LGU", ceb: "Pagsusi sa welfare, kauban ang LGU", en: "LGU-assisted welfare assessment" },
   required: { fil: "Kailangan", ceb: "Kinahanglan", en: "Required" },
   optional: { fil: "Opsyonal", ceb: "Opsyonal", en: "Optional" },
   schedulesTitle: { fil: "Mga iskedyul", ceb: "Mga iskedyul", en: "Schedules" },

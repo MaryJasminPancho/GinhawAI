@@ -100,8 +100,9 @@ const CITIZEN_NOTICE = "citizenNotice";
 const AUTH_EVENT = "citizen-auth";
 
 // Security: the sign-in is kept in sessionStorage, so closing the tab signs the citizen out
-// (safer on shared or barangay computers), and the token itself stops working after 30 minutes
-// (backend: TOKEN_MINUTES in routers/citizens.py). After that the citizen has to log in again.
+// (safer on shared or barangay computers). The token itself stops working after 15 minutes
+// (backend: TOKEN_MINUTES in routers/citizens.py), but while the citizen is active the page swaps
+// it for a fresh one (refreshCitizen), and after 5 minutes of inactivity IdleGuard signs them out.
 
 /** When a login token stops working (ms since epoch), read from the token's own "exp" claim. */
 function tokenExpiry(token: string): number | null {
@@ -157,14 +158,30 @@ export function getCitizenName(): string | null {
     return null;
   }
 }
-/** One-time message for the login page: true if the last login ended because the 30 minutes ran out. */
-export function takeSessionEndedNotice(): boolean {
+/** One-time message for the login page: why the last login ended ("expired" or "idle"), or null. */
+export function takeSessionEndedNotice(): "expired" | "idle" | null {
   try {
-    const ended = sessionStorage.getItem(CITIZEN_NOTICE) === "expired";
+    const n = sessionStorage.getItem(CITIZEN_NOTICE);
     sessionStorage.removeItem(CITIZEN_NOTICE);
-    return ended;
+    return n === "expired" || n === "idle" ? n : null;
   } catch {
-    return false;
+    return null;
+  }
+}
+/** Seconds until the login token stops working, or null when signed out. */
+export function citizenSecondsLeft(): number | null {
+  const token = getCitizenToken();
+  const exp = token ? tokenExpiry(token) : null;
+  return exp === null ? null : Math.floor((exp - Date.now()) / 1000);
+}
+/** Sign out because the citizen was inactive; the login page says why. */
+export function citizenIdleLogout() {
+  removeCitizen();
+  try {
+    sessionStorage.setItem(CITIZEN_NOTICE, "idle");
+    window.dispatchEvent(new Event(AUTH_EVENT));
+  } catch {
+    // not in a browser
   }
 }
 /** For useSyncExternalStore: re-check the login on sign in / sign out and every 15 seconds (to catch expiry). */
@@ -303,6 +320,8 @@ const kept = (s: CitizenSession) => {
   keepCitizen(s);
   return s;
 };
+/** An active, signed-in citizen: swap the login token for a fresh one (keeps them signed in while they use the site). */
+export const refreshCitizen = () => request<CitizenSession>("/api/citizen/refresh", { method: "POST" }).then(kept);
 export const getCitizenConfig = () => request<{ google_client_id: string | null }>("/api/citizen/config");
 export const citizenSignup = (username: string, password: string, display_name: string, consent: boolean) =>
   request<CitizenSession>("/api/citizen/signup", post({ username, password, display_name, consent })).then(kept);

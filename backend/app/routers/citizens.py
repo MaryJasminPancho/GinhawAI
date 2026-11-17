@@ -22,7 +22,9 @@ from app.config import GOOGLE_CLIENT_ID, JWT_ALGORITHM, SECRET_KEY
 
 router = APIRouter()
 
-TOKEN_MINUTES = 30  # a citizen sign-in lasts 30 minutes; after that the citizen logs in again
+# A citizen sign-in token lasts 15 minutes. While the citizen is active, the page swaps it for a fresh one
+# (POST /api/citizen/refresh), so an active person is never signed out; a token left unused dies in 15 minutes.
+TOKEN_MINUTES = 15
 MAX_FAILED = 5
 LOCK_MINUTES = 15
 USERNAME = re.compile(r"^[A-Za-z0-9._-]{4,40}$")
@@ -80,6 +82,14 @@ async def current_citizen(request: Request, authorization: str | None = Header(d
 
 def _session(row) -> dict:
     return {"token": create_citizen_token(str(row["citizen_id"])), "display_name": row["display_name"] or row["username"] or row["email"]}
+
+
+@router.post("/api/citizen/refresh")
+async def refresh_session(citizen: dict = Depends(current_citizen)):
+    """A signed-in citizen who is still active gets a fresh token (the old one must still be valid).
+    The page calls this only while the person is using it; after 5 minutes of inactivity it stops
+    and signs the person out (see frontend IdleGuard)."""
+    return _session(citizen)
 
 
 @router.get("/api/citizen/config")
