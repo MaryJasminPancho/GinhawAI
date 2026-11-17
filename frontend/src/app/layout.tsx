@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import NavTracker from "@/components/NavTracker";
 import LangSync from "@/components/LangSync";
+import IdleGuard from "@/components/IdleGuard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <NavTracker />
         <LangSync />
+        <IdleGuard />
         {children}
       </body>
     </html>

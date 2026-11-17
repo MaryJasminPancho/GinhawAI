@@ -54,10 +54,10 @@ function AccountInner() {
     router.replace(`${next}${next.includes("?") ? "&" : "?"}lang=${lang}`);
   }, [router, next, lang, claim]);
 
-  // The page that sent the citizen here may have found the 30-minute login over; say so once.
-  const [sessionEnded, setSessionEnded] = useState(false);
+  // The page that sent the citizen here may have found the login over (timed out or inactive); say so once.
+  const [sessionEnded, setSessionEnded] = useState<"expired" | "idle" | null>(null);
   useEffect(() => {
-    if (takeSessionEndedNotice()) setSessionEnded(true);
+    setSessionEnded(takeSessionEndedNotice());
   }, []);
 
   useEffect(() => {
@@ -124,7 +124,7 @@ function AccountInner() {
           </div>
 
           {sessionEnded && (
-            <p role="status" className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/20">{t(lang, "acctSessionEnded")}</p>
+            <p role="status" className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/20">{t(lang, sessionEnded === "idle" ? "acctSessionIdle" : "acctSessionEnded")}</p>
           )}
           <p className="rounded-2xl bg-brand-50 px-4 py-3 text-sm leading-relaxed text-brand-900 ring-1 ring-brand-200 dark:bg-brand-500/10 dark:text-brand-200 dark:ring-brand-500/20">{t(lang, "acctWhy")}</p>
 
