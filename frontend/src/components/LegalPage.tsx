@@ -73,7 +73,8 @@ function LegalInner({ kind }: { kind: "privacy" | "terms" }) {
           )}
         </article>
 
-        <SiteFooter lang={lang} className="mt-8" />
+        {/* "replace": switching between Privacy and Terms does not add history entries, so Back leaves them */}
+        <SiteFooter lang={lang} className="mt-8" replace />
       </main>
     </div>
   );

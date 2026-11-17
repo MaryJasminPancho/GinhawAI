@@ -213,6 +213,10 @@ const T = {
   toVerify: { fil: "Susuriin sa opisina", ceb: "Susihon sa opisina", en: "Checked at the office" },
   documentsTitle: { fil: "Mga dokumentong dadalhin", ceb: "Mga dokumento nga dad-on", en: "Documents to bring" },
   iHaveThis: { fil: "Mayroon na ako", ceb: "Naa na ko", en: "I have this" },
+  // Site footer (Privacy Notice and Terms links)
+  footerPrivacy: { fil: "Paunawa sa Privacy", ceb: "Pahibalo sa Privacy", en: "Privacy Notice" },
+  footerTerms: { fil: "Mga Tuntunin", ceb: "Mga Termino", en: "Terms of Use" },
+  footerTagline: { fil: "Pagsusuri ng welfare, katuwang ang LGU", ceb: "Pagsusi sa welfare, kauban ang LGU", en: "LGU-assisted welfare assessment" },
   required: { fil: "Kailangan", ceb: "Kinahanglan", en: "Required" },
   optional: { fil: "Opsyonal", ceb: "Opsyonal", en: "Optional" },
   schedulesTitle: { fil: "Mga iskedyul", ceb: "Mga iskedyul", en: "Schedules" },
