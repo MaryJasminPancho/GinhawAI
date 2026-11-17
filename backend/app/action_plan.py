@@ -11,6 +11,8 @@ VERIFY with the CSWDO before the defense.
 
 import re
 
+from app.textfmt import one_per_line
+
 L = ("en", "fil", "ceb")
 
 
@@ -296,7 +298,7 @@ def build_plan(assessment: dict, crisis: str | None, have: set[str], directory: 
                 docs.append({"document_name": d["document_name"], "have": True, "how": None, "is_mandatory": d["is_mandatory"]})
                 continue
             guide = next((g for pat, g in DOC_GUIDE if re.search(pat, d["document_name"], re.I)), DOC_DEFAULT)
-            docs.append({"document_name": d["document_name"], "have": False, "how": _t(guide, lang).format(hall=hall_name), "is_mandatory": d["is_mandatory"]})
+            docs.append({"document_name": d["document_name"], "have": False, "how": one_per_line(_t(guide, lang).format(hall=hall_name)), "is_mandatory": d["is_mandatory"]})
         # 2. where to go
         office = None
         office_note = None

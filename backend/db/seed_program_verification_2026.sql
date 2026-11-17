@@ -19,7 +19,7 @@ FROM programs p JOIN (VALUES
      'Ask the office for a copy when you apply. [NCDA CC 2025 p. 6]', NULL),
     ('Senior Citizen ID (OSCA)', 'Application Form', TRUE,
      'From the OSCA office. [Cebu City CC 2021 p. 831]', NULL),
-    ('Senior Citizen ID (OSCA)', 'Sketch to your home', TRUE,
+    ('Senior Citizen ID (OSCA)', 'Sketch to your home', FALSE,
      'Drawn on the back of the application form. [Cebu City CC 2021 p. 831]', NULL),
     ('Senior Citizen ID (OSCA)', 'Photocopy of Voter''s Certification', TRUE,
      'From Comelec. [Cebu City CC 2021 p. 831]', NULL),
@@ -155,6 +155,13 @@ WHERE NOT EXISTS (SELECT 1 FROM document_requirements d WHERE d.program_id = p.p
 DELETE FROM eligibility_criteria c USING programs p
 WHERE c.program_id = p.program_id AND p.program_name = 'Assistance to Individuals in Crisis Situations (AICS)'
   AND c.attribute = 'has_supporting_documents_for_assistance_type';
+
+-- OSCA: the sketch to your home is optional (team decision, Nov 2026). For databases that
+-- already have it as required.
+UPDATE document_requirements d SET is_mandatory = FALSE
+FROM programs p
+WHERE d.program_id = p.program_id AND p.program_name = 'Senior Citizen ID (OSCA)'
+  AND d.document_name = 'Sketch to your home';
 
 -- Citizens see these notes, so drop the source tags ("[CC p. 307]", "[DSWD, via Cebu Daily
 -- News 2026]") and staff reminders ("VERIFY with PDAO."). The sources stay in the seed files.

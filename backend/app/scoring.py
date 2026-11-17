@@ -683,9 +683,10 @@ _OUT = {"en": "so you don't meet this yet.", "fil": "kaya hindi pa kayo pasok ri
 
 
 def _both(intro: dict, detail: dict, ok: bool) -> dict:
-    """{lang: "<what the program looks for> <the answer>, <so you meet it / not yet>"}."""
+    """{lang: "<what the program looks for>" + new line + "<the answer>, <so you meet it / not yet>"}:
+    two lines, easier to read."""
     end = _IN if ok else _OUT
-    return {l: f"{intro[l]} {detail[l]}, {end[l]}" for l in ("en", "fil", "ceb")}
+    return {l: intro[l] + "\n" + f"{detail[l]}, {end[l]}" for l in ("en", "fil", "ceb")}
 
 
 PLAIN = {

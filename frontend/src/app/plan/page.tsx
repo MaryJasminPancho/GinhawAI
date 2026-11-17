@@ -7,6 +7,8 @@ import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
 import Button, { buttonClasses } from "@/components/Button";
 import UrgentHelp from "@/components/UrgentHelp";
+import { PlanPrint } from "@/components/PrintDocument";
+import LinkText from "@/components/LinkText";
 import { SignInNudge, signInHref } from "@/components/SignInPrompts";
 import { ActionPlan, getCitizenToken, getPlan, getSession, haveKey, Lang, SessionExpiredError, subscribeCitizen } from "@/lib/api";
 import { t } from "@/lib/i18n";
@@ -33,6 +35,8 @@ function PlanInner() {
   const signedIn = useSyncExternalStore(subscribeCitizen, () => !!getCitizenToken(), () => true);
   const [plan, setPlan] = useState<ActionPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // For the printed version's header: when the check was done, and the barangay.
+  const [checked, setChecked] = useState<{ date: string | null; barangay: string | null }>({ date: null, barangay: null });
 
   useEffect(() => {
     if (!sessionId) return;
@@ -45,6 +49,7 @@ function PlanInner() {
     getSession(sessionId)
       .then((s) => {
         setLang(s.language);
+        setChecked({ date: s.assessment?.assessed_on ?? null, barangay: s.assessment?.barangay ?? null });
         return getPlan(sessionId, have);
       })
       .then(setPlan)
@@ -52,7 +57,10 @@ function PlanInner() {
   }, [sessionId]);
 
   return (
-    <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10 print:bg-white">
+    <>
+    {/* Printing shows the clean document below instead of this screen. */}
+    {plan && <PlanPrint plan={plan} lang={lang} date={checked.date} barangay={checked.barangay} />}
+    <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10 print:hidden">
       <Backdrop />
       <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-2xl sm:rounded-4xl sm:bg-white/80 sm:p-8 sm:shadow-2xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
         <PageHeader title={t(lang, "planTitle")} back={sessionId ? `/recommendations?session=${sessionId}` : "/"} />
@@ -96,7 +104,7 @@ function PlanInner() {
                                 {d.document_name}
                                 {!d.is_mandatory && <span className="ml-1.5 text-[0.75rem] font-normal text-gray-400">({t(lang, "optional")})</span>}
                               </p>
-                              {d.how && <p className="whitespace-pre-line text-[0.8125rem] text-gray-600 dark:text-gray-400">{d.how}</p>}
+                              {d.how && <p className="whitespace-pre-line text-[0.8125rem] text-gray-600 dark:text-gray-400"><LinkText text={d.how} /></p>}
                             </div>
                           </li>
                         ))}
@@ -148,6 +156,7 @@ function PlanInner() {
         )}
       </main>
     </div>
+    </>
   );
 }
 

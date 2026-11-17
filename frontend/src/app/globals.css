@@ -46,6 +46,26 @@
   color: #f3f4f6;
 }
 
+/* Printing / "Save as PDF": an A4 page with margins, always black on white (even when the
+   screen is in dark mode), colours kept for the status labels. The printed document itself
+   is components/PrintDocument.tsx; the screen version hides itself when printing. */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm 14mm 16mm;
+  }
+  html,
+  body {
+    background: #ffffff !important;
+    color: #111827 !important;
+    font-size: 100% !important;
+  }
+  .print-doc {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
 /* Citizen "A− / A+" text size (components/TextSize.tsx). Citizen pages size text in rem,
    so changing the root size scales them; the staff console keeps its own size. */
 html[data-text-size="1"]:not(:has([data-admin])) { font-size: 115%; }

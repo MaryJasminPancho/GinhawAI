@@ -8,6 +8,8 @@ import PageHeader from "@/components/PageHeader";
 import Button, { buttonClasses } from "@/components/Button";
 import UrgentHelp from "@/components/UrgentHelp";
 import { LockedFeatures, SignInNudge, signInHref } from "@/components/SignInPrompts";
+import { ResultsPrint } from "@/components/PrintDocument";
+import LinkText from "@/components/LinkText";
 import { assess, Assessment, endSession, getChannels, getCitizenToken, getMyAccount, getMyDocuments, getSession, haveKey, Lang, ProgramResult, sendDocumentChecks, sendEmail, sendSms, SessionExpiredError, setMyDocument } from "@/lib/api";
 import { t } from "@/lib/i18n";
 
@@ -82,7 +84,7 @@ function ProgramCard({ p, lang, have, onToggleDoc, nudgeHref }: { p: ProgramResu
                 <CriterionIcon status={c.status} />
                 <div>
                   <p className="font-medium text-gray-800 dark:text-gray-200">{c.label}</p>
-                  {(c.status === "unknown" || c.explanation) && <p className="text-xs text-gray-500 dark:text-gray-400">{c.status === "unknown" ? t(lang, "toVerify") : c.explanation}</p>}
+                  {(c.status === "unknown" || c.explanation) && <p className="whitespace-pre-line text-xs text-gray-500 dark:text-gray-400">{c.status === "unknown" ? t(lang, "toVerify") : c.explanation}</p>}
                   {c.note && <p className="mt-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">{c.note}</p>}
                 </div>
               </li>
@@ -107,7 +109,7 @@ function ProgramCard({ p, lang, have, onToggleDoc, nudgeHref }: { p: ProgramResu
                           {t(lang, d.is_mandatory ? "required" : "optional")}
                         </span>
                       </span>
-                      {d.notes && <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">{d.notes}</span>}
+                      {d.notes && <span className="mt-0.5 block whitespace-pre-line text-xs text-gray-500 dark:text-gray-400"><LinkText text={d.notes} /></span>}
                       <span className="mt-1 block text-[0.6875rem] text-gray-400">{t(lang, "iHaveThis")}</span>
                     </span>
                   </label>
@@ -246,7 +248,10 @@ function RecommendationsInner() {
   }
 
   return (
-    <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
+    <>
+    {/* Printing shows the clean document below instead of this screen. */}
+    {result && <ResultsPrint result={result} lang={lang} have={have} />}
+    <div className="relative isolate print:hidden min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
       <Backdrop />
 
       <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-2xl lg:max-w-5xl sm:rounded-4xl sm:bg-white/80 sm:p-8 sm:shadow-2xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
@@ -396,6 +401,7 @@ function RecommendationsInner() {
         </div>
       </main>
     </div>
+    </>
   );
 }
 

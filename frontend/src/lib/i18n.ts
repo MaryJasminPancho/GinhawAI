@@ -181,6 +181,9 @@ const T = {
   effectSome: { fil: "May epekto", ceb: "Naay epekto", en: "Some effect" },
   effectSmall: { fil: "Maliit na epekto", ceb: "Gamay nga epekto", en: "Small effect" },
   planButton: { fil: "Tingnan ang aking action plan", ceb: "Tan-awa ang akong action plan", en: "See my action plan" },
+  // Printed / PDF version (components/PrintDocument.tsx)
+  printDate: { fil: "Petsa", ceb: "Petsa", en: "Date" },
+  printResultsTitle: { fil: "Resulta at checklist ng dokumento", ceb: "Resulta ug checklist sa dokumento", en: "Results and document checklist" },
   planTitle: { fil: "Aking action plan", ceb: "Akong action plan", en: "My action plan" },
   planIntro: {
     fil: "Narito ang mga hakbang para sa bawat programang maaari ninyong aplayan: ano ang ihahanda, saan pupunta, at ano ang mangyayari doon.",
