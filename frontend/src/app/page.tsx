@@ -4,6 +4,7 @@ import AccountBar from "@/components/AccountBar";
 import Backdrop from "@/components/Backdrop";
 import HomeGate from "@/components/HomeGate";
 import { buttonClasses } from "@/components/Button";
+import SiteFooter from "@/components/SiteFooter";
 import TextSize from "@/components/TextSize";
 
 const STEPS = [
@@ -85,6 +86,8 @@ export default function SplashScreen() {
           </ol>
         </main>
       </div>
+
+      <SiteFooter className="px-4 pb-5 pt-2" />
     </div>
   );
 }
