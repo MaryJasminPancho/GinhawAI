@@ -22,6 +22,7 @@ from app.ai.slot_classifier import classify
 from app.ai.ai_parser import extract_entities
 from app.routers.citizens import citizen_id_from, load_citizen_profile, save_citizen_assessment, save_citizen_profile
 from app.action_plan import build_plan, urgent_contacts
+from app.textfmt import one_per_line
 from app.schemas import AssessmentFeedbackIn, DocumentChecksIn, EmailChecklistRequest, EntityPatch, MessageIn, PlanRequest, SessionStart, SmsRequest
 from app.scoring import derive_profile, evaluate_program, rank_programs, score_vulnerability, today_iso
 from app.settings import get_settings
@@ -417,7 +418,7 @@ async def assess(session_id: str, request: Request):
             if d["for_crisis"] and d["for_crisis"] not in situation:
                 continue  # e.g. AICS burial papers only when there was a death or burial help is needed
             docs_by_program.setdefault(str(d["program_id"]), []).append(
-                {"doc_id": str(d["doc_id"]), "document_name": d["document_name"], "is_mandatory": d["is_mandatory"], "notes": d["notes"]}
+                {"doc_id": str(d["doc_id"]), "document_name": d["document_name"], "is_mandatory": d["is_mandatory"], "notes": one_per_line(d["notes"])}
             )
         for e in evaluations:
             e["documents"] = docs_by_program.get(e["program_id"], [])

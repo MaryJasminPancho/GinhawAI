@@ -19,18 +19,28 @@ router = APIRouter()
 welfare = require_roles(WELFARE_ROLES)
 editor = require_roles(WELFARE_EDIT_ROLES)
 
-SLOT_LABELS = {"employment_status": "Work situation", "housing_type": "Housing", "crisis_type": "Crisis"}
+SLOT_LABELS = {"employment_status": "Work situation", "housing_type": "Housing", "crisis_type": "Crisis", "help_needed": "Help needed"}
+# "help_needed" shares some values with "crisis_type" but means something else there
+# ("death" = funeral or burial costs), so it has its own labels.
+HELP_LABELS = {"none": "nothing right now", "medical": "medicine / hospital", "death": "funeral / burial", "transport": "fare / travel",
+               "education": "school expenses", "food": "food", "assistive_device": "wheelchair, hearing aid or other device", "other_help": "something else"}
+
+
+def _label(slot: str, value: str | None) -> str | None:
+    if value is None:
+        return None
+    return HELP_LABELS.get(value, value) if slot == "help_needed" else VALUE_LABELS.get(value, value)
 COLS = "term_id, slot, value, term, created_at"
 
 
 class TermIn(BaseModel):
-    slot: str = Field(pattern=r"^(employment_status|housing_type|crisis_type)$")
+    slot: str = Field(pattern=r"^(employment_status|housing_type|crisis_type|help_needed)$")
     value: str = Field(min_length=1, max_length=30)
     term: str = Field(min_length=2, max_length=60)
 
 
 class TryIn(BaseModel):
-    slot: str = Field(pattern=r"^(employment_status|housing_type|crisis_type)$")
+    slot: str = Field(pattern=r"^(employment_status|housing_type|crisis_type|help_needed)$")
     text: str = Field(min_length=1, max_length=300)
 
 
@@ -57,7 +67,7 @@ async def list_terms(request: Request, current_admin: dict = Depends(welfare)):
     return {
         "slots": [
             {"slot": s, "label": SLOT_LABELS[s],
-             "values": [{"value": v, "label": VALUE_LABELS.get(v, v)} for v in chatflow.ENUMS[s]]}
+             "values": [{"value": v, "label": _label(s, v)} for v in chatflow.ENUMS[s]]}
             for s in jargon.SLOTS
         ],
         "terms": [dict(r) for r in rows],
@@ -72,11 +82,11 @@ async def add_term(body: TermIn, request: Request, current_admin: dict = Depends
         async with conn.transaction():
             clash = await _taken(conn, slot, term)
             if clash:
-                raise HTTPException(status_code=409, detail=f'"{term}" is already listed as {VALUE_LABELS.get(clash["value"], clash["value"])}.')
+                raise HTTPException(status_code=409, detail=f'"{term}" is already listed as {_label(slot, clash["value"])}.')
             row = await conn.fetchrow(
                 f"INSERT INTO jargon_terms (slot, value, term) VALUES ($1, $2, $3) RETURNING {COLS};", slot, value, term
             )
-            await write_audit(conn, current_admin["sub"], "INSERT", "jargon_terms", None, f'"{term}" = {SLOT_LABELS[slot]}: {VALUE_LABELS.get(value, value)}')
+            await write_audit(conn, current_admin["sub"], "INSERT", "jargon_terms", None, f'"{term}" = {SLOT_LABELS[slot]}: {_label(slot, value)}')
     await jargon.load(pool)
     return dict(row)
 
@@ -92,13 +102,13 @@ async def update_term(term_id: UUID, body: TermIn, request: Request, current_adm
                 raise HTTPException(status_code=404, detail="Word not found")
             clash = await _taken(conn, slot, term, term_id)
             if clash:
-                raise HTTPException(status_code=409, detail=f'"{term}" is already listed as {VALUE_LABELS.get(clash["value"], clash["value"])}.')
+                raise HTTPException(status_code=409, detail=f'"{term}" is already listed as {_label(slot, clash["value"])}.')
             row = await conn.fetchrow(
                 f"UPDATE jargon_terms SET slot = $2, value = $3, term = $4 WHERE term_id = $1 RETURNING {COLS};", term_id, slot, value, term
             )
             await write_audit(conn, current_admin["sub"], "UPDATE", "jargon_terms",
-                              f'"{before["term"]}" = {VALUE_LABELS.get(before["value"], before["value"])}',
-                              f'"{term}" = {VALUE_LABELS.get(value, value)}')
+                              f'"{before["term"]}" = {_label(before["slot"], before["value"])}',
+                              f'"{term}" = {_label(slot, value)}')
     await jargon.load(pool)
     return dict(row)
 
@@ -112,7 +122,7 @@ async def delete_term(term_id: UUID, request: Request, current_admin: dict = Dep
             if before is None:
                 raise HTTPException(status_code=404, detail="Word not found")
             await write_audit(conn, current_admin["sub"], "DELETE", "jargon_terms",
-                              f'"{before["term"]}" = {VALUE_LABELS.get(before["value"], before["value"])}', None)
+                              f'"{before["term"]}" = {_label(before["slot"], before["value"])}', None)
     await jargon.load(pool)
 
 
@@ -120,4 +130,4 @@ async def delete_term(term_id: UUID, request: Request, current_admin: dict = Dep
 async def try_phrase(body: TryIn, current_admin: dict = Depends(welfare)):
     """Let staff check how the chat would read an answer, before or after adding a word."""
     value = chatflow.parse_for_slot(body.slot, body.text, "en", jargon.synonyms())
-    return {"value": value, "label": VALUE_LABELS.get(value, value) if value else None}
+    return {"value": value, "label": _label(body.slot, value)}

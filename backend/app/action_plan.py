@@ -11,6 +11,8 @@ VERIFY with the CSWDO before the defense.
 
 import re
 
+from app.textfmt import one_per_line
+
 L = ("en", "fil", "ceb")
 
 
@@ -37,14 +39,14 @@ DOC_GUIDE = [
         "ceb": "Gikan sa opisina sa Commission on Elections (Comelec).",
     }),
     (r"cedula", {
-        "en": "From the Cebu City Treasurer's Office. It must be issued in Cebu City.",
-        "fil": "Mula sa Cebu City Treasurer's Office. Dapat galing sa Cebu City.",
-        "ceb": "Gikan sa Cebu City Treasurer's Office. Kinahanglan gikan sa Cebu City.",
+        "en": "Since you live in Cebu City, get your cedula at the Cebu City Treasurer's Office.",
+        "fil": "Dahil taga-Cebu City kayo, sa Cebu City Treasurer's Office kayo kukuha ng cedula.",
+        "ceb": "Tungod kay taga-Cebu City ka, sa Cebu City Treasurer's Office nimo makuha ang cedula.",
     }),
     (r"marriage", {
-        "en": "From the PSA or the Cebu City Civil Registrar.",
-        "fil": "Mula sa PSA o sa Cebu City Civil Registrar.",
-        "ceb": "Gikan sa PSA o sa Cebu City Civil Registrar.",
+        "en": "From the Philippine Statistics Authority (PSA) or the Cebu City Civil Registrar. Just bring a valid ID in case they ask for it.",
+        "fil": "Mula sa Philippine Statistics Authority (PSA) o sa Cebu City Civil Registrar. Magdala lang ng valid ID, baka kailanganin.",
+        "ceb": "Gikan sa Philippine Statistics Authority (PSA) o sa Cebu City Civil Registrar. Pagdala lang og valid ID basin kinahanglanon.",
     }),
     (r"sketch", {
         "en": "Draw it yourself on the back of the application form.",
@@ -102,19 +104,19 @@ DOC_GUIDE = [
         "ceb": "Gisulat ug gipirmahan sa tawo nga tabangan. Dili kini kinahanglan sa suod nga pamilya.",
     }),
     (r"barangay cert|indigency|certification of the incident|barangay certification", {
-        "en": "At {hall}. Bring a valid ID. Usually free or a small fee; if you can't pay, ask for a Certificate of Indigency.",
-        "fil": "Sa {hall}. Magdala ng valid ID. Kadalasang libre o maliit na bayad; kung hindi kaya, humingi ng Certificate of Indigency.",
-        "ceb": "Sa {hall}. Pagdala og valid ID. Kasagaran libre o gamay nga bayad; kung dili kaya, pangayo og Certificate of Indigency.",
+        "en": "Go to {hall} and ask for one. Just bring a valid ID in case they ask for it.\nIt's usually free or costs a little. If you can't pay, ask for a Certificate of Indigency.",
+        "fil": "Pumunta sa {hall} at humingi nito. Magdala lang ng valid ID, baka kailanganin.\nKadalasang libre o maliit lang ang bayad. Kung hindi kaya, humingi ng Certificate of Indigency.",
+        "ceb": "Adto sa {hall} ug pangayo niini. Pagdala lang og valid ID basin kinahanglanon.\nKasagaran libre o gamay ra ang bayad. Kung dili kaya, pangayo og Certificate of Indigency.",
     }),
     (r"birth certificate", {
-        "en": "From the PSA: a PSA Serbilis outlet in Cebu City, or order online at psaserbilis.com.ph. Bring a valid ID. There is a fee (about ₱155 at the counter).",
-        "fil": "Mula sa PSA: sa PSA Serbilis outlet sa Cebu City, o mag-order online sa psaserbilis.com.ph. Magdala ng valid ID. May bayad (mga ₱155 sa counter).",
-        "ceb": "Gikan sa PSA: sa PSA Serbilis outlet sa Cebu City, o pag-order online sa psaserbilis.com.ph. Pagdala og valid ID. Naay bayad (mga ₱155 sa counter).",
+        "en": "From the Philippine Statistics Authority (PSA): go to a PSA Serbilis outlet in Cebu City, or order online at psaserbilis.com.ph. Just bring a valid ID in case they ask for it.\nThere is a fee (about ₱155 at the counter).",
+        "fil": "Mula sa Philippine Statistics Authority (PSA): pumunta sa PSA Serbilis outlet sa Cebu City, o mag-order online sa psaserbilis.com.ph. Magdala lang ng valid ID, baka kailanganin.\nMay bayad (mga ₱155 sa counter).",
+        "ceb": "Gikan sa Philippine Statistics Authority (PSA): adto sa PSA Serbilis outlet sa Cebu City, o pag-order online sa psaserbilis.com.ph. Pagdala lang og valid ID basin kinahanglanon.\nNaay bayad (mga ₱155 sa counter).",
     }),
     (r"valid|government-issued id", {
-        "en": "Any government ID works: National ID (PhilID), UMID, driver's license, postal ID or voter's ID. No ID yet? The National ID is free; ask {hall} for registration days.",
-        "fil": "Anumang government ID: National ID (PhilID), UMID, lisensya, postal ID o voter's ID. Wala pang ID? Libre ang National ID; itanong sa {hall} kung kailan ang rehistrasyon.",
-        "ceb": "Bisan unsang government ID: National ID (PhilID), UMID, lisensya, postal ID o voter's ID. Wala pay ID? Libre ang National ID; pangutana sa {hall} kanus-a ang rehistrasyon.",
+        "en": "Any government ID will do: National ID (PhilID), UMID, driver's license, postal ID or voter's ID.\nNo ID yet? The National ID is free. Ask {hall} when you can register.",
+        "fil": "Kahit anong government ID ay puwede: National ID (PhilID), UMID, driver's license, postal ID o voter's ID.\nWala pa kayong ID? Libre ang National ID. Itanong sa {hall} kung kailan puwedeng magparehistro.",
+        "ceb": "Bisan unsang government ID puwede: National ID (PhilID), UMID, driver's license, postal ID o voter's ID.\nWala pa kay ID? Libre ang National ID. Pangutana sa {hall} kanus-a puwede magparehistro.",
     }),
     (r"photo", {
         "en": "Any photo studio, or a clear recent photo on a plain background.",
@@ -157,9 +159,9 @@ DOC_GUIDE = [
         "ceb": "Libre, gikan sa Solo Parent Office sa Cebu City Department of Social Welfare and Services. Pagdala og birth certificate sa mga anak ug sinumpaang pamahayag nga ikaw ra ang nagpadako nila ug wala kay kauban nga partner. Ang ubang papeles depende sa imong kahimtang, sama sa death certificate sa bana o asawa. Andam kini sulod sa 7 ka adlaw sa trabaho ug i-renew matag tuig.",
     }),
     (r"osca", {
-        "en": "From the Office of Senior Citizens Affairs (OSCA). Bring proof of age and a barangay certificate.",
-        "fil": "Mula sa Office of Senior Citizens Affairs (OSCA). Magdala ng patunay ng edad at barangay certificate.",
-        "ceb": "Gikan sa Office of Senior Citizens Affairs (OSCA). Pagdala og pamatuod sa edad ug barangay certificate.",
+        "en": "Go straight to the Office of Senior Citizens Affairs (OSCA) at Cebu City Hall, Magallanes St., Cebu City (near Puso Village). Bring proof of age and a barangay certificate.",
+        "fil": "Dumiretso sa Office of Senior Citizens Affairs (OSCA) sa Cebu City Hall, Magallanes St., Cebu City (malapit sa Puso Village). Magdala ng patunay ng edad at barangay certificate.",
+        "ceb": "Diretso sa Office of Senior Citizens Affairs (OSCA) sa Cebu City Hall, Magallanes St., Cebu City (duol sa Puso Village). Pagdala og pamatuod sa edad ug barangay certificate.",
     }),
     (r"bank|e-wallet", {
         "en": "Your own bank, GCash or Maya account details (account name and number).",
@@ -186,6 +188,21 @@ PROGRAM_OFFICE = [
     (r"tupad|displaced workers", "DOLE Cebu Provincial Field Office"),
     (r"social pension|solo parent", "Cebu City Dept. of Social Welfare and Services"),
 ]
+# The short office name in step 2's title ("Adto sa opisina sa DSWD").
+PROGRAM_OFFICE_SHORT = [
+    (r"crisis situations|aics", "DSWD (AICS)"),
+    (r"pantawid|4ps", "DSWD"),
+    (r"tupad|displaced workers", "DOLE"),
+    (r"social pension|solo parent", "City Social Welfare (DSWS)"),
+    (r"pwd|disability", "PDAO"),
+    (r"senior citizen id|osca", "OSCA"),
+]
+# Offices not in the Office Directory whose address we know: shown directly, with no
+# "ask your barangay hall" step (mentor: be direct).
+PROGRAM_OFFICE_FIXED = [
+    (r"pwd|disability", {"name": "Cebu City Persons with Disability Affairs Office (PDAO)", "address": "BUB Building, behind the DSWS building, Katipunan St., Labangon, Cebu City", "hours": None, "phone": None}),
+    (r"senior citizen id|osca", {"name": "Office of Senior Citizens Affairs (OSCA)", "address": "Cebu City Hall, Magallanes St., Cebu City (near Puso Village)", "hours": "Mon–Fri, 8:00 AM – 5:00 PM", "phone": None}),
+]
 # Programs run by city offices not in the directory yet: say who, and to ask the barangay hall.
 PROGRAM_OFFICE_TEXT = [
     (r"pwd|disability", {"en": "Cebu City Persons with Disability Affairs Office (PDAO)", "fil": "Cebu City Persons with Disability Affairs Office (PDAO)", "ceb": "Cebu City Persons with Disability Affairs Office (PDAO)"}),
@@ -196,6 +213,7 @@ STEP = {
     "docs": {"en": "Get your documents ready", "fil": "Ihanda ang mga dokumento", "ceb": "Andama ang mga dokumento"},
     "docs_all": {"en": "You already have everything on the list. Bring the originals and a photocopy of each.", "fil": "Kumpleto na kayo. Dalhin ang orihinal at isang photocopy ng bawat isa.", "ceb": "Kompleto na ka. Dad-a ang orihinal ug usa ka photocopy sa matag usa."},
     "go": {"en": "Go to the office", "fil": "Pumunta sa opisina", "ceb": "Adto sa opisina"},
+    "go_named": {"en": "Go to the {office} office", "fil": "Pumunta sa opisina ng {office}", "ceb": "Adto sa opisina sa {office}"},
     "go_ask": {"en": "Ask {hall} where {office} is right now, or call the City Social Welfare office.", "fil": "Itanong sa {hall} kung nasaan ngayon ang {office}, o tawagan ang City Social Welfare office.", "ceb": "Pangutana sa {hall} kung asa karon ang {office}, o tawagi ang City Social Welfare office."},
     "there": {"en": "What happens there", "fil": "Ano ang mangyayari doon", "ceb": "Unsa ang mahitabo didto"},
     "there_text": {
@@ -259,6 +277,11 @@ def urgent_contacts(crisis: str | None, directory: dict[str, dict], lang: str) -
     return out
 
 
+def _go_title(program_name: str, lang: str) -> str:
+    short = next((s for pat, s in PROGRAM_OFFICE_SHORT if re.search(pat, program_name, re.I)), None)
+    return _t(STEP["go_named"], lang).format(office=short) if short else _t(STEP["go"], lang)
+
+
 def build_plan(assessment: dict, crisis: str | None, have: set[str], directory: dict[str, dict], lang: str) -> dict:
     lang = lang if lang in L else "en"
     offices = assessment.get("offices", [])
@@ -275,12 +298,15 @@ def build_plan(assessment: dict, crisis: str | None, have: set[str], directory: 
                 docs.append({"document_name": d["document_name"], "have": True, "how": None, "is_mandatory": d["is_mandatory"]})
                 continue
             guide = next((g for pat, g in DOC_GUIDE if re.search(pat, d["document_name"], re.I)), DOC_DEFAULT)
-            docs.append({"document_name": d["document_name"], "have": False, "how": _t(guide, lang).format(hall=hall_name), "is_mandatory": d["is_mandatory"]})
+            docs.append({"document_name": d["document_name"], "have": False, "how": one_per_line(_t(guide, lang).format(hall=hall_name)), "is_mandatory": d["is_mandatory"]})
         # 2. where to go
         office = None
         office_note = None
         target = next((o for pat, o in PROGRAM_OFFICE if re.search(pat, name, re.I)), None)
-        if target and target in directory:
+        fixed = next((o for pat, o in PROGRAM_OFFICE_FIXED if re.search(pat, name, re.I)), None)
+        if fixed:
+            office = dict(fixed)
+        elif target and target in directory:
             o = directory[target]
             office = {"name": o["office_name"], "address": o["address"], "hours": o["operating_hours"], "phone": o["contact_number"]}
         else:
@@ -296,6 +322,7 @@ def build_plan(assessment: dict, crisis: str | None, have: set[str], directory: 
             "all_documents_ready": bool(docs) and all(d["have"] for d in docs),
             "office": office,
             "office_note": office_note,
+            "go_title": _go_title(name, lang),
             "what_happens": _t(STEP["there_text_selected" if re.search(r"pantawid|4ps", name, re.I) else "there_text"], lang).format(program=name),
             "schedules": p.get("schedules", []),
         })
