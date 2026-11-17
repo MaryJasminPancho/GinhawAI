@@ -96,19 +96,19 @@ function PlanInner() {
                                 {d.document_name}
                                 {!d.is_mandatory && <span className="ml-1.5 text-[0.75rem] font-normal text-gray-400">({t(lang, "optional")})</span>}
                               </p>
-                              {d.how && <p className="text-[0.8125rem] text-gray-600 dark:text-gray-400">{d.how}</p>}
+                              {d.how && <p className="whitespace-pre-line text-[0.8125rem] text-gray-600 dark:text-gray-400">{d.how}</p>}
                             </div>
                           </li>
                         ))}
                       </ul>
                     )}
                   </Step>
-                  <Step n={2} title={plan.labels.go}>
+                  <Step n={2} title={p.go_title ?? plan.labels.go}>
                     {p.office && (
                       <div>
                         <p className="font-semibold text-gray-900 dark:text-gray-100">{p.office.name}</p>
                         {p.office.address && <p>{p.office.address}</p>}
-                        <p className="text-[0.8125rem] text-gray-500 dark:text-gray-400">{[p.office.hours, p.office.phone].filter(Boolean).join(" · ")}</p>
+                        {(p.office.hours || p.office.phone) && <p className="text-[0.8125rem] text-gray-500 dark:text-gray-400">{[p.office.hours, p.office.phone].filter(Boolean).join(" · ")}</p>}
                       </div>
                     )}
                     {p.office_note && <p className="mt-1.5 text-[0.8125rem] text-amber-800 dark:text-amber-200">{p.office_note}</p>}

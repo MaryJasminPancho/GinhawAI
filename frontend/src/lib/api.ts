@@ -325,6 +325,8 @@ export type ActionPlan = {
     all_documents_ready: boolean;
     office: { name: string; address: string | null; hours: string | null; phone: string | null } | null;
     office_note: string | null;
+    /** Step 2's title with the office named ("Adto sa opisina sa DSWD"). */
+    go_title?: string;
     what_happens: string;
     schedules: { start_date: string; end_date: string; notes: string | null; office_name: string }[];
   }[];
