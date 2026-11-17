@@ -64,21 +64,22 @@ export default function SplashScreen() {
             </div>
           </div>
 
-          {/* How it works: desktop only, the phone layout stays short */}
-          <ol className="hidden space-y-3 lg:block">
+          {/* How it works and the privacy note: shown on every screen size (most citizens use a phone),
+              smaller and left-aligned on phones so the "Get started" button stays high on the page */}
+          <ol className="w-full space-y-2.5 text-left lg:space-y-3">
             {STEPS.map((s, i) => (
-              <li key={s.title} className="flex gap-4 rounded-3xl bg-white/90 p-5 shadow-sm ring-1 ring-black/5 dark:bg-white/[0.05] dark:ring-white/10">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-400 to-brand-700 text-[0.9375rem] font-bold text-white shadow-md shadow-brand-600/30">
+              <li key={s.title} className="flex gap-3 rounded-2xl bg-white/90 p-3.5 shadow-sm ring-1 ring-black/5 dark:bg-white/[0.05] dark:ring-white/10 lg:gap-4 lg:rounded-3xl lg:p-5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-400 to-brand-700 text-[0.875rem] font-bold text-white shadow-md shadow-brand-600/30 lg:h-10 lg:w-10 lg:rounded-2xl lg:text-[0.9375rem]">
                   {i + 1}
                 </span>
                 <div>
                   <p className="text-[0.9375rem] font-semibold text-gray-900 dark:text-white">{s.title}</p>
-                  <p className="mt-0.5 text-sm leading-relaxed text-gray-600 dark:text-gray-400">{s.text}</p>
+                  <p className="mt-0.5 text-[0.8125rem] leading-relaxed text-gray-600 dark:text-gray-400 lg:text-sm">{s.text}</p>
                 </div>
               </li>
             ))}
-            <li className="flex items-center gap-2 rounded-3xl bg-amber-50 px-5 py-3.5 text-sm text-amber-900 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/20">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <li className="flex items-start gap-2 rounded-2xl bg-amber-50 px-4 py-3 text-[0.8125rem] leading-relaxed text-amber-900 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/20 lg:items-center lg:rounded-3xl lg:px-5 lg:py-3.5 lg:text-sm">
+              <svg className="mt-0.5 shrink-0 lg:mt-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
               No account needed: without one, answers are deleted after your session. An optional account keeps them for you.
