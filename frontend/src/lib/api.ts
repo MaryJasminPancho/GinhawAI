@@ -113,7 +113,17 @@ function tokenExpiry(token: string): number | null {
     return null;
   }
 }
+/** Dark mode is for signed-in citizens only (see layout.tsx): turn it on or off with the sign-in. */
+function applyCitizenTheme(signedIn: boolean) {
+  try {
+    if (location.pathname.startsWith("/admin")) return; // the staff console keeps its own choice
+    document.documentElement.classList.toggle("dark", signedIn && localStorage.getItem("theme") === "dark");
+  } catch {
+    // not in a browser, or storage blocked
+  }
+}
 function removeCitizen() {
+  applyCitizenTheme(false);
   try {
     sessionStorage.removeItem(CITIZEN_KEY);
     sessionStorage.removeItem(CITIZEN_NAME);
@@ -171,6 +181,7 @@ function keepCitizen(s: { token: string; display_name: string | null }) {
     sessionStorage.removeItem(CITIZEN_NOTICE);
     sessionStorage.setItem(CITIZEN_KEY, s.token);
     sessionStorage.setItem(CITIZEN_NAME, s.display_name ?? "");
+    applyCitizenTheme(true);
     window.dispatchEvent(new Event(AUTH_EVENT));
   } catch {
     // Storage blocked (private mode): the account works for this page only.

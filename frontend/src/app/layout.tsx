@@ -25,11 +25,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        {/* Applies the saved theme (or the device setting on a first visit) and text size
-            before the page paints, so neither flashes */}
+        {/* Applies the text size, and dark mode before the page paints, so neither flashes.
+            Dark mode is a signed-in extra: only when it was chosen AND a citizen is signed in
+            (or on the staff console). Everyone else always gets the light theme; the device's
+            own dark setting is ignored, to keep the screens the same for first-time users. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem("theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.classList.add("dark")}var s=localStorage.getItem("textSize");if(s&&/^[0-3]$/.test(s)){document.documentElement.dataset.textSize=s}}catch(e){}`,
+            __html: `try{var t=localStorage.getItem("theme");if(t==="dark"&&(sessionStorage.getItem("citizenToken")||location.pathname.indexOf("/admin")===0)){document.documentElement.classList.add("dark")}var s=localStorage.getItem("textSize");if(s&&/^[0-3]$/.test(s)){document.documentElement.dataset.textSize=s}}catch(e){}`,
           }}
         />
       </head>

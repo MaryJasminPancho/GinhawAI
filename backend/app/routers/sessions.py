@@ -565,9 +565,22 @@ def _chosen_programs(assessment: dict, program_ids: list[str] | None) -> list[di
 # ---------------------------------------------------------------------------
 # Email checklist (optional; free alternative to SMS). The address is used once
 # and never stored; only a masked form is logged.
+# Signed-in citizens only (3rd consultation): checking eligibility stays open to everyone,
+# while sending results away, which takes personal contact details, comes with an account.
 # ---------------------------------------------------------------------------
+SIGN_IN_TO_SEND = "Please log in or create a free account to send your results."
+
+
+def _require_citizen(authorization: str | None) -> str:
+    cid = citizen_id_from(authorization)
+    if cid is None:
+        raise HTTPException(status_code=401, detail=SIGN_IN_TO_SEND)
+    return cid
+
+
 @router.post("/api/sessions/{session_id}/email")
-async def send_checklist_email(session_id: str, payload: EmailChecklistRequest, request: Request):
+async def send_checklist_email(session_id: str, payload: EmailChecklistRequest, request: Request, authorization: str | None = Header(default=None)):
+    _require_citizen(authorization)
     state = await _load(request, session_id)
     assessment = state.get("assessment")
     if not assessment:
@@ -598,7 +611,8 @@ async def send_checklist_email(session_id: str, payload: EmailChecklistRequest, 
 # SMS checklist (Figs. 21–22)
 # ---------------------------------------------------------------------------
 @router.post("/api/sessions/{session_id}/sms")
-async def send_checklist_sms(session_id: str, payload: SmsRequest, request: Request):
+async def send_checklist_sms(session_id: str, payload: SmsRequest, request: Request, authorization: str | None = Header(default=None)):
+    _require_citizen(authorization)  # same rule as email
     state = await _load(request, session_id)
     assessment = state.get("assessment")
     if not assessment:

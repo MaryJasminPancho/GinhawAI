@@ -5,7 +5,6 @@ import Backdrop from "@/components/Backdrop";
 import HomeGate from "@/components/HomeGate";
 import { buttonClasses } from "@/components/Button";
 import TextSize from "@/components/TextSize";
-import ThemeToggle from "@/components/ThemeToggle";
 
 const STEPS = [
   { title: "Answer a few questions", text: "Chat in Filipino, Bisaya or English. About 3 minutes." },
@@ -15,7 +14,7 @@ const STEPS = [
 
 export default function SplashScreen() {
   return (
-    // A top bar (account buttons on the right, like most websites; text size and theme on the left),
+    // A top bar (account buttons on the right, like most websites; text size on the left),
     // then the content. Phones: full width, with the account buttons on their own row at the very top.
     // Tablet: a centered card. Desktop (lg): intro on the left and how it works on the right.
     <div className="relative isolate flex min-h-screen flex-col overflow-hidden bg-white dark:bg-[#0a0f0c]">
@@ -25,7 +24,6 @@ export default function SplashScreen() {
       <header className="relative z-20 flex flex-col-reverse gap-3 px-4 pb-1 pt-4 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:pt-5 lg:px-12">
         <div className="flex items-center justify-between gap-2 sm:justify-start">
           <TextSize />
-          <ThemeToggle />
         </div>
         <AccountBar />
       </header>
