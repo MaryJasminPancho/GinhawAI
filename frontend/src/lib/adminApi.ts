@@ -208,7 +208,7 @@ export const deleteCriterion = (programId: string, criteriaId: string) =>
   request<void>(`/api/programs/${programId}/eligibility/${criteriaId}`, { method: "DELETE" });
 
 // Local words and slang the chat understands (Knowledge Base Manager > Local Terms).
-export type JargonSlot = "employment_status" | "housing_type" | "crisis_type";
+export type JargonSlot = "employment_status" | "housing_type" | "crisis_type" | "help_needed";
 export type JargonTerm = { term_id: string; slot: JargonSlot; value: string; term: string; created_at: string };
 export type JargonData = { slots: { slot: JargonSlot; label: string; values: { value: string; label: string }[] }[]; terms: JargonTerm[] };
 export const listJargon = () => request<JargonData>("/api/jargon");

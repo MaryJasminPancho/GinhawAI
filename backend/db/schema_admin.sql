@@ -382,6 +382,72 @@ WHERE NOT EXISTS (SELECT 1 FROM system_config WHERE key = 'jargon_seeded_2026_11
 ON CONFLICT DO NOTHING;
 INSERT INTO system_config (key, value) VALUES ('jargon_seeded_2026_11', 'true') ON CONFLICT (key) DO NOTHING;
 
+-- "What do you need help paying for?" (help_needed) on the Local Terms page too (Nov 2026).
+-- Its starting words are copied in once, so the chat keeps understanding them; after that
+-- staff own the list, and words they remove don't come back.
+ALTER TABLE jargon_terms DROP CONSTRAINT IF EXISTS jargon_terms_slot_check;
+ALTER TABLE jargon_terms ADD CONSTRAINT jargon_terms_slot_check
+    CHECK (slot IN ('employment_status', 'housing_type', 'crisis_type', 'help_needed'));
+INSERT INTO jargon_terms (slot, value, term)
+SELECT 'help_needed', v.value, v.term FROM (VALUES
+('none', 'wala'),
+('none', 'none'),
+('none', 'no'),
+('none', 'dili'),
+('none', 'hindi'),
+('none', 'nothing'),
+('medical', 'ospital'),
+('medical', 'hospital'),
+('medical', 'gamot'),
+('medical', 'tambal'),
+('medical', 'medicine'),
+('medical', 'medical'),
+('medical', 'operasyon'),
+('medical', 'dialysis'),
+('medical', 'checkup'),
+('death', 'libing'),
+('death', 'lubong'),
+('death', 'burol'),
+('death', 'haya'),
+('death', 'funeral'),
+('death', 'burial'),
+('death', 'patay'),
+('death', 'namatay'),
+('transport', 'pamasahe'),
+('transport', 'plete'),
+('transport', 'fare'),
+('transport', 'transport'),
+('transport', 'biyahe'),
+('transport', 'ticket'),
+('transport', 'stranded'),
+('education', 'eskwela'),
+('education', 'eskwelahan'),
+('education', 'school'),
+('education', 'tuition'),
+('education', 'matrikula'),
+('education', 'enrollment'),
+('food', 'pagkain'),
+('food', 'pagkaon'),
+('food', 'food'),
+('food', 'bigas'),
+('food', 'rice'),
+('food', 'groceries'),
+('assistive_device', 'wheelchair'),
+('assistive_device', 'hearing aid'),
+('assistive_device', 'saklay'),
+('assistive_device', 'crutches'),
+('assistive_device', 'salamin'),
+('assistive_device', 'eyeglasses'),
+('assistive_device', 'device'),
+('other_help', 'iba pa'),
+('other_help', 'uban pa'),
+('other_help', 'something else'),
+('other_help', 'ofw')
+) AS v(value, term)
+WHERE NOT EXISTS (SELECT 1 FROM system_config WHERE key = 'jargon_seeded_help_needed')
+ON CONFLICT DO NOTHING;
+INSERT INTO system_config (key, value) VALUES ('jargon_seeded_help_needed', 'true') ON CONFLICT (key) DO NOTHING;
+
 -- ---------------------------------------------------------------------------
 -- Feedback resolution tracking (Appendix R #70). Feedback stays anonymous:
 -- only the staff side (status, note, who updated it) is added.

@@ -10,7 +10,7 @@ into the table once) and the fallback if the table isn't there yet.
 
 from app import chatflow
 
-SLOTS = ("employment_status", "housing_type", "crisis_type")
+SLOTS = ("employment_status", "housing_type", "crisis_type", "help_needed")
 
 _terms: dict[str, dict[str, list[str]]] = {}
 
@@ -35,6 +35,12 @@ async def load(pool) -> None:
     for r in rows:
         if r["slot"] in terms and r["value"] in terms[r["slot"]]:
             terms[r["slot"]][r["value"]].append(r["term"])
+    # A question with no words in the table at all (e.g. schema_admin.sql not re-run yet after
+    # a new question was added) keeps the built-in words, so the chat never goes deaf to it.
+    defaults = _defaults()
+    for slot in SLOTS:
+        if not any(terms[slot].values()):
+            terms[slot] = defaults[slot]
     _terms = terms
 
 
