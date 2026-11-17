@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
 import Button, { buttonClasses } from "@/components/Button";
 import UrgentHelp from "@/components/UrgentHelp";
-import { ActionPlan, getPlan, getSession, haveKey, Lang, SessionExpiredError } from "@/lib/api";
+import { SignInNudge, signInHref } from "@/components/SignInPrompts";
+import { ActionPlan, getCitizenToken, getPlan, getSession, haveKey, Lang, SessionExpiredError, subscribeCitizen } from "@/lib/api";
 import { t } from "@/lib/i18n";
 
 // "My Action Plan" (2nd consultation: the result must not end with "That's all?"): for each
@@ -29,6 +30,7 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
 function PlanInner() {
   const sessionId = useSearchParams().get("session");
   const [lang, setLang] = useState<Lang>("en");
+  const signedIn = useSyncExternalStore(subscribeCitizen, () => !!getCitizenToken(), () => true);
   const [plan, setPlan] = useState<ActionPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +58,12 @@ function PlanInner() {
         <PageHeader title={t(lang, "planTitle")} back={sessionId ? `/recommendations?session=${sessionId}` : "/"} />
 
         <p className="relative z-10 mt-5 text-[0.9375rem] leading-relaxed text-gray-600 dark:text-gray-300">{t(lang, "planIntro")}</p>
+        {/* Not signed in: an account lets them track this plan and get reminders. */}
+        {sessionId && !signedIn && (
+          <div className="relative z-10 mt-4">
+            <SignInNudge lang={lang} href={signInHref(lang, sessionId, `/plan?session=${sessionId}`)} text="nudgePlan" />
+          </div>
+        )}
 
         {!sessionId && <p className="relative z-10 mt-4 text-sm text-red-600 dark:text-red-400">{t(lang, "sessionEnded")}</p>}
         {error && <p className="relative z-10 mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</p>}

@@ -7,7 +7,8 @@ import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
 import Button, { buttonClasses } from "@/components/Button";
 import UrgentHelp from "@/components/UrgentHelp";
-import { assess, Assessment, endSession, getChannels, getCitizenToken, getMyDocuments, getSession, haveKey, Lang, ProgramResult, sendDocumentChecks, sendEmail, sendSms, SessionExpiredError, setMyDocument } from "@/lib/api";
+import { LockedFeatures, SignInNudge, signInHref } from "@/components/SignInPrompts";
+import { assess, Assessment, endSession, getChannels, getCitizenToken, getMyAccount, getMyDocuments, getSession, haveKey, Lang, ProgramResult, sendDocumentChecks, sendEmail, sendSms, SessionExpiredError, setMyDocument } from "@/lib/api";
 import { t } from "@/lib/i18n";
 
 // Figs. 19–22: ranked programs (green / amber / red), the explainable
@@ -40,7 +41,7 @@ function CriterionIcon({ status }: { status: "pass" | "fail" | "unknown" }) {
   return <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[0.6875rem] font-bold text-gray-500 dark:bg-white/10 dark:text-gray-400" aria-label="To be verified">?</span>;
 }
 
-function ProgramCard({ p, lang, have, onToggleDoc }: { p: ProgramResult; lang: Lang; have: Set<string>; onToggleDoc: (docId: string) => void }) {
+function ProgramCard({ p, lang, have, onToggleDoc, nudgeHref }: { p: ProgramResult; lang: Lang; have: Set<string>; onToggleDoc: (docId: string) => void; nudgeHref?: string }) {
   const st = STATUS[p.status];
   const matched = p.status !== "not_qualified";
   return (
@@ -74,7 +75,7 @@ function ProgramCard({ p, lang, have, onToggleDoc }: { p: ProgramResult; lang: L
       <div className="space-y-5 border-t border-gray-100 px-4 py-4 dark:border-white/10">
         {/* Fig. 20 — Explainable eligibility breakdown */}
         <div>
-          <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">{t(lang, "whyTitle")}</h3>
+          <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">{t(lang, p.status === "qualified" ? "whyQualified" : p.status === "partial" ? "whyPartial" : "whyNot")}</h3>
           <ul className="space-y-2.5">
             {p.criteria.map((c, i) => (
               <li key={i} className="flex gap-2.5 text-[0.8125rem]">
@@ -113,6 +114,12 @@ function ProgramCard({ p, lang, have, onToggleDoc }: { p: ProgramResult; lang: L
                 </li>
               ))}
             </ul>
+            {/* Not signed in: once a paper is ticked, say the ticks won't be kept (and how to keep them). */}
+            {nudgeHref && p.documents.some((d) => have.has(d.doc_id)) && (
+              <div className="mt-2">
+                <SignInNudge lang={lang} href={nudgeHref} text="nudgeTicks" />
+              </div>
+            )}
           </div>
         )}
 
@@ -176,15 +183,21 @@ function RecommendationsInner() {
       .catch(() => {});
   }, [sessionId]);
 
-  // Signed-in citizens: documents ticked in an earlier visit are already ticked here.
+  // Signed-in citizens: documents ticked in an earlier visit are already ticked here, and the
+  // email box starts with the account's email (if it has one).
   useEffect(() => {
     if (!signedIn) return;
+    getMyAccount()
+      .then((a) => a.email && setEmail((e) => e || a.email!))
+      .catch(() => {});
     getMyDocuments()
       .then((r) => setHave((h) => new Set([...h, ...r.have])))
       .catch(() => {}); // the checklist still works for this visit
   }, [signedIn]);
 
   const matched = result?.programs.filter((p) => p.status !== "not_qualified") ?? [];
+  // "Log in" from here: sign up or log in, keep this check in the account, then come back to these results.
+  const loginHref = sessionId ? signInHref(lang, sessionId, `/recommendations?session=${sessionId}`) : "/account";
   const others = result?.programs.filter((p) => p.status === "not_qualified") ?? [];
 
   function toggleDoc(programId: string, docId: string) {
@@ -253,7 +266,7 @@ function RecommendationsInner() {
             <p className="rounded-2xl bg-amber-50 p-4 text-[0.8125rem] lg:col-span-2 leading-relaxed text-amber-900 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/20">{t(lang, "noPrograms")}</p>
           )}
           {matched.map((p) => (
-            <ProgramCard key={p.program_id} p={p} lang={lang} have={have} onToggleDoc={(d) => toggleDoc(p.program_id, d)} />
+            <ProgramCard key={p.program_id} p={p} lang={lang} have={have} onToggleDoc={(d) => toggleDoc(p.program_id, d)} nudgeHref={signedIn ? undefined : loginHref} />
           ))}
           {others.length > 0 && (
             <details className="group rounded-2xl lg:col-span-2">
@@ -288,7 +301,7 @@ function RecommendationsInner() {
         )}
 
         {/* Figs. 21–22 — send the checklist by email (free, optional) or SMS */}
-        {result && matched.length > 0 && (channels.email || channels.sms) && (
+        {signedIn && result && matched.length > 0 && (channels.email || channels.sms) && (
           <section className="relative z-10 mt-6 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-black/5 print:hidden dark:bg-white/4 dark:ring-white/10">
             {sms.state === "sent" ? (
               <div className="flex flex-col items-center gap-2 py-2 text-center">
@@ -356,14 +369,8 @@ function RecommendationsInner() {
           </section>
         )}
 
-        {result && sessionId && !signedIn && (
-          <Link
-            href={`/account?lang=${lang}&mode=signup&claim=${sessionId}&next=/me`}
-            className="relative z-10 mt-6 block rounded-3xl bg-brand-50 p-4 text-sm leading-relaxed text-brand-900 ring-1 ring-brand-200 transition hover:bg-brand-100 print:hidden dark:bg-brand-500/10 dark:text-brand-200 dark:ring-brand-500/20"
-          >
-            {t(lang, "acctSavePrompt")} <span className="font-semibold underline">{t(lang, "acctSignup")} →</span>
-          </Link>
-        )}
+        {/* Not signed in: what a free account unlocks (emailing results, tracking, reminders, saved checklist). */}
+        {result && sessionId && !signedIn && <LockedFeatures lang={lang} href={loginHref} />}
         <p className="relative z-10 mt-4 text-xs leading-relaxed text-gray-400 dark:text-gray-500">{t(lang, "disclaimer")}</p>
 
         <div className="relative z-10 mt-6 flex flex-col gap-3 print:hidden">

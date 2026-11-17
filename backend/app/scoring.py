@@ -643,6 +643,145 @@ def _rule_note(attr: str, program_name: str, lang: str) -> str | None:
     return note
 
 
+# Plain sentences for "Why you qualify / don't qualify" (3rd consultation: explain it the way a
+# person would, e.g. "your income per person is below the ₱2,790 poverty line", not
+# "Yours: yes (needs: yes)"). Rules without a sentence here fall back to RULE_TEXT.
+# Each sentence says what the program looks for, what the citizen answered, and what that means.
+_LOW = {
+    "en": "This program is for families with a low income or in a crisis.",
+    "fil": "Para sa mga pamilyang mababa ang kita o may krisis ang programang ito.",
+    "ceb": "Para kini nga programa sa mga pamilya nga ubos ang kita o naay krisis.",
+}
+_KIDS = {
+    "en": "This program is for families with children aged 0 to 18 or a pregnant member.",
+    "fil": "Para sa mga pamilyang may anak na 0 hanggang 18 taong gulang o may buntis ang programang ito.",
+    "ceb": "Para kini nga programa sa mga pamilya nga naay anak nga 0 hangtod 18 anyos o naay mabdos.",
+}
+_SOLO = {"en": "This program is for solo parents.", "fil": "Para sa mga solo parent ang programang ito.", "ceb": "Para kini nga programa sa mga solo parent."}
+_PWD = {
+    "en": "This program is for families with a member who has a disability.",
+    "fil": "Para sa mga pamilyang may miyembrong may kapansanan ang programang ito.",
+    "ceb": "Para kini nga programa sa mga pamilya nga naay miyembro nga may kakulangan.",
+}
+_SENIOR = {
+    "en": "This program is for families with a member aged 60 or older.",
+    "fil": "Para sa mga pamilyang may miyembrong 60 taong gulang pataas ang programang ito.",
+    "ceb": "Para kini nga programa sa mga pamilya nga naay miyembro nga 60 anyos pataas.",
+}
+_WORK = {
+    "en": "This program is for workers without regular work: no work, not enough work, seasonal or daily-wage work, or a job recently lost.",
+    "fil": "Para sa mga manggagawang walang regular na trabaho ang programang ito: walang trabaho, kulang ang trabaho, pana-panahon, arawan, o kakatanggal lang sa trabaho.",
+    "ceb": "Para kini nga programa sa mga mamumuo nga walay regular nga trabaho: walay trabaho, kulang ang trabaho, seasonal, adlaw-adlaw, o bag-o lang natangtang.",
+}
+_FIT = {
+    "en": "This program is short-term physical work, like cleaning or lifting.",
+    "fil": "Pansamantalang pisikal na trabaho ang programang ito, gaya ng paglilinis o pagbubuhat.",
+    "ceb": "Mubo nga pisikal nga trabaho kini nga programa, sama sa paglimpyo o pag-alsa.",
+}
+_IN = {"en": "so you meet this.", "fil": "kaya pasok kayo rito.", "ceb": "busa pasok ka niini."}
+_OUT = {"en": "so you don't meet this yet.", "fil": "kaya hindi pa kayo pasok rito.", "ceb": "busa dili pa ka pasok niini."}
+
+
+def _both(intro: dict, detail: dict, ok: bool) -> dict:
+    """{lang: "<what the program looks for> <the answer>, <so you meet it / not yet>"}."""
+    end = _IN if ok else _OUT
+    return {l: f"{intro[l]} {detail[l]}, {end[l]}" for l in ("en", "fil", "ceb")}
+
+
+PLAIN = {
+    "income_below": _both(_LOW, {
+        "en": "Your household's income per person (₱{pc} a month) is below the poverty line of ₱{line}",
+        "fil": "Ang kita kada tao sa inyong pamilya (₱{pc} kada buwan) ay mas mababa sa poverty line na ₱{line}",
+        "ceb": "Ang kita matag tawo sa inyong pamilya (₱{pc} kada bulan) ubos sa poverty line nga ₱{line}",
+    }, True),
+    "income_near": _both(_LOW, {
+        "en": "Your household's income per person (₱{pc} a month) is close to the poverty line of ₱{line}",
+        "fil": "Ang kita kada tao sa inyong pamilya (₱{pc} kada buwan) ay malapit sa poverty line na ₱{line}",
+        "ceb": "Ang kita matag tawo sa inyong pamilya (₱{pc} kada bulan) duol sa poverty line nga ₱{line}",
+    }, True),
+    "income_above": _both(_LOW, {
+        "en": "Your household's income per person (₱{pc} a month) is above the poverty line of ₱{line}, and you didn't report an emergency, a disability or being a solo parent",
+        "fil": "Ang kita kada tao sa inyong pamilya (₱{pc} kada buwan) ay mas mataas sa poverty line na ₱{line}, at walang naiulat na emergency, kapansanan o pagiging solo parent",
+        "ceb": "Ang kita matag tawo sa inyong pamilya (₱{pc} kada bulan) taas sa poverty line nga ₱{line}, ug walay gitaho nga emerhensya, kakulangan o pagka-solo parent",
+    }, False),
+    "crisis": _both(_LOW, {
+        "en": "Your family is going through an emergency right now ({v})",
+        "fil": "May kinakaharap na emergency ang inyong pamilya ngayon ({v})",
+        "ceb": "Adunay emerhensya nga giagian sa inyong pamilya karon ({v})",
+    }, True),
+    "low_pwd": _both(_LOW, {
+        "en": "Someone in your household has a disability",
+        "fil": "May miyembro ng inyong pamilya na may kapansanan",
+        "ceb": "Adunay miyembro sa inyong pamilya nga may kakulangan",
+    }, True),
+    "low_solo": _both(_LOW, {"en": "You are a solo parent", "fil": "Kayo ay solo parent", "ceb": "Solo parent ka"}, True),
+    "kids": _both(_KIDS, {"en": "You have children aged 0 to 18", "fil": "May anak kayong 0 hanggang 18 taong gulang", "ceb": "Naa kay anak nga 0 hangtod 18 anyos"}, True),
+    "pregnant": _both(_KIDS, {"en": "Someone in your household is pregnant", "fil": "May buntis sa inyong pamilya", "ceb": "Naay mabdos sa inyong pamilya"}, True),
+    "no_kids": _both(_KIDS, {
+        "en": "There are no children aged 0 to 18 or pregnant members in your household",
+        "fil": "Walang anak na 0 hanggang 18 taong gulang o buntis sa inyong pamilya",
+        "ceb": "Walay anak nga 0 hangtod 18 anyos o mabdos sa inyong pamilya",
+    }, False),
+    "solo": _both(_SOLO, {"en": "You said you are a solo parent", "fil": "Sinabi ninyong kayo ay solo parent", "ceb": "Giingon nimo nga solo parent ka"}, True),
+    "no_solo": _both(_SOLO, {"en": "You said you are not a solo parent", "fil": "Sinabi ninyong hindi kayo solo parent", "ceb": "Giingon nimo nga dili ka solo parent"}, False),
+    "pwd": _both(_PWD, {"en": "Someone in your household has a disability", "fil": "May miyembro ng inyong pamilya na may kapansanan", "ceb": "Adunay miyembro sa inyong pamilya nga may kakulangan"}, True),
+    "no_pwd": _both(_PWD, {"en": "No one in your household has a disability", "fil": "Walang miyembro ng inyong pamilya na may kapansanan", "ceb": "Walay miyembro sa inyong pamilya nga may kakulangan"}, False),
+    "senior": _both(_SENIOR, {"en": "Someone in your household is 60 or older", "fil": "May miyembro ng inyong pamilya na 60 taong gulang pataas", "ceb": "Adunay miyembro sa inyong pamilya nga 60 anyos pataas"}, True),
+    "no_senior": _both(_SENIOR, {"en": "No one in your household is 60 or older", "fil": "Walang miyembro ng inyong pamilya na 60 taong gulang pataas", "ceb": "Walay miyembro sa inyong pamilya nga 60 anyos pataas"}, False),
+    "age_ok": _both(
+        {"en": "This program is for ages {n} and up.", "fil": "Para sa edad {n} pataas ang programang ito.", "ceb": "Para kini nga programa sa edad {n} pataas."},
+        {"en": "You are {age}", "fil": "{age} taong gulang kayo", "ceb": "{age} anyos ka"}, True),
+    "age_low": _both(
+        {"en": "This program is only for ages {n} and up.", "fil": "Para lang sa edad {n} pataas ang programang ito.", "ceb": "Para ra kini nga programa sa edad {n} pataas."},
+        {"en": "You are {age}", "fil": "{age} taong gulang kayo", "ceb": "{age} anyos ka"}, False),
+    "work_ok": _both(_WORK, {"en": "Your answer was: {v}", "fil": "Ang sagot ninyo ay: {v}", "ceb": "Ang imong tubag: {v}"}, True),
+    "work_no": _both(_WORK, {"en": "Your answer was: {v}", "fil": "Ang sagot ninyo ay: {v}", "ceb": "Ang imong tubag: {v}"}, False),
+    "fit": _both(_FIT, {"en": "You said you can do this kind of work", "fil": "Sinabi ninyong kaya ninyo ito", "ceb": "Giingon nimo nga kaya nimo kini"}, True),
+    "not_fit": _both(_FIT, {"en": "You said you can't do this kind of work", "fil": "Sinabi ninyong hindi ninyo ito kaya", "ceb": "Giingon nimo nga dili nimo kini kaya"}, False),
+}
+
+
+def _plain_rule(attr: str, op: str, threshold: str, ok: bool, profile: dict, lang: str) -> str | None:
+    """One plain sentence for a checked rule, or None to use the generic wording."""
+    def say(key: str, **v) -> str:
+        return PLAIN[key][lang].format(**v)
+
+    yes_no = {"is_solo_parent": ("solo", "no_solo"), "has_pwd": ("pwd", "no_pwd"),
+              "is_pwd": ("pwd", "no_pwd"), "has_senior_member": ("senior", "no_senior"), "physically_fit_for_assigned_task": ("fit", "not_fit")}
+    if attr == "is_indigent_or_vulnerable":
+        pc = profile.get("per_capita_income")
+        money = {"pc": f"{pc:,.0f}" if pc is not None else "?", "line": f"{POVERTY_THRESHOLD_MONTHLY:,}"}
+        if not ok:
+            return say("income_above", **money) if pc is not None else None
+        # The first reason that applies (income first, as the rule checks it).
+        if pc is not None and pc <= POVERTY_THRESHOLD_MONTHLY:
+            return say("income_below", **money)
+        if pc is not None and pc <= POVERTY_THRESHOLD_MONTHLY * 1.5:
+            return say("income_near", **money)
+        if profile.get("has_crisis"):
+            return say("crisis", v=value_label(profile.get("crisis_type"), lang))
+        if profile.get("has_pwd"):
+            return say("low_pwd")
+        if profile.get("is_solo_parent"):
+            return say("low_solo")
+        return None
+    if attr == "has_member_age_0_18_or_pregnant":
+        if not ok:
+            return say("no_kids")
+        return say("kids") if profile.get("has_children_0_18") else say("pregnant")
+    if attr in yes_no and _as_bool(threshold) is True and op.strip() in ("=", "=="):
+        good, bad = yes_no[attr]
+        return say(good if ok else bad)
+    if attr == "age" and op.strip() in (">=", ">") and profile.get("age") is not None:
+        n = _num(threshold)
+        if n is None:
+            return None
+        return say("age_ok" if ok else "age_low", age=int(profile["age"]), n=int(n + (1 if op.strip() == ">" else 0)))
+    if attr == "employment_status" and profile.get("employment_status"):
+        return say("work_ok" if ok else "work_no", v=value_label(profile["employment_status"], lang))
+    return None
+
+
 def evaluate_program(program: dict, criteria: list[dict], profile: dict, lang: str = "en") -> dict:
     lang = _lang(lang)
     results = []
@@ -661,12 +800,13 @@ def evaluate_program(program: dict, criteria: list[dict], profile: dict, lang: s
             continue
         ok = compare(profile[attr], c["operator"], c["threshold_value"])
         actual = _fmt(attr, profile[attr], lang)
+        plain = _plain_rule(attr, c["operator"], c["threshold_value"], ok, profile, lang)
         if ok:
             results.append({"attribute": attr, "label": label, "status": "pass", "actual": actual, "requirement": requirement,
-                            "explanation": RULE_TEXT["pass"][lang].format(a=actual, r=requirement)})
+                            "explanation": plain or RULE_TEXT["pass"][lang].format(a=actual, r=requirement)})
         else:
             results.append({"attribute": attr, "label": label, "status": "fail", "actual": actual, "requirement": requirement,
-                            "explanation": RULE_TEXT["fail"][lang].format(a=actual, r=requirement)})
+                            "explanation": plain or RULE_TEXT["fail"][lang].format(a=actual, r=requirement)})
 
     # Counted, not weighted: "meets 3 of 4 requirements" always agrees with the verdict
     # (one unmet requirement means "not qualified"), unlike the old weighted percentage.

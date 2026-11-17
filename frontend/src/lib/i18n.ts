@@ -69,6 +69,46 @@ const T = {
     ceb: "Paghimo og libreng account aron ma-save kining resulta, masubay ang imong mga aplikasyon, ug makadawat og pahinumdom sa email bahin sa mga iskedyul, pag-renew sa ID, ug kanus-a magsusi pag-usab.",
     en: "Create a free account to save this result, track your applications, and get email reminders about schedules, ID renewals and when to check again.",
   },
+  // What an account unlocks (results page and Action Plan, for citizens who aren't signed in)
+  lockedTitle: { fil: "Mag-sign in para sa iba pang tulong", ceb: "Mag-sign in para sa uban pang tabang", en: "Sign in to do more" },
+  lockedIntro: {
+    fil: "Libre ang pagsusuri para sa lahat. Gamit ang libreng account, masusundan ninyo ang inyong aplikasyon hanggang matapos:",
+    ceb: "Libre ang pagsusi para sa tanan. Gamit ang libreng account, masundan nimo ang imong aplikasyon hangtod mahuman:",
+    en: "Checking is free for everyone. A free account helps you follow through until you get the help:",
+  },
+  lockedEmail: { fil: "I-email ang inyong resulta at checklist", ceb: "I-email ang imong resulta ug checklist", en: "Email your results and checklist" },
+  lockedTracker: {
+    fil: "Subaybayan ang inyong mga aplikasyon (hindi pa nasisimulan, handa na ang papeles, nakapag-apply, naaprubahan)",
+    ceb: "Subaya ang imong mga aplikasyon (wala pa nasugdi, andam na ang papeles, nakaaplay, naaprobahan)",
+    en: "Track your applications (not started, papers ready, applied, approved)",
+  },
+  lockedReminders: {
+    fil: "Mga paalala sa email: iskedyul, pag-renew ng ID, at kung kailan magsuri muli",
+    ceb: "Mga pahinumdom sa email: iskedyul, pag-renew sa ID, ug kanus-a magsusi pag-usab",
+    en: "Email reminders: schedules, ID renewals and when to check again",
+  },
+  lockedChecklist: {
+    fil: "Itago ang inyong checklist ng papeles para sa susunod na pagbisita",
+    ceb: "Tipigi ang imong checklist sa papeles para sa sunod nga pagbisita",
+    en: "Keep your paper checklist for your next visit",
+  },
+  lockedButton: { fil: "Mag-log in o gumawa ng libreng account", ceb: "Mag-log in o paghimo og libreng account", en: "Log in or create a free account" },
+  lockedSendTitle: { fil: "I-email ang inyong resulta", ceb: "I-email ang imong resulta", en: "Email your results" },
+  lockedSendHint: {
+    fil: "Mag-log in para maipadala ang resulta at checklist sa inyong email. Maaari pa rin ninyong i-save o i-print ang pahinang ito.",
+    ceb: "Mag-log in aron mapadala ang resulta ug checklist sa imong email. Mahimo gihapon nimo i-save o i-print kining panid.",
+    en: "Log in to send your results and checklist to your email. You can still save or print this page.",
+  },
+  nudgeTicks: {
+    fil: "Mawawala ang mga tsek na ito pagsara ninyo ng pahina. Mag-log in para maitago ang inyong checklist.",
+    ceb: "Mawala kini nga mga tsek inig sira nimo sa panid. Mag-log in aron matipigan ang imong checklist.",
+    en: "These ticks are lost when you close this page. Log in to keep your checklist.",
+  },
+  nudgePlan: {
+    fil: "Gusto ninyong masubaybayan ang plano at makatanggap ng paalala? Mag-log in o gumawa ng libreng account.",
+    ceb: "Gusto nimo masubay ang plano ug makadawat og pahinumdom? Mag-log in o paghimo og libreng account.",
+    en: "Want to track this plan and get reminders? Log in or create a free account.",
+  },
   // Signed-in home screen (/me)
   dashWelcome: { fil: "Maligayang pagbabalik", ceb: "Maayong pagbalik", en: "Welcome back" },
   dashSignedIn: { fil: "Naka-sign in", ceb: "Naka-sign in", en: "Signed in" },
@@ -166,6 +206,10 @@ const T = {
   reqMet: { fil: "Natugunan ang {met} sa {total} na kailangan", ceb: "Natuman ang {met} sa {total} ka kinahanglanon", en: "Meets {met} of {total} requirements" },
   reqVerify: { fil: "{n} susuriin sa opisina", ceb: "{n} susihon sa opisina", en: "{n} to check at the office" },
   whyTitle: { fil: "Bakit?", ceb: "Ngano?", en: "Why?" },
+  // The "why" heading on a program card follows its result.
+  whyQualified: { fil: "Bakit qualified ka?", ceb: "Ngano qualified ka?", en: "Why you qualify" },
+  whyPartial: { fil: "Bakit maaaring qualified ka?", ceb: "Ngano mahimong qualified ka?", en: "Why you may qualify" },
+  whyNot: { fil: "Bakit hindi ka pa qualified?", ceb: "Ngano dili pa ka qualified?", en: "Why you don't qualify yet" },
   toVerify: { fil: "Susuriin sa opisina", ceb: "Susihon sa opisina", en: "Checked at the office" },
   documentsTitle: { fil: "Mga dokumentong dadalhin", ceb: "Mga dokumento nga dad-on", en: "Documents to bring" },
   iHaveThis: { fil: "Mayroon na ako", ceb: "Naa na ko", en: "I have this" },

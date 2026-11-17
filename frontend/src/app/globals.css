@@ -37,6 +37,15 @@
   color-scheme: dark;
 }
 
+/* Dropdown lists: a <select> in dark mode has light text on an almost see-through
+   background, so the open list fell back to white with unreadable light text.
+   Give every option a solid dark background (citizen pages and the staff console). */
+.dark select option,
+.dark select optgroup {
+  background-color: #18211c;
+  color: #f3f4f6;
+}
+
 /* Citizen "A− / A+" text size (components/TextSize.tsx). Citizen pages size text in rem,
    so changing the root size scales them; the staff console keeps its own size. */
 html[data-text-size="1"]:not(:has([data-admin])) { font-size: 115%; }

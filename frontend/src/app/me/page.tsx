@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { RecheckCard, RemindersCard, TrackerCard, useTracker } from "@/components/AccountExtras";
 import Backdrop from "@/components/Backdrop";
+import ThemeToggle from "@/components/ThemeToggle";
 import { buttonClasses } from "@/components/Button";
 import {
   ChecklistProgram, CitizenAccount, citizenLogout, deleteMyAccount, getCitizenToken, getMyAccount, getMyChecklist, Lang, setMyDocument, subscribeCitizen,
@@ -162,10 +163,14 @@ function MeInner() {
         {/* Banner: the green band, the avatar and the "Signed in" badge show at a glance that the citizen is logged in. */}
         <header className="bg-gradient-to-br from-brand-700 to-brand-600 px-5 pb-6 pt-5 text-white sm:px-8">
           <div className="flex items-start justify-between gap-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold ring-1 ring-white/25">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-              {t(lang, "dashSignedIn")}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold ring-1 ring-white/25">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+                {t(lang, "dashSignedIn")}
+              </span>
+              {/* Light / dark: a signed-in extra (applies on every page while signed in). */}
+              <ThemeToggle />
+            </div>
             <button
               type="button"
               onClick={logout}
