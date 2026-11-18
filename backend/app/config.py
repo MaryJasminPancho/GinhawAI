@@ -37,6 +37,9 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # Optional: OAuth client ID for "Continue with Google" on citizen sign-in (Google Cloud Console →
 # Credentials → OAuth client ID, type "Web application"). Without it the Google button is hidden.
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+# Module 19 (intent classifier: answer / question / skip / greeting / off_topic). OFF by default: it is a
+# 5th model (about 1.2-1.5 GB of RAM) and loads only when this is "true" AND backend/models/intent_model exists.
+INTENT_ENABLED = os.getenv("INTENT_ENABLED", "false").strip().lower() in ("1", "true", "yes")
 
 # Constants
 JWT_ALGORITHM = "HS256"

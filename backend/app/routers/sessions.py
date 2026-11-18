@@ -20,6 +20,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from app import chatflow, jargon
 from app.ai.slot_classifier import classify
 from app.ai.ai_parser import extract_entities
+from app.config import INTENT_ENABLED
 from app.routers.citizens import citizen_id_from, load_citizen_profile, save_citizen_assessment, save_citizen_profile
 from app.action_plan import build_plan, urgent_contacts
 from app.textfmt import one_per_line
@@ -49,6 +50,10 @@ SLOT_MODELS = {
 }
 # Minimum confidence before we trust a model's answer (below this we fall back to Gemini)
 MODEL_MIN_CONF = 0.5
+# Module 19: the intent model only decides when it is at least this sure, and only for short messages
+# (a long sentence may hold real answers, so it always goes through the normal path).
+INTENT_MIN_CONF = 0.8
+INTENT_MAX_WORDS = 8
 # Longest we wait for Gemini on one message before carrying on without it (frontend gives up at 20 s)
 AI_TIMEOUT_SECONDS = 8
 AI_BONUS_TIMEOUT_SECONDS = 3  # shorter wait when the answer was already understood without Gemini
@@ -275,11 +280,25 @@ async def send_message(session_id: str, payload: MessageIn, request: Request):
         if direct is not None:
             understood = await _apply(request, entities, asking, direct)
 
+    # 1a) Intent (module 19, only when INTENT_ENABLED): is this short message even an answer?
+    #     A greeting, a question, "skip" or something off topic gets a short reply and the same question again;
+    #     nothing is saved or skipped. Not an answer-detector for anything else: "answer" or low confidence
+    #     continues below exactly as before. A model problem never breaks the chat.
+    intent_reply = None
+    if INTENT_ENABLED and asking and not understood and len(text.split()) <= INTENT_MAX_WORDS:
+        try:
+            intent, iconf = await asyncio.to_thread(classify, text, "intent")
+            print(f"[intent] {text!r} -> {intent} ({iconf})")   # debug line, like the slot classifiers
+            if intent in chatflow.INTENT_REPLIES and iconf >= INTENT_MIN_CONF:
+                intent_reply = chatflow.INTENT_REPLIES[intent].get(lang) or chatflow.INTENT_REPLIES[intent]["en"]
+        except Exception as e:
+            print(f"Intent error: {e}")
+
     # 1b) Fine-tuned XLM-RoBERTa classifier for the question being asked (see SLOT_MODELS).
     #     Only runs if the rule parser above did not understand the answer.
     #     Low confidence or "unclear" -> we fall through to Gemini below.
     model_key = SLOT_MODELS.get(asking)
-    if model_key and not understood:
+    if model_key and not understood and not intent_reply:
         try:
             label, conf = await asyncio.to_thread(classify, text, model_key)  # to_thread: keeps the server responsive while the model runs
             print(f"[classifier:{model_key}] {text!r} -> {label} ({conf})")   # debug line: shows what the model decided
@@ -294,7 +313,7 @@ async def send_message(session_id: str, payload: MessageIn, request: Request):
     #    Skipped for short replies the parser already handled.
 
     # Skip Gemini when the answer is short, or when the XLM-R model already answered the question.
-    if not (understood and (len(text.split()) <= 3 or model_used)):
+    if not intent_reply and not (understood and (len(text.split()) <= 3 or model_used)):
         try:
             # wait_for: if Gemini is slow or down, give up so the reply still arrives before the
             # frontend's 20 s limit ("Can't connect right now"). When the rules/model already
@@ -321,6 +340,8 @@ async def send_message(session_id: str, payload: MessageIn, request: Request):
     quick = None  # barangay suggestions replace the usual chips
     if nxt is None:
         reply = chatflow.DONE[lang]
+    elif intent_reply:
+        reply = intent_reply + " " + chatflow.question(nxt, lang)   # same question again, after the short reply
     elif nxt == asking and not understood and nxt == "barangay":
         suggestions = await _suggest_barangays(request, text)
         reply = chatflow.BARANGAY_UNKNOWN[lang] + (chatflow.BARANGAY_SUGGEST[lang] if suggestions else "")

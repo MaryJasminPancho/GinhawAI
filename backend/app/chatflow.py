@@ -215,6 +215,31 @@ RETRY = {
     "en": "Sorry, I didn't quite get that. ",
 }
 
+# Short replies when the intent model says the message is not an answer (module 19). Each is followed by
+# the same question again; nothing is saved or skipped. Keys are the intent labels.
+INTENT_REPLIES = {
+    "greeting": {
+        "fil": "Kumusta po! Sasamahan ko kayo sa ilang tanong lang.",
+        "ceb": "Kumusta! Tabangan tika sa pipila ka pangutana.",
+        "en": "Hello! I'll guide you through a few quick questions.",
+    },
+    "question": {
+        "fil": "Itinatanong ko ito para maitugma kayo sa tamang programa. Hindi ko hinihingi ang inyong pangalan.",
+        "ceb": "Gipangutana nako kini aron maitugma ka sa saktong programa. Wala nako gipangayo ang imong ngalan.",
+        "en": "I ask this to match you with the right programs. I never ask for your name.",
+    },
+    "skip": {
+        "fil": "Okay lang po kung hindi kayo sigurado; sabihin ang pinakamalapit na sagot. Kailangan ko ito para sa tamang resulta.",
+        "ceb": "Okay ra kung dili ka sigurado; isulti ang pinakaduol nga tubag. Kinahanglan nako kini para sa saktong resulta.",
+        "en": "It's fine if you're not sure; tell me your best guess. I need this to give you the right result.",
+    },
+    "off_topic": {
+        "fil": "Pasensya na, tungkol lamang sa mga programa ng tulong ang masasagot ko. Balik tayo sa tanong:",
+        "ceb": "Pasensya, mahatagan ra nako ka'g tubag bahin sa mga programa sa tabang. Balik ta sa pangutana:",
+        "en": "Sorry, I can only help with welfare programs. Back to the question:",
+    },
+}
+
 YES_WORDS = {"yes", "y", "yup", "yeah", "oo", "opo", "oho", "o", "meron", "mayroon", "may", "naa", "aw", "true", "sige", "ou"}
 NO_WORDS = {"no", "n", "nope", "hindi", "wala", "dili", "none", "false", "wa", "ala", "di"}
 
