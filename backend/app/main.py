@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from redis.exceptions import ConnectionError as RedisConnectionError, TimeoutError as RedisTimeoutError
 
 from app.cache import create_redis_client
+from app.config import INTENT_ENABLED
 from app.database import create_db_pool
 from app import jargon
 from app.routers import admin_users, analytics, audit_logs, auth, catalog, citizen_accounts, citizen_checklist, citizen_tracker, citizens, feedback, health, jargon_terms, localization, partners, programs, sessions, system, validation
@@ -24,7 +25,10 @@ async def warm_up_models():
     who waits (that wait used to pass the frontend's 20 s limit)."""
     from app.ai.slot_classifier import load_model
 
-    for key in sorted(set(sessions.SLOT_MODELS.values())):
+    keys = set(sessions.SLOT_MODELS.values())
+    if INTENT_ENABLED:
+        keys.add("intent")  # module 19; only when switched on (it is a 5th model, about 1.2-1.5 GB of RAM)
+    for key in sorted(keys):
         try:
             await asyncio.to_thread(load_model, key)  # to_thread: keeps the server responsive
             print(f"[warm-up] model loaded: {key}")
