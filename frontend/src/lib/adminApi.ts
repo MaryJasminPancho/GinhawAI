@@ -296,9 +296,15 @@ export type AuditLog = {
   timestamp: string;
   flagged?: boolean;
   flag_reason?: string;
+  /** A System Administrator has looked at this flag (it no longer counts as an alert). */
+  reviewed?: boolean;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
 };
 
 export const getAuditLogs = () => request<AuditLog[]>("/api/audit-logs?limit=2000");
+export const reviewAuditFlags = (audit_ids: string[]) =>
+  request<{ reviewed: number }>("/api/audit-logs/review", { method: "POST", body: json({ audit_ids }) });
 
 // ===========================================================================
 // STAFF ACCOUNTS (System Administrator)

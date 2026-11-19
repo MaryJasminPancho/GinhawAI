@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Badge, Btn, Card, downloadCsv, EmptyState, ErrorText, fmtDateTime, inputClass, Loading, PageTitle, Table, td, th, Toggle } from "@/components/admin/ui";
 import { useAdmin } from "@/components/admin/AdminShell";
-import { AuditLog, getAuditLogs } from "@/lib/adminApi";
+import { AuditLog, getAuditLogs, reviewAuditFlags } from "@/lib/adminApi";
 
 // "View Administrative Audit Logs" (Fig. 9) + System Audit & Compliance Trail
 // modules: view consolidated trail, export compliance reports, flag anomalous
@@ -17,6 +17,7 @@ const ACTION_TONE: Record<string, "green" | "amber" | "red" | "blue" | "gray" | 
   PURGE: "brand",
   LOGIN: "gray",
   LOGOUT: "gray",
+  REVIEW: "gray",
 };
 
 const PAGE = 25;
@@ -33,6 +34,7 @@ export default function AuditLogsPage() {
   const [user, setUser] = useState("all");
   const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [shown, setShown] = useState(PAGE);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     getAuditLogs().then(setLogs).catch((e) => setError(e.message));
@@ -44,15 +46,32 @@ export default function AuditLogsPage() {
       (action === "all" || l.action_type === action) &&
       (table === "all" || l.target_table === table) &&
       (user === "all" || l.username === user) &&
-      (!flaggedOnly || l.flagged) &&
+      (!flaggedOnly || (l.flagged && !l.reviewed)) &&
       (!q || `${l.old_value} ${l.new_value} ${l.target_table} ${l.username}`.toLowerCase().includes(q.toLowerCase()))
   );
-  const flaggedCount = (logs ?? []).filter((l) => l.flagged).length;
+  // Only flags nobody has reviewed yet count as alerts.
+  const open = (logs ?? []).filter((l) => l.flagged && !l.reviewed);
+  const flaggedCount = open.length;
+
+  /** System Administrator: mark flags as reviewed, then reload so the trail shows who did it. */
+  async function review(ids: string[]) {
+    if (!ids.length) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await reviewAuditFlags(ids);
+      setLogs(await getAuditLogs());
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function exportCsv() {
     downloadCsv(`ginhawai-audit-trail-${new Date().toISOString().slice(0, 10)}.csv`, [
-      ["timestamp", "user", "action", "table", "old_value", "new_value", "flag"],
-      ...filtered.map((l) => [l.timestamp, l.username, l.action_type, l.target_table, l.old_value, l.new_value, l.flag_reason ?? ""]),
+      ["timestamp", "user", "action", "table", "old_value", "new_value", "flag", "flag_reviewed_by"],
+      ...filtered.map((l) => [l.timestamp, l.username, l.action_type, l.target_table, l.old_value, l.new_value, l.flag_reason ?? "", l.reviewed_by ?? ""]),
     ]);
   }
 
@@ -73,12 +92,23 @@ export default function AuditLogsPage() {
         <div className="mb-4 flex flex-col gap-2 rounded-2xl bg-red-50 px-4 py-3 text-[13px] text-red-800 ring-1 ring-red-200 sm:flex-row sm:items-center sm:justify-between dark:bg-red-500/10 dark:text-red-200 dark:ring-red-500/20">
           <span>
             {seeAll ? (
-              <><strong>{flaggedCount} events flagged</strong> — repeated failed sign-ins or activity outside office hours. Review them with the account owners.</>
+              <><strong>{flaggedCount} events flagged</strong> — repeated failed sign-ins or late-night sign-ins (10 PM – 5 AM). Check them with the account owners, then mark them as reviewed.</>
             ) : (
-              <><strong>{flaggedCount} unusual events on your account</strong> — repeated failed sign-ins or activity outside office hours. If that wasn&apos;t you, tell your System Administrator.</>
+              <><strong>{flaggedCount} unusual events on your account</strong> — repeated failed sign-ins or late-night sign-ins (10 PM – 5 AM). If that wasn&apos;t you, tell your System Administrator.</>
             )}
           </span>
-          <Btn variant="danger" onClick={() => setFlaggedOnly(true)}>Review flagged</Btn>
+          <div className="flex flex-wrap gap-2">
+            <Btn variant="danger" onClick={() => setFlaggedOnly(true)}>Show flagged</Btn>
+            {seeAll && (
+              <Btn
+                variant="secondary"
+                disabled={busy}
+                onClick={() => window.confirm(`Mark all ${flaggedCount} flagged events as reviewed?`) && review(open.map((l) => l.audit_id))}
+              >
+                Mark all as reviewed
+              </Btn>
+            )}
+          </div>
         </div>
       )}
 
@@ -120,13 +150,14 @@ export default function AuditLogsPage() {
             </thead>
             <tbody>
               {filtered.slice(0, shown).map((l) => (
-                <tr key={l.audit_id} className={l.flagged ? "bg-red-50/60 dark:bg-red-500/[0.06]" : "hover:bg-gray-50/60 dark:hover:bg-white/[0.02]"}>
+                <tr key={l.audit_id} className={l.flagged && !l.reviewed ? "bg-red-50/60 dark:bg-red-500/[0.06]" : "hover:bg-gray-50/60 dark:hover:bg-white/[0.02]"}>
                   <td className={`${td} whitespace-nowrap tabular-nums`}>{fmtDateTime(l.timestamp)}</td>
                   <td className={`${td} font-medium`}>{l.username}</td>
                   <td className={td}>
                     <div className="flex items-center gap-1.5">
                       <Badge tone={ACTION_TONE[l.action_type] ?? "gray"}>{l.action_type.replace("_", " ")}</Badge>
-                      {l.flagged && <span title={l.flag_reason}><Badge tone="red" dot>Flagged</Badge></span>}
+                      {l.flagged && !l.reviewed && <span title={l.flag_reason}><Badge tone="red" dot>Flagged</Badge></span>}
+                      {l.reviewed && <span title={l.flag_reason}><Badge tone="gray">Reviewed</Badge></span>}
                     </div>
                   </td>
                   <td className={td}>
@@ -135,7 +166,21 @@ export default function AuditLogsPage() {
                   <td className={`${td} max-w-md`}>
                     {l.old_value && <p className="text-xs text-gray-400 line-through decoration-gray-300 dark:text-gray-500">{l.old_value}</p>}
                     {l.new_value && <p className="text-xs text-gray-800 dark:text-gray-200">{l.new_value}</p>}
-                    {l.flag_reason && <p className="mt-0.5 text-[11px] font-semibold text-red-600 dark:text-red-400">{l.flag_reason}</p>}
+                    {l.flag_reason && !l.reviewed && (
+                      <p className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-red-600 dark:text-red-400">
+                        {l.flag_reason}
+                        {seeAll && (
+                          <button type="button" disabled={busy} onClick={() => review([l.audit_id])} className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-gray-600 ring-1 ring-gray-300 hover:bg-white disabled:opacity-50 dark:text-gray-300 dark:ring-white/15 dark:hover:bg-white/10">
+                            Mark reviewed
+                          </button>
+                        )}
+                      </p>
+                    )}
+                    {l.reviewed && (
+                      <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">
+                        {l.flag_reason} · reviewed by {l.reviewed_by}{l.reviewed_at ? ` on ${fmtDateTime(l.reviewed_at)}` : ""}
+                      </p>
+                    )}
                   </td>
                 </tr>
               ))}
