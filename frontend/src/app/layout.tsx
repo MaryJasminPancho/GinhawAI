@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import NavTracker from "@/components/NavTracker";
@@ -19,6 +19,14 @@ export const metadata: Metadata = {
   // Pages add their own title: "Your programs – GinhawAI"
   title: { default: "GinhawAI", template: "%s – GinhawAI" },
   description: "Find the welfare programs you may qualify for.",
+};
+
+// On phones, the on-screen keyboard shrinks the page (not just the visible part), so the chat
+// can keep the question and the text box on screen together while typing.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

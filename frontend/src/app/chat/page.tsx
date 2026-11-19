@@ -84,6 +84,17 @@ function ChatInner() {
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, sending]);
 
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const toBottom = () => {
+      const el = scrollRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    };
+    vv.addEventListener("resize", toBottom);
+    return () => vv.removeEventListener("resize", toBottom);
+  }, []);
+
   async function send(text: string) {
     if (!text || !sessionId || sending || complete) return;
     setInput("");
@@ -118,13 +129,16 @@ function ChatInner() {
   }
 
   return (
-    // On phones this is a full h-screen app (edge-to-edge, no page scroll).
+    // On phones this is a full-height app (edge-to-edge, no page scroll). h-dvh, not h-screen:
+    // it shrinks when the keyboard opens, so the latest question stays above the text box.
+    // overflow-clip, not overflow-hidden: the backdrop's blobs reach below the screen, and a hidden
+    // (but still scrollable) box got scrolled when the text box was focused, pushing the chat up.
     // From sm: up it becomes a fixed-height card (bounded, not stretched to
     // whatever the monitor's height is) centered over the full-bleed backdrop.
-    <div className="relative isolate min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
+    <div className="relative isolate min-h-dvh overflow-clip bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
       <Backdrop />
 
-      <main className="relative mx-auto flex h-screen w-full max-w-md flex-col p-4 text-gray-900 dark:text-gray-100 sm:h-[min(760px,88vh)] sm:max-w-2xl lg:max-w-3xl sm:rounded-4xl sm:bg-white/80 sm:p-6 sm:shadow-2xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
+      <main className="relative mx-auto flex h-dvh w-full max-w-md flex-col p-4 text-gray-900 dark:text-gray-100 sm:h-[min(760px,88vh)] sm:max-w-2xl lg:max-w-3xl sm:rounded-4xl sm:bg-white/80 sm:p-6 sm:shadow-2xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
         <PageHeader
           title={t(lang, "assessment")}
           subtitle={LANG_LABELS[lang]}
@@ -147,8 +161,10 @@ function ChatInner() {
 
         <div
           ref={scrollRef}
-          className="relative z-10 mt-4 flex-1 space-y-4 overflow-y-auto rounded-3xl bg-white/70 p-4 shadow-sm ring-1 ring-black/5 backdrop-blur dark:bg-white/3 dark:ring-white/10"
+          className="relative z-10 mt-4 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto rounded-3xl bg-white/70 p-4 shadow-sm ring-1 ring-black/5 backdrop-blur dark:bg-white/3 dark:ring-white/10"
         >
+          {/* Pushes the conversation to the bottom of the box, next to the text box. */}
+          <div aria-hidden="true" className="mt-auto" />
           {messages.length === 0 && !error && (
             <p className="p-2 text-sm text-gray-400 dark:text-gray-500">
               {t(lang, "loading")}
@@ -197,6 +213,7 @@ function ChatInner() {
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }), 300)}
               placeholder={t(lang, "typeMessage")}
               disabled={!sessionId || sending}
               className="min-w-0 flex-1 rounded-full bg-white px-4 py-3 text-[0.875rem] text-gray-900 shadow-sm ring-1 ring-black/5 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-60 dark:bg-white/4 dark:text-gray-100 dark:ring-white/10 dark:placeholder:text-gray-500"
