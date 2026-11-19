@@ -64,7 +64,7 @@ async def get_current_admin(request: Request, credentials: HTTPAuthorizationCred
     # password reset or a "revoke all sessions".
     async with request.app.state.db_pool.acquire() as conn:
         user = await conn.fetchrow(
-            "SELECT au.is_active, au.tokens_valid_after, au.username, au.must_change_password, r.role_name "
+            "SELECT au.is_active, au.tokens_valid_after, au.username, au.must_change_password, au.is_super_admin, r.role_name "
             "FROM admin_users au JOIN roles r ON au.role_id = r.role_id WHERE au.user_id = $1::uuid;",
             claims["sub"],
         )
@@ -78,7 +78,8 @@ async def get_current_admin(request: Request, credentials: HTTPAuthorizationCred
     if user["must_change_password"] and request.url.path not in PASSWORD_CHANGE_PATHS:
         raise HTTPException(status_code=403, detail="Please set a new password before using the console.")
     # Role changes take effect immediately (don't trust the role inside an old token).
-    return {**claims, "role": user["role_name"], "username": user["username"], "must_change_password": user["must_change_password"]}
+    return {**claims, "role": user["role_name"], "username": user["username"], "must_change_password": user["must_change_password"],
+            "is_super_admin": user["is_super_admin"]}
 
 
 def require_roles(allowed: set[str]):

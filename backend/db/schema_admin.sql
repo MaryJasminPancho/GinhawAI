@@ -138,6 +138,24 @@ WHERE barangay_code = '0730600034' AND latitude IS NULL;
 -- they must request a new password before they can use the console.
 ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE;
 
+-- The Super Administrator: the one protected System Administrator account.
+-- It can only be set from the server (backend/scripts/make_super_admin.py), never from the website.
+ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS is_super_admin BOOLEAN NOT NULL DEFAULT FALSE;
+-- At most ONE row may be TRUE (a unique index over a constant, only for TRUE rows).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_single_super_admin ON admin_users ((TRUE)) WHERE is_super_admin;
+-- The super admin row can never be deleted, even by direct SQL.
+CREATE OR REPLACE FUNCTION protect_super_admin() RETURNS trigger AS $$
+BEGIN
+    IF OLD.is_super_admin THEN
+        RAISE EXCEPTION 'The Super Administrator account cannot be deleted';
+    END IF;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_protect_super_admin ON admin_users;
+CREATE TRIGGER trg_protect_super_admin BEFORE DELETE ON admin_users
+    FOR EACH ROW EXECUTE FUNCTION protect_super_admin();
+
 -- A requested new password waits here (bcrypt hash only) until a System
 -- Administrator approves or rejects it. The old password keeps working meanwhile.
 CREATE TABLE IF NOT EXISTS password_change_requests (

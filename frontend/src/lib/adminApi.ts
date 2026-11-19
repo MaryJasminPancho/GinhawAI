@@ -320,6 +320,8 @@ export type StaffUser = {
   is_active: boolean;
   last_login: string | null;
   must_change_password?: boolean;
+  /** The one protected System Administrator (set from the server only). */
+  is_super_admin?: boolean;
 };
 export type Role = { role_id: string; role_name: RoleName; description: string | null };
 
