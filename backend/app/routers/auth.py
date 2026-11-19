@@ -55,6 +55,7 @@ async def read_current_admin(current_admin: dict = Depends(get_current_admin)):
         "role": current_admin["role"],
         "username": current_admin["username"],
         "must_change_password": current_admin["must_change_password"],
+        "is_super_admin": current_admin["is_super_admin"],
     }
 
 
@@ -129,7 +130,9 @@ async def _submit_password_request(conn, user_id: str, username: str, role: str,
             "WHERE r.role_name = $1 AND au.is_active AND au.user_id <> $2::uuid;",
             SYSTEM_ADMIN, user_id,
         )
-    auto_apply = role == SYSTEM_ADMIN and other_admins == 0
+    # The Super Administrator never waits for approval: it is the top of the chain.
+    is_super = bool(await conn.fetchval("SELECT is_super_admin FROM admin_users WHERE user_id = $1::uuid;", user_id))
+    auto_apply = is_super or (role == SYSTEM_ADMIN and other_admins == 0)
 
     async with conn.transaction():
         # Replace any earlier pending request.
@@ -141,7 +144,7 @@ async def _submit_password_request(conn, user_id: str, username: str, role: str,
         if auto_apply:
             row = await conn.fetchrow(
                 "INSERT INTO password_change_requests (user_id, new_password_hash, reason, status, decided_by, decided_at, decision_note) "
-                "VALUES ($1::uuid, $2, $3, 'approved', $1::uuid, NOW(), 'Applied automatically: no other active System Administrator to approve it.') "
+                "VALUES ($1::uuid, $2, $3, 'approved', $1::uuid, NOW(), 'Applied automatically: Super Administrator, or no other active System Administrator to approve it.') "
                 f"RETURNING {REQUEST_COLS};",
                 user_id, new_hash, reason,
             )
@@ -150,7 +153,7 @@ async def _submit_password_request(conn, user_id: str, username: str, role: str,
                 user_id, new_hash,
             )
             await write_audit(conn, user_id, "UPDATE", "admin_users", None,
-                              f"{username}: password changed (auto-approved, no other System Administrator)")
+                              f"{username}: password changed (auto-approved, {'Super Administrator' if is_super else 'no other System Administrator'})")
         else:
             # Encrypted copy so a System Administrator can view it (with their PIN) before approving.
             row = await conn.fetchrow(

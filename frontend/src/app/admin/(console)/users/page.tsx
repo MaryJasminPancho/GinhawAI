@@ -66,6 +66,9 @@ export default function UsersPage() {
     if (approved) setUsers((us) => us?.map((u) => (u.user_id === req.user_id ? { ...u, must_change_password: false } : u)) ?? null);
   }
 
+  // Only the Super Administrator may grant the System Administrator role (the server enforces it too).
+  const iAmSuper = !!users?.find((u) => u.user_id === session.user_id)?.is_super_admin;
+
   const visible = (users ?? []).filter((u) => status === "all" || (status === "active" ? u.is_active : !u.is_active));
   const officeName = (id?: string | null) => offices.find((o) => o.office_id === id)?.office_name ?? "—";
 
@@ -139,6 +142,7 @@ export default function UsersPage() {
                         </p>
                         {u.full_name && <p className="text-xs text-gray-500 dark:text-gray-400">@{u.username}</p>}
                         <div className="flex flex-wrap gap-1">
+                          {u.is_super_admin && <Badge tone="amber">Super Admin</Badge>}
                           {!u.is_active && <Badge>Deactivated</Badge>}
                           {u.is_active && u.must_change_password && <Badge tone="amber">Temporary password</Badge>}
                         </div>
@@ -149,9 +153,10 @@ export default function UsersPage() {
                   <td className={`${td} text-gray-500`}>{officeName(u.office_id)}</td>
                   <td className={`${td} tabular-nums text-gray-500`}>{u.last_login ? fmtDateTime(u.last_login) : "Never"}</td>
                   <td className={`${td} whitespace-nowrap text-right`}>
-                    <Btn variant="ghost" onClick={() => setEditing(u)}>Edit</Btn>
-                    <Btn variant="ghost" onClick={() => reset(u)} disabled={!u.is_active}>Reset password</Btn>
-                    <Btn variant="ghost" className={u.is_active ? "!text-red-600 dark:!text-red-400" : ""} onClick={() => toggle(u)} disabled={u.user_id === session.user_id}>
+                    {/* The Super Administrator row is protected; regular admins also can't edit other System Administrators. */}
+                    <Btn variant="ghost" onClick={() => setEditing(u)} disabled={(u.is_super_admin && u.user_id !== session.user_id) || (u.role_name === "System Administrator" && !iAmSuper && u.user_id !== session.user_id)}>Edit</Btn>
+                    <Btn variant="ghost" onClick={() => reset(u)} disabled={!u.is_active || !!u.is_super_admin}>Reset password</Btn>
+                    <Btn variant="ghost" className={u.is_active ? "!text-red-600 dark:!text-red-400" : ""} onClick={() => toggle(u)} disabled={u.user_id === session.user_id || !!u.is_super_admin}>
                       {u.is_active ? "Deactivate" : "Reactivate"}
                     </Btn>
                   </td>
@@ -179,7 +184,7 @@ export default function UsersPage() {
 
       <StaffModal
         value={editing}
-        roles={roles}
+        roles={roles.filter((r) => iAmSuper || r.role_name !== "System Administrator" || (typeof editing === "object" && editing?.role_name === r.role_name))}
         offices={offices}
         selfId={session.user_id}
         onClose={() => setEditing(null)}

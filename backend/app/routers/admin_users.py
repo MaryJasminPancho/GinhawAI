@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from app import secretbox
 from app.audit import write_audit
-from app.auth import SYSADMIN_ROLES, hash_password, require_roles, verify_password
+from app.auth import SYSADMIN_ROLES, SYSTEM_ADMIN, hash_password, require_roles, verify_password
 from app.profile import clean_full_name
 from app.schemas import PasswordDecisionIn, RevealIn, RevealPinIn, StaffCreate, StaffUpdate
 from app.settings import get_settings
@@ -16,7 +16,7 @@ sysadmin = require_roles(SYSADMIN_ROLES)
 
 SELECT_USERS = (
     "SELECT au.user_id, au.username, au.full_name, r.role_name, au.office_id, au.is_active, au.last_login, au.must_change_password, "
-    "au.avatar IS NOT NULL AS has_avatar, au.avatar_updated_at "
+    "au.avatar IS NOT NULL AS has_avatar, au.avatar_updated_at, au.is_super_admin "
     "FROM admin_users au JOIN roles r ON au.role_id = r.role_id "
 )
 
@@ -45,6 +45,9 @@ async def create_admin_user(body: StaffCreate, request: Request, current_admin: 
     min_len = int(get_settings(request).get("password_min_length", 8))
     if len(body.password) < min_len:
         raise HTTPException(status_code=422, detail=f"Password must be at least {min_len} characters")
+    # Only the Super Administrator may create another System Administrator.
+    if body.role_name == SYSTEM_ADMIN and not current_admin["is_super_admin"]:
+        raise HTTPException(status_code=403, detail="Only the Super Administrator can create a System Administrator account.")
     full_name = clean_full_name(body.full_name)
     async with request.app.state.db_pool.acquire() as conn:
         role_id = await conn.fetchval("SELECT role_id FROM roles WHERE role_name = $1;", body.role_name)
@@ -73,6 +76,13 @@ async def update_admin_user(user_id: UUID, body: StaffUpdate, request: Request, 
         before = await conn.fetchrow(SELECT_USERS + "WHERE au.user_id = $1;", user_id)
         if before is None:
             raise HTTPException(status_code=404, detail="Admin user not found")
+        # Nobody else may edit the Super Administrator.
+        if before["is_super_admin"] and str(user_id) != current_admin["sub"]:
+            raise HTTPException(status_code=403, detail="The Super Administrator account is protected.")
+        # Promoting to, or demoting from, System Administrator is for the Super Administrator only.
+        if body.role_name is not None and body.role_name != before["role_name"] \
+                and SYSTEM_ADMIN in (body.role_name, before["role_name"]) and not current_admin["is_super_admin"]:
+            raise HTTPException(status_code=403, detail="Only the Super Administrator can grant or remove the System Administrator role.")
         async with conn.transaction():
             if body.role_name is not None:
                 if str(user_id) == current_admin["sub"] and body.role_name != before["role_name"]:
@@ -105,6 +115,8 @@ async def _set_active(user_id: UUID, active: bool, request: Request, current_adm
     if str(user_id) == current_admin["sub"] and not active:
         raise HTTPException(status_code=400, detail="You cannot deactivate your own account")
     async with request.app.state.db_pool.acquire() as conn:
+        if await conn.fetchval("SELECT is_super_admin FROM admin_users WHERE user_id = $1;", user_id):
+            raise HTTPException(status_code=403, detail="The Super Administrator account cannot be deactivated.")
         async with conn.transaction():
             # Deactivating also invalidates any token the person still holds.
             row = await conn.fetchrow(
@@ -134,6 +146,9 @@ async def activate_admin_user(user_id: UUID, request: Request, current_admin: di
 async def reset_password(user_id: UUID, request: Request, current_admin: dict = Depends(sysadmin)):
     temp = _temp_password()
     async with request.app.state.db_pool.acquire() as conn:
+        # Nobody can reset the Super Administrator's password; it changes it itself (My account).
+        if await conn.fetchval("SELECT is_super_admin FROM admin_users WHERE user_id = $1;", user_id):
+            raise HTTPException(status_code=403, detail="The Super Administrator's password can only be changed by the Super Administrator.")
         async with conn.transaction():
             # A reset password is temporary too: the person must set their own on next sign-in.
             username = await conn.fetchval(
