@@ -188,6 +188,12 @@ const T = {
 
   resultTitle: { fil: "Ang inyong resulta", ceb: "Ang imong resulta", en: "Your result" },
   whyThisScore: { fil: "Bakit ganito ang resulta", ceb: "Nganong mao kini ang resulta", en: "Why you got this result" },
+  hazardNoteTitle: { fil: "Tungkol sa inyong barangay", ceb: "Bahin sa inyong barangay", en: "About your barangay" },
+  hazardNoteSource: {
+    fil: "Mula sa mga mapa ng HazardHunterPH at Project NOAH. Kasama na ito sa inyong resulta.",
+    ceb: "Gikan sa mga mapa sa HazardHunterPH ug Project NOAH. Apil na kini sa imong resulta.",
+    en: "From HazardHunterPH and Project NOAH hazard maps. This is already counted in your result.",
+  },
   scoreNote: {
     fil: "Ipinapakita ng score kung gaano kalaki ang pangangailangan ng inyong pamilya. Hindi ito ang tsansa ninyong makakuha ng programa: sa susunod na pahina, makikita sa bawat programa kung ilang kailangan ang natugunan ninyo. Ang opisina ng LGU ang magpapasya.",
     ceb: "Gipakita sa score kung unsa kadako ang panginahanglan sa inyong pamilya. Dili kini ang tsansa nimo nga makakuha og programa: sa sunod nga panid, makita sa matag programa kung pila ka kinahanglanon ang imong natuman. Ang opisina sa LGU ang modesisyon.",

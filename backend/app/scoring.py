@@ -309,6 +309,16 @@ def hazard_text(field: str, level: str | None, lang: str) -> str | None:
         return None  # none / not assessed: nothing to say
     return FACTOR_TEXT["hazard"][lang].format(level=LEVEL_WORDS[level][lang], hazard=HAZARD_NAMES[field][lang])
 
+def hazard_notes(profile: dict, lang: str) -> list[str]:
+    """Hazards of the citizen's barangay rated moderate or high, worst first. Shown as a note under
+    "why this score" whether or not the hazard made the top reasons (the model already counts it).
+    Low ones are left out so the note only appears when the risk is worth knowing about."""
+    order = ["none", "low", "moderate", "high"]
+    found = [h for h in HAZARD_NAMES if profile.get(h) in ("moderate", "high")]
+    found.sort(key=lambda h: -order.index(profile[h]))
+    return [t for h in found if (t := hazard_text(h, profile[h], lang))]
+
+
 REL = {
     "en": {"below": "below", "near": "just above", "above": "above"},
     "fil": {"below": "mas mababa", "near": "bahagyang mas mataas", "above": "mas mataas"},
