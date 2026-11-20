@@ -156,6 +156,13 @@ const T = {
   startOver: { fil: "Magsimula muli", ceb: "Sugod pag-usab", en: "Start over" },
   loading: { fil: "Naglo-load…", ceb: "Nagkarga…", en: "Loading…" },
   sessionEnded: { fil: "Natapos na ang session. Magsimula muli.", ceb: "Nahuman na ang session. Sugod pag-usab.", en: "Your session has ended. Please start again." },
+  // A short "how this works" line above the chat: pilot testers expected an open Q&A chat.
+  chatHint: {
+    fil: "Ako ang magtatanong; makikita ninyo ang mga programa sa dulo.",
+    ceb: "Ako ang mangutana; makita nimo ang mga programa sa katapusan.",
+    en: "I ask the questions; you'll see your programs at the end.",
+  },
+  chatHintLink: { fil: "Basahin ang mga programa", ceb: "Basaha ang mga programa", en: "Read about programs" },
   typeMessage: { fil: "I-type ang sagot…", ceb: "I-type ang tubag…", en: "Type your answer…" },
   startOverConfirm: {
     fil: "Buburahin ang inyong mga sagot at magsisimula ng bagong usapan. Ituloy?",

@@ -72,6 +72,18 @@ html[data-text-size="1"]:not(:has([data-admin])) { font-size: 115%; }
 html[data-text-size="2"]:not(:has([data-admin])) { font-size: 130%; }
 html[data-text-size="3"]:not(:has([data-admin])) { font-size: 150%; }
 
+/* iPhone/iPad Safari zooms the whole page in when a text box with text smaller than 16px is
+   tapped, and doesn't zoom back out: the layout then looks broken. Text boxes get at least 16px
+   on iOS only (the @supports test matches iOS Safari, not Android or desktop). Unlayered CSS, so
+   it wins over the Tailwind text-size classes on the fields. */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
