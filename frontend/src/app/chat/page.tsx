@@ -84,15 +84,32 @@ function ChatInner() {
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, sending]);
 
+  // Phones: fit the chat to the part of the screen the keyboard leaves visible. Android shrinks the
+  // page itself (interactiveWidget in layout.tsx), but iPhone Safari ignores that: the keyboard
+  // covers the bottom of the page and Safari scrolls the whole page up, pushing the header and the
+  // question off-screen. So the chat's height follows visualViewport (--chat-h, used below on
+  // phones only) and the page is scrolled back to the top.
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
-    const toBottom = () => {
+    const phone = window.matchMedia("(max-width: 639px)"); // below Tailwind's sm:, where the card layout starts
+    const fit = () => {
       const el = scrollRef.current;
+      // Skip while pinch-zoomed: the visible area is then small because of the zoom, not a keyboard.
+      if (phone.matches && vv.scale < 1.05) {
+        document.documentElement.style.setProperty("--chat-h", `${Math.round(vv.height)}px`);
+        if (window.scrollY !== 0 || vv.offsetTop !== 0) window.scrollTo(0, 0);
+      }
       if (el) el.scrollTop = el.scrollHeight;
     };
-    vv.addEventListener("resize", toBottom);
-    return () => vv.removeEventListener("resize", toBottom);
+    fit();
+    vv.addEventListener("resize", fit);
+    vv.addEventListener("scroll", fit);
+    return () => {
+      vv.removeEventListener("resize", fit);
+      vv.removeEventListener("scroll", fit);
+      document.documentElement.style.removeProperty("--chat-h");
+    };
   }, []);
 
   async function send(text: string) {
@@ -138,7 +155,7 @@ function ChatInner() {
     <div className="relative isolate min-h-dvh overflow-clip bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
       <Backdrop />
 
-      <main className="relative mx-auto flex h-dvh w-full max-w-md flex-col p-4 text-gray-900 dark:text-gray-100 sm:h-[min(760px,88vh)] sm:max-w-2xl lg:max-w-3xl sm:rounded-4xl sm:bg-white/80 sm:p-6 sm:shadow-2xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
+      <main className="relative mx-auto flex h-[var(--chat-h,100dvh)] w-full max-w-md flex-col p-4 text-gray-900 dark:text-gray-100 sm:h-[min(760px,88vh)] sm:max-w-2xl lg:max-w-3xl sm:rounded-4xl sm:bg-white/80 sm:p-6 sm:shadow-2xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
         <PageHeader
           title={t(lang, "assessment")}
           subtitle={LANG_LABELS[lang]}
@@ -159,9 +176,16 @@ function ChatInner() {
           }
         />
 
+        <p className="relative z-10 mt-3 text-center text-xs text-gray-500 dark:text-gray-400">
+          {t(lang, "chatHint")}{" "}
+          <Link href={`/programs?lang=${lang}`} className="font-semibold text-brand-700 underline-offset-2 hover:underline dark:text-brand-300">
+            {t(lang, "chatHintLink")}
+          </Link>
+        </p>
+
         <div
           ref={scrollRef}
-          className="relative z-10 mt-4 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto rounded-3xl bg-white/70 p-4 shadow-sm ring-1 ring-black/5 backdrop-blur dark:bg-white/3 dark:ring-white/10"
+          className="relative z-10 mt-3 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto rounded-3xl bg-white/70 p-4 shadow-sm ring-1 ring-black/5 backdrop-blur dark:bg-white/3 dark:ring-white/10"
         >
           {/* Pushes the conversation to the bottom of the box, next to the text box. */}
           <div aria-hidden="true" className="mt-auto" />

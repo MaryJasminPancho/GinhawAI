@@ -182,18 +182,46 @@ ALL_SAVED = {
     "ceb": "Kompleto na ang imong mga tubag. Pindota ang \"Tan-awa ang mga tubag\" aron susihon o usbon kini.",
     "en": "All your answers are filled in. Tap \"Review your answers\" to check or change them.",
 }
+# How the chat works, said up front: pilot testers expected an open Q&A chat ("ask about 4Ps")
+# and only later realised it asks its own fixed questions, then shows the results at the end.
+HOW_IT_WORKS = {
+    "fil": "Ganito ito gumagana: ako ang magtatanong. Hanggang 14 na maikling tanong, isa-isa (mga 3 hanggang 5 minuto). Pumili sa mga button o i-type ang inyong sagot. Sa dulo, makikita ninyo kung aling mga programa (gaya ng 4Ps o AICS) ang maaaring para sa inyo at kung bakit.",
+    "ceb": "Ingon niini kini molihok: ako ang mangutana. Hangtod 14 ka mubo nga pangutana, usa-usa (mga 3 ngadto 5 ka minuto). Pilia ang button o i-type ang imong tubag. Sa katapusan, makita nimo kung unsang mga programa (sama sa 4Ps o AICS) ang mahimong para nimo ug ngano.",
+    "en": "Here's how this works: I ask the questions. Up to 14 short ones, one at a time (about 3 to 5 minutes). Tap a choice or type your answer. At the end, you'll see which programs (like 4Ps or AICS) may fit your household, and why.",
+}
+
 # Signed in, nothing saved yet: unlike the anonymous greeting, answers ARE kept (in their account).
 SIGNED_IN = {
-    "fil": "Kumusta, {name}! Ako si GinhawAI. Magtatanong ako ng ilang bagay para malaman kung aling mga programa ng tulong ang para sa inyo. Dahil naka-log in kayo, ise-save ang inyong mga sagot sa inyong account.",
-    "ceb": "Kumusta, {name}! Ako si GinhawAI. Mangutana ko og pipila ka butang aron mahibal-an kung unsang mga programa sa tabang ang para nimo. Kay naka-log in ka, i-save ang imong mga tubag sa imong account.",
-    "en": "Hi {name}! I'm GinhawAI. I'll ask a few questions to find which assistance programs may fit your household. Since you're logged in, your answers will be saved to your account.",
+    "fil": "Kumusta, {name}! Ako si GinhawAI. Dahil naka-log in kayo, ise-save ang inyong mga sagot sa inyong account.\n\n" + HOW_IT_WORKS["fil"],
+    "ceb": "Kumusta, {name}! Ako si GinhawAI. Kay naka-log in ka, i-save ang imong mga tubag sa imong account.\n\n" + HOW_IT_WORKS["ceb"],
+    "en": "Hi {name}! I'm GinhawAI. Since you're logged in, your answers will be saved to your account.\n\n" + HOW_IT_WORKS["en"],
 }
 
 GREETING = {
-    "fil": "Magandang araw! Ako si GinhawAI. Magtatanong ako ng ilang bagay para malaman kung aling mga programa ng tulong ang maaaring para sa inyo. Hindi namin itatago ang inyong mga sagot pagkatapos ng session.",
-    "ceb": "Maayong adlaw! Ako si GinhawAI. Mangutana ko og pipila ka butang aron mahibal-an kung unsang mga programa sa tabang ang para nimo. Dili namo tipigan ang imong mga tubag human sa session.",
-    "en": "Good day! I'm GinhawAI. I'll ask a few questions to find which assistance programs may fit your household. Your answers are not kept after this session.",
+    "fil": "Magandang araw! Ako si GinhawAI. Hindi namin itatago ang inyong mga sagot pagkatapos ng session.\n\n" + HOW_IT_WORKS["fil"],
+    "ceb": "Maayong adlaw! Ako si GinhawAI. Dili namo tipigan ang imong mga tubag human sa session.\n\n" + HOW_IT_WORKS["ceb"],
+    "en": "Good day! I'm GinhawAI. Your answers are not kept after this session.\n\n" + HOW_IT_WORKS["en"],
 }
+
+# The citizen asked something instead of answering ("what is 4Ps?", "unsa ang AICS?"). This chat
+# can't answer questions, so say so, point to the Programs page, and ask the same question again.
+ASKED_A_QUESTION = {
+    "fil": "Pasensya na, hindi ako makasagot ng mga tanong dito; ako ang nagtatanong para mahanap ang mga programang para sa inyo. Para mabasa ang tungkol sa isang programa (gaya ng 4Ps), buksan ang pahinang \"Mga Programa\" anumang oras. Ituloy natin:",
+    "ceb": "Pasensya, dili ko makatubag og mga pangutana dinhi; ako ang mangutana aron makit-an ang mga programa para nimo. Aron mabasa ang bahin sa usa ka programa (sama sa 4Ps), ablihi ang panid nga \"Mga Programa\" bisan kanus-a. Padayon ta:",
+    "en": "Sorry, I can't answer questions here; I ask the questions to find programs for you. To read about a program (like 4Ps), open the \"Programs\" page any time. Let's continue:",
+}
+_QUESTION_WORDS = re.compile(
+    r"\?|\b(what|how|who|where|when|why|ano|paano|saan|kailan|bakit|sino|unsa|unsaon|asa|kanus-a|ngano|kinsa|pila)\b"
+    r"|\b(4\s*p'?s|pantawid|aics|tupad|slp|livelihood|pension|philhealth)\b",
+    re.IGNORECASE,
+)
+
+
+def looks_like_question(text: str) -> bool:
+    """A message that asks something (or names a program) rather than answering. Only used when
+    nothing in it could be read as an answer, so "wala, pila ka bulan" style answers are unaffected."""
+    return bool(_QUESTION_WORDS.search(text))
+
 
 DONE = {
     "fil": "Salamat po! Kumpleto na ang impormasyon. Pakitingnan at kumpirmahin ang inyong mga sagot.",

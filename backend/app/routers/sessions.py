@@ -342,6 +342,9 @@ async def send_message(session_id: str, payload: MessageIn, request: Request):
         reply = chatflow.DONE[lang]
     elif intent_reply:
         reply = intent_reply + " " + chatflow.question(nxt, lang)   # same question again, after the short reply
+    elif nxt == asking and not understood and chatflow.looks_like_question(text):
+        # "What is 4Ps?": this chat only asks, so say so, point to the Programs page, ask again.
+        reply = chatflow.ASKED_A_QUESTION[lang] + " " + chatflow.question(nxt, lang)
     elif nxt == asking and not understood and nxt == "barangay":
         suggestions = await _suggest_barangays(request, text)
         reply = chatflow.BARANGAY_UNKNOWN[lang] + (chatflow.BARANGAY_SUGGEST[lang] if suggestions else "")
