@@ -73,6 +73,27 @@ function ScoreBreakdown({ items, lang }: { items: { text: string; direction: "up
   );
 }
 
+// "About your barangay": the moderate or high flood / landslide / storm surge risks of the barangay, shown as a note
+// whether or not it made the top reasons above (it is always part of the score).
+function HazardNote({ items, lang }: { items: string[]; lang: Lang }) {
+  return (
+    <section className="relative z-10 mt-4 rounded-3xl bg-amber-50 p-5 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:ring-amber-500/20">
+      <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01" />
+        </svg>
+        {t(lang, "hazardNoteTitle")}
+      </h2>
+      <ul className="mt-2 space-y-1">
+        {items.map((h, i) => (
+          <li key={i} className="text-[0.875rem] leading-snug text-gray-800 dark:text-gray-100">{h}</li>
+        ))}
+      </ul>
+      <p className="mt-2 text-[0.75rem] leading-relaxed text-amber-900/70 dark:text-amber-200/70">{t(lang, "hazardNoteSource")}</p>
+    </section>
+  );
+}
+
 // The three need levels and their score ranges; the household's own level is highlighted.
 function ScoreBands({ tier, lang }: { tier: "low" | "moderate" | "high"; lang: Lang }) {
   const bands = [
@@ -195,6 +216,8 @@ function ScoreInner() {
             </ol>
           </section>
         )}
+
+        {v && v.hazards && v.hazards.length > 0 && <HazardNote items={v.hazards} lang={lang} />}
 
         <p className="relative z-10 mt-4 text-center text-xs leading-relaxed text-gray-400 dark:text-gray-500">{t(lang, "scoreNote")}</p>
 

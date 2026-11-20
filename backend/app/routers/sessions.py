@@ -25,7 +25,7 @@ from app.routers.citizens import citizen_id_from, load_citizen_profile, save_cit
 from app.action_plan import build_plan, urgent_contacts
 from app.textfmt import one_per_line
 from app.schemas import AssessmentFeedbackIn, DocumentChecksIn, EmailChecklistRequest, EntityPatch, MessageIn, PlanRequest, SessionStart, SmsRequest
-from app.scoring import derive_profile, evaluate_program, rank_programs, score_vulnerability, today_iso
+from app.scoring import derive_profile, evaluate_program, hazard_notes, rank_programs, score_vulnerability, today_iso
 from app.settings import get_settings
 from app import mailer, sms
 from app.mailer import build_checklist_email, mask_email, normalize_email, send_email
@@ -418,6 +418,7 @@ async def assess(session_id: str, request: Request):
         hazards = await barangay_hazards(conn, state["entities"].get("barangay_code"))
         profile = derive_profile({**state["entities"], **hazards})
         vulnerability = score_vulnerability(profile, lang)
+        vulnerability["hazards"] = hazard_notes(profile, lang)  # "About your barangay" note on the score page
         programs = await conn.fetch("SELECT program_id, program_name, agency, scope FROM programs WHERE is_active ORDER BY program_name;")
         criteria = await conn.fetch("SELECT program_id, attribute, operator, threshold_value, weight FROM eligibility_criteria;")
         docs = await conn.fetch("SELECT doc_id, program_id, document_name, is_mandatory, notes, for_crisis FROM document_requirements ORDER BY is_mandatory DESC, document_name;")

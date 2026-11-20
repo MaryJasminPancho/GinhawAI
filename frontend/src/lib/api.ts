@@ -72,6 +72,8 @@ export type Assessment = {
     top_factors: string[];
     /** What raised and what lowered the score; share = % of the push in that direction. */
     breakdown?: { text: string; direction: "up" | "down"; share: number }[];
+    /** Hazards of the citizen's barangay (moderate or high), worst first, for the "About your barangay" note. */
+    hazards?: string[];
     engine: string;
   };
   programs: ProgramResult[];
