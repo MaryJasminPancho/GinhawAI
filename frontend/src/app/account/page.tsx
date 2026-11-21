@@ -36,6 +36,8 @@ function AccountInner() {
   const [mode, setMode] = useState<"login" | "signup">(params.get("mode") === "signup" ? "signup" : "login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState(""); // sign-up only: catches a mistyped password before it is saved
+  const [email, setEmail] = useState(""); // sign-up only: needed to recover a forgotten password
   const [name, setName] = useState("");
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -92,9 +94,14 @@ function AccountInner() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    // Checked here only: the server receives one password, so a mismatch never leaves the browser.
+    if (mode === "signup" && password !== confirm) {
+      setError(t(lang, "acctPassMismatch"));
+      return;
+    }
     setBusy(true);
     try {
-      if (mode === "signup") await citizenSignup(username.trim(), password, name.trim(), consent);
+      if (mode === "signup") await citizenSignup(username.trim(), password, email.trim(), name.trim(), consent);
       else await citizenLogin(username.trim(), password);
       await done();
     } catch (err) {
@@ -148,6 +155,25 @@ function AccountInner() {
               <input className={field} type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} required minLength={mode === "signup" ? 8 : 1} maxLength={200} value={password} onChange={(e) => setPassword(e.target.value)} />
               {mode === "signup" && <span className="mt-1 block text-xs text-gray-500">{t(lang, "acctPassHint")}</span>}
             </label>
+            {mode === "login" && (
+              <Link href={`/account/forgot?lang=${lang}`} className="-mt-1 inline-block px-1 py-1 text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300">
+                {t(lang, "acctForgot")}
+              </Link>
+            )}
+            {mode === "signup" && (
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium">{t(lang, "acctConfirmPassword")}</span>
+                <input className={field} type="password" autoComplete="new-password" required minLength={8} maxLength={200} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+                {confirm && confirm !== password && <span className="mt-1 block text-xs text-red-600 dark:text-red-400">{t(lang, "acctPassMismatch")}</span>}
+              </label>
+            )}
+            {mode === "signup" && (
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium">{t(lang, "acctEmail")}</span>
+                <input className={field} type="email" autoComplete="email" required maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@gmail.com" />
+                <span className="mt-1 block text-xs text-gray-500">{t(lang, "acctEmailHint")}</span>
+              </label>
+            )}
             {mode === "signup" && (
               <label className="block">
                 <span className="mb-1 block text-sm font-medium">{t(lang, "acctName")}</span>

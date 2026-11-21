@@ -325,8 +325,14 @@ const kept = (s: CitizenSession) => {
 /** An active, signed-in citizen: swap the login token for a fresh one (keeps them signed in while they use the site). */
 export const refreshCitizen = () => request<CitizenSession>("/api/citizen/refresh", { method: "POST" }).then(kept);
 export const getCitizenConfig = () => request<{ google_client_id: string | null }>("/api/citizen/config");
-export const citizenSignup = (username: string, password: string, display_name: string, consent: boolean) =>
-  request<CitizenSession>("/api/citizen/signup", post({ username, password, display_name, consent })).then(kept);
+export const citizenSignup = (username: string, password: string, email: string, display_name: string, consent: boolean) =>
+  request<CitizenSession>("/api/citizen/signup", post({ username, password, email, display_name, consent })).then(kept);
+/** Forgot password: step 1 emails a 6-digit code (same reply whether or not the username exists). */
+export const citizenForgotStart = (username: string) =>
+  request<{ message: string }>("/api/citizen/forgot-password/start", post({ username }));
+/** Forgot password: step 2 sets the new password with the emailed code. */
+export const citizenForgotComplete = (username: string, code: string, new_password: string) =>
+  request<{ ok: boolean }>("/api/citizen/forgot-password/complete", post({ username, code, new_password }));
 export const citizenLogin = (username: string, password: string) =>
   request<CitizenSession>("/api/citizen/login", post({ username, password })).then(kept);
 export const citizenGoogle = (credential: string, consent: boolean) =>

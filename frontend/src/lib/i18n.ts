@@ -23,6 +23,38 @@ const T = {
   acctName: { fil: "Pangalan na itatawag sa inyo (opsyonal)", ceb: "Ngalan nga itawag nimo (opsyonal)", en: "Name to call you (optional)" },
   acctUserHint: { fil: "4–40 letra o numero", ceb: "4–40 ka letra o numero", en: "4–40 letters or numbers" },
   acctPassHint: { fil: "Hindi bababa sa 8 karakter", ceb: "Dili moubos sa 8 ka karakter", en: "At least 8 characters" },
+  // Sign-up: confirm password and email (email is used only to recover a forgotten password)
+  acctConfirmPassword: { fil: "Ulitin ang password", ceb: "Usba pag-type ang password", en: "Confirm password" },
+  acctPassMismatch: { fil: "Hindi magkapareho ang dalawang password.", ceb: "Dili parehas ang duha ka password.", en: "The two passwords don't match." },
+  acctEmail: { fil: "Email", ceb: "Email", en: "Email" },
+  acctEmailHint: {
+    fil: "Gagamitin lang ito kung makalimutan ninyo ang password.",
+    ceb: "Gamiton lang kini kung makalimtan nimo ang password.",
+    en: "Used only if you forget your password.",
+  },
+  // Forgot password
+  acctForgot: { fil: "Nakalimutan ang password?", ceb: "Nakalimtan ang password?", en: "Forgot password?" },
+  acctForgotTitle: { fil: "I-reset ang password", ceb: "I-reset ang password", en: "Reset your password" },
+  acctForgotIntro: {
+    fil: "Ilagay ang inyong username. Magpapadala kami ng 6-digit na code sa email na inilagay ninyo noong nag-sign up.",
+    ceb: "Isulat ang imong username. Magpadala mi og 6-digit nga code sa email nga imong gibutang sa pag-sign up.",
+    en: "Enter your username. We'll send a 6-digit code to the email you gave when you signed up.",
+  },
+  acctSendCode: { fil: "Ipadala ang code", ceb: "Ipadala ang code", en: "Send code" },
+  acctCodeSent: {
+    fil: "Kung may email ang account na iyon, nagpadala kami ng 6-digit na code. Mag-e-expire ito sa loob ng 10 minuto.",
+    ceb: "Kung naay email ang maong account, nagpadala mi og 6-digit nga code. Mo-expire kini sulod sa 10 ka minuto.",
+    en: "If that account has an email address, we've sent a 6-digit code to it. It expires in 10 minutes.",
+  },
+  acctCode: { fil: "6-digit na code", ceb: "6-digit nga code", en: "6-digit code" },
+  acctNewPassword: { fil: "Bagong password", ceb: "Bag-ong password", en: "New password" },
+  acctSetPassword: { fil: "I-save ang bagong password", ceb: "I-save ang bag-ong password", en: "Save new password" },
+  acctResetDone: {
+    fil: "Napalitan na ang inyong password. Mag-log in gamit ang bagong password.",
+    ceb: "Nausab na ang imong password. Mag-log in gamit ang bag-ong password.",
+    en: "Your password was changed. Log in with your new password.",
+  },
+  acctBackToLogin: { fil: "Bumalik sa log in", ceb: "Balik sa log in", en: "Back to log in" },
   acctConsent: {
     fil: "Pumapayag akong i-save ng GinhawAI ang aking mga sagot at resulta sa aking account. Maaari kong burahin ang account anumang oras. Kung hindi ako mag-sign in nang 12 buwan, kusa itong buburahin. (RA 10173)",
     ceb: "Mouyon ko nga i-save sa GinhawAI ang akong mga tubag ug resulta sa akong account. Mahimo nakong papason ang account bisan kanus-a. Kung dili ko mo-sign in sulod sa 12 ka bulan, awtomatiko kini nga papason. (RA 10173)",
