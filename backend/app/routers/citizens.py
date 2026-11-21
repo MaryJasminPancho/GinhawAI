@@ -13,12 +13,14 @@ from datetime import datetime, timedelta, timezone
 
 import httpx
 import jwt
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app import chatflow
+from app import chatflow, sms_codes
 from app.auth import hash_password, verify_password
 from app.config import GOOGLE_CLIENT_ID, JWT_ALGORITHM, SECRET_KEY
+from app.mailer import normalize_email, send_email
+from app.settings import get_settings
 
 router = APIRouter()
 
@@ -33,8 +35,20 @@ USERNAME = re.compile(r"^[A-Za-z0-9._-]{4,40}$")
 class SignUp(BaseModel):
     username: str = Field(max_length=40)
     password: str = Field(max_length=200)
+    # Required for username sign-ups: the only way to recover a forgotten password.
+    email: str = Field(max_length=254)
     display_name: str | None = Field(default=None, max_length=100)
     consent: bool = False
+
+
+class ForgotStart(BaseModel):
+    username: str = Field(max_length=40)
+
+
+class ForgotComplete(BaseModel):
+    username: str = Field(max_length=40)
+    code: str = Field(pattern=r"^\s*\d{6}\s*$")
+    new_password: str = Field(max_length=200)
 
 
 class LogIn(BaseModel):
@@ -106,12 +120,15 @@ async def sign_up(body: SignUp, request: Request):
         raise HTTPException(status_code=422, detail="Username: 4–40 letters, numbers, dots, dashes or underscores.")
     if len(body.password) < 8:
         raise HTTPException(status_code=422, detail="Password must be at least 8 characters.")
+    email = normalize_email(body.email)
+    if email is None:
+        raise HTTPException(status_code=422, detail="Enter a valid email address, like name@gmail.com. We use it only if you forget your password.")
     async with request.app.state.db_pool.acquire() as conn:
         try:
             row = await conn.fetchrow(
-                "INSERT INTO citizen_accounts (username, password_hash, display_name, consent_at, last_login_at) "
-                "VALUES (lower($1), $2, $3, now(), now()) RETURNING citizen_id, username, email, display_name;",
-                body.username, hash_password(body.password), (body.display_name or "").strip() or None,
+                "INSERT INTO citizen_accounts (username, password_hash, email, display_name, consent_at, last_login_at) "
+                "VALUES (lower($1), $2, $3, $4, now(), now()) RETURNING citizen_id, username, email, display_name;",
+                body.username, hash_password(body.password), email, (body.display_name or "").strip() or None,
             )
         except Exception as e:  # unique username
             if "unique" in str(e).lower():
@@ -136,6 +153,63 @@ async def log_in(body: LogIn, request: Request):
             raise HTTPException(status_code=401, detail="Wrong username or password.")
         await conn.execute("UPDATE citizen_accounts SET failed_attempts = 0, locked_until = NULL, last_login_at = now() WHERE citizen_id = $1;", row["citizen_id"])
     return _session(row)
+
+
+# ---------------------------------------------------------------------------
+# Forgot password: a 6-digit code is emailed to the address given at sign-up.
+# Google accounts have no password here (Google handles their recovery).
+# ---------------------------------------------------------------------------
+FORGOT_SENT = "If that account has an email address, we've sent a 6-digit code to it. It expires in 10 minutes."
+BAD_CODE = "That code is wrong or has expired. Request a new code and try again."
+
+
+async def _send_citizen_code(settings: dict, email: str, code: str):
+    """Runs after the response is sent, so the reply takes the same time whether or not the account exists."""
+    await send_email(
+        settings, email, f"GinhawAI password reset code: {code}",
+        f"Your GinhawAI password reset code is {code}.\n\nIt expires in {sms_codes.CODE_TTL_MINUTES} minutes.\n\n"
+        "If you didn't ask for this, ignore this email; your password stays the same.",
+    )
+
+
+@router.post("/api/citizen/forgot-password/start")
+async def forgot_password_start(body: ForgotStart, request: Request, background: BackgroundTasks):
+    async with request.app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT citizen_id, email FROM citizen_accounts WHERE username = lower($1) AND password_hash IS NOT NULL;",
+            body.username.strip(),
+        )
+        # Same answer in every case, so this can't be used to find out which usernames exist.
+        if row and row["email"]:
+            cid = str(row["citizen_id"])
+            if await sms_codes.sent_last_hour(conn, cid, "forgot_password", "citizen_codes") < sms_codes.MAX_PER_HOUR:
+                code = await sms_codes.issue(conn, cid, "forgot_password", row["email"], "citizen_codes")
+                background.add_task(_send_citizen_code, get_settings(request), row["email"], code)
+    return {"message": FORGOT_SENT}
+
+
+@router.post("/api/citizen/forgot-password/complete")
+async def forgot_password_complete(body: ForgotComplete, request: Request):
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=422, detail="Password must be at least 8 characters.")
+    async with request.app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT citizen_id FROM citizen_accounts WHERE username = lower($1) AND password_hash IS NOT NULL;",
+            body.username.strip(),
+        )
+        if row is None:
+            raise HTTPException(status_code=400, detail=BAD_CODE)
+        cid = str(row["citizen_id"])
+        # Not inside a transaction on purpose: a wrong code must still count as a try
+        # (a rolled-back transaction would undo the counter and allow endless guessing).
+        if await sms_codes.check(conn, cid, "forgot_password", body.code, "citizen_codes") is None:
+            raise HTTPException(status_code=400, detail=BAD_CODE)
+        # New password, and clear any lockout from earlier wrong passwords.
+        await conn.execute(
+            "UPDATE citizen_accounts SET password_hash = $2, failed_attempts = 0, locked_until = NULL WHERE citizen_id = $1::uuid;",
+            cid, hash_password(body.new_password),
+        )
+    return {"ok": True}
 
 
 @router.post("/api/citizen/google")

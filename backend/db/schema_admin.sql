@@ -666,3 +666,22 @@ CREATE TABLE IF NOT EXISTS audit_flag_reviews (
     reviewed_by  UUID NOT NULL REFERENCES admin_users(user_id),
     reviewed_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- ---------------------------------------------------------------------------
+-- Citizen "forgot password": one-time 6-digit codes emailed to the address the
+-- citizen gave at sign-up. Same shape as sms_codes (which only accepts staff
+-- accounts), so app/sms_codes.py works on both. Only a keyed hash of each code
+-- is stored, and the codes are deleted with the account (ON DELETE CASCADE).
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS citizen_codes (
+    code_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id       UUID NOT NULL REFERENCES citizen_accounts(citizen_id) ON DELETE CASCADE,
+    purpose       VARCHAR(20) NOT NULL CHECK (purpose IN ('forgot_password')),
+    code_hash     VARCHAR(64) NOT NULL,
+    target_number VARCHAR(254) NOT NULL,  -- the email address the code was sent to
+    attempts      INTEGER NOT NULL DEFAULT 0,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at    TIMESTAMPTZ NOT NULL,
+    used_at       TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_citizen_codes_user ON citizen_codes (user_id, purpose, created_at DESC);
