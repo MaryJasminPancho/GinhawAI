@@ -618,8 +618,14 @@ async def send_checklist_email(session_id: str, payload: EmailChecklistRequest, 
         raise HTTPException(status_code=429, detail="You've already emailed this checklist 3 times.")
 
     chosen = _chosen_programs(assessment, payload.program_ids)
-    subject, body = build_checklist_email(chosen, assessment.get("offices", []))
-    result = await send_email(get_settings(request), email, subject, body)
+    chosen_ids = {p["program_id"] for p in chosen}
+    subject, body, html_body = build_checklist_email(
+        chosen, assessment.get("offices", []), state.get("lang", "en"),
+        barangay=assessment.get("barangay"), assessed_on=assessment.get("assessed_on"), urgent=assessment.get("urgent"),
+        others=[p["program_name"] for p in assessment["programs"] if p["program_id"] not in chosen_ids and p["status"] == "not_qualified"],
+        have={str(d) for d in (payload.have or [])},
+    )
+    result = await send_email(get_settings(request), email, subject, body, html_body)
 
     async with request.app.state.db_pool.acquire() as conn:
         await conn.execute(

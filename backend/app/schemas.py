@@ -174,6 +174,9 @@ class SmsRequest(BaseModel):
 class EmailChecklistRequest(BaseModel):
     email: str = Field(min_length=3, max_length=254)
     program_ids: list[str] | None = None
+    # Papers the citizen already ticked on the results page, so their boxes come pre-ticked
+    # (same as the printed checklist).
+    have: list[str] | None = Field(default=None, max_length=200)
 
 
 class AssessmentFeedbackIn(BaseModel):

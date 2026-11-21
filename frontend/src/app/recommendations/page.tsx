@@ -223,7 +223,7 @@ function RecommendationsInner() {
     if (!sessionId) return;
     setSms({ state: "sending" });
     try {
-      const r = via === "email" ? await sendEmail(sessionId, email) : await sendSms(sessionId, phone);
+      const r = via === "email" ? await sendEmail(sessionId, email, [...have]) : await sendSms(sessionId, phone);
       setSms({ state: "sent", text: r.masked_recipient });
     } catch (err) {
       setSms({ state: "error", text: (err as Error).message });
