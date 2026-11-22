@@ -377,8 +377,8 @@ export const FIELD_LABELS: Record<keyof Omit<Entities, "barangay_code">, Record<
   has_pregnant: { fil: "May buntis", ceb: "Naay mabdos", en: "Pregnant member" },
   has_pwd: { fil: "May PWD sa pamilya", ceb: "Naay PWD sa pamilya", en: "PWD in household" },
   has_senior: { fil: "May 60 pataas sa pamilya", ceb: "Naay 60 pataas sa pamilya", en: "Someone 60+ in household" },
-  can_do_physical_work: { fil: "Kayang gumawa ng pisikal na trabaho", ceb: "Makahimo og pisikal nga trabaho", en: "Can do light physical work" },
   is_solo_parent: { fil: "Solo parent", ceb: "Solo parent", en: "Solo parent" },
+  can_do_physical_work: { fil: "Kayang gumawa ng pisikal na trabaho", ceb: "Makahimo og pisikal nga trabaho", en: "Can do light physical work" },
   crisis_type: { fil: "Krisis ngayon", ceb: "Krisis karon", en: "Current crisis" },
   help_needed: { fil: "Kailangang tulong", ceb: "Tabang nga gikinahanglan", en: "Help needed" },
 };

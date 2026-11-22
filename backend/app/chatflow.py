@@ -32,8 +32,8 @@ SLOTS = [
     "has_pregnant",
     "has_pwd",
     "has_senior",
-    "can_do_physical_work",
     "is_solo_parent",
+    "can_do_physical_work",
     "crisis_type",
     "help_needed",
 ]
