@@ -101,11 +101,16 @@ async def my_tracker(request: Request, me: dict = Depends(current_citizen)):
             "WHERE d.program_id = ANY($2::uuid[]) AND (d.for_crisis IS NULL OR d.for_crisis = ANY($3::text[])) GROUP BY d.program_id;",
             cid, ids, situation,
         )
+        # Next schedule per program: one at the citizen's own barangay first, then a city / agency
+        # office, then another barangay; earliest within each group (same order as the results page).
         schedules = await conn.fetch(
             "SELECT DISTINCT ON (s.program_id) s.program_id, s.start_date, s.end_date, o.office_name, o.address "
             "FROM barangay_schedules s JOIN lgu_offices o ON o.office_id = s.office_id "
-            "WHERE s.program_id = ANY($1::uuid[]) AND s.end_date >= $2 ORDER BY s.program_id, s.start_date;",
-            ids, today(),
+            "WHERE s.program_id = ANY($1::uuid[]) AND s.end_date >= $2 "
+            "ORDER BY s.program_id, "
+            "CASE WHEN $3::text IS NOT NULL AND o.barangay_code = $3 THEN 0 "
+            "WHEN o.office_name ~* '^(barangay|brgy\\.?)\\s' THEN 2 ELSE 1 END, s.start_date;",
+            ids, today(), answers.get("barangay_code"),
         )
     counts = {r["program_id"]: r for r in docs}
     nxt = {r["program_id"]: r for r in schedules}

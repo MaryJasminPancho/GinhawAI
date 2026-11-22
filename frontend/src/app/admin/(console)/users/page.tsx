@@ -7,7 +7,6 @@ import { Badge, Btn, Card, ErrorText, Field, fmtDateTime, inputClass, Loading, M
 import {
   approvePasswordRequest,
   createStaff,
-  getRevealPin,
   listOffices,
   listPasswordRequests,
   listRoles,
@@ -16,11 +15,9 @@ import {
   PasswordRequestRow,
   rejectPasswordRequest,
   resetStaffPassword,
-  revealRequestedPassword,
   Role,
   RoleName,
   roleGroup,
-  setRevealPin,
   setStaffActive,
   staffAvatarPath,
   StaffUser,
@@ -310,7 +307,6 @@ function StaffModal({
 function PasswordRequests({ requests, selfId, onDecided }: { requests: PasswordRequestRow[]; selfId: string; onDecided: (r: PasswordRequestRow, approved: boolean) => void }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<PasswordRequestRow | null>(null);
-  const [viewing, setViewing] = useState<PasswordRequestRow | null>(null);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -372,7 +368,6 @@ function PasswordRequests({ requests, selfId, onDecided }: { requests: PasswordR
                 <span className="text-xs text-gray-500 dark:text-gray-400">Your own request. Another System Administrator must decide.</span>
               ) : (
                 <div className="flex shrink-0 flex-wrap gap-1">
-                  <Btn variant="secondary" onClick={() => setViewing(r)}>View password</Btn>
                   <Btn onClick={() => approve(r)} disabled={busyId === r.request_id}>Approve</Btn>
                   <Btn variant="danger" onClick={() => { setRejecting(r); setNote(""); }} disabled={busyId === r.request_id}>Reject</Btn>
                 </div>
@@ -400,136 +395,6 @@ function PasswordRequests({ requests, selfId, onDecided }: { requests: PasswordR
           </Field>
         </form>
       </Modal>
-
-      {viewing && <RevealModal req={viewing} onClose={() => setViewing(null)} />}
     </Card>
-  );
-}
-
-const pinInput = `${inputClass} w-32 text-center font-mono text-lg tracking-[0.5em]`;
-const onlyDigits = (v: string) => v.replace(/\D/g, "").slice(0, 4);
-
-/** Shows a requested password after the System Administrator enters their 4-digit PIN.
- * The password is hidden behind a visibility toggle and forgotten when the window closes. */
-function RevealModal({ req, onClose }: { req: PasswordRequestRow; onClose: () => void }) {
-  const [hasPin, setHasPin] = useState<boolean | null>(null);
-  const [password, setPassword] = useState<string | null>(null);
-  const [visible, setVisible] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  // PIN entry
-  const [pin, setPin] = useState("");
-  // First-time PIN setup
-  const [account, setAccount] = useState("");
-  const [newPin, setNewPin] = useState("");
-  const [newPin2, setNewPin2] = useState("");
-
-  useEffect(() => {
-    getRevealPin()
-      .then((s) => setHasPin(s.has_pin))
-      .catch((e) => setError(e.message));
-  }, []);
-
-  // Hide it again automatically after 30 seconds.
-  useEffect(() => {
-    if (!visible) return;
-    const t = setTimeout(() => setVisible(false), 30000);
-    return () => clearTimeout(t);
-  }, [visible]);
-
-  async function savePin(e: FormEvent) {
-    e.preventDefault();
-    if (newPin !== newPin2) {
-      setError("The two PINs don't match.");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      await setRevealPin(account, newPin);
-      setHasPin(true);
-      setAccount("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the PIN");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function reveal(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      setPassword((await revealRequestedPassword(req.request_id, pin)).password);
-      setPin("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not show the password");
-      setPin("");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function close() {
-    setPassword(null); // don't keep it in memory once the window is closed
-    onClose();
-  }
-
-  return (
-    <Modal open onClose={close} title={`${req.username}'s requested password`} footer={<Btn variant="secondary" onClick={close}>Close</Btn>}>
-      {hasPin === null && !error && <Loading />}
-
-      {hasPin === false && (
-        <form onSubmit={savePin} className="space-y-4">
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            Set a 4-digit PIN first. You&apos;ll enter it every time you view a requested password. Confirm it&apos;s you with your account password.
-          </p>
-          <Field label="Your account password">
-            {(id) => <input id={id} type="password" required autoComplete="current-password" className={inputClass} value={account} onChange={(e) => setAccount(e.target.value)} />}
-          </Field>
-          <div className="flex flex-wrap gap-4">
-            <Field label="New PIN">
-              {(id) => <input id={id} type="password" inputMode="numeric" autoComplete="off" required className={pinInput} value={newPin} onChange={(e) => setNewPin(onlyDigits(e.target.value))} />}
-            </Field>
-            <Field label="Repeat PIN">
-              {(id) => <input id={id} type="password" inputMode="numeric" autoComplete="off" required className={pinInput} value={newPin2} onChange={(e) => setNewPin2(onlyDigits(e.target.value))} />}
-            </Field>
-          </div>
-          {error && <ErrorText>{error}</ErrorText>}
-          <Btn type="submit" disabled={busy || !account || newPin.length !== 4 || newPin2.length !== 4}>{busy ? "Saving…" : "Save PIN"}</Btn>
-        </form>
-      )}
-
-      {hasPin && password === null && (
-        <form onSubmit={reveal} className="space-y-4">
-          <p className="text-sm text-gray-600 dark:text-gray-300">Enter your 4-digit PIN. This view is recorded in the audit log.</p>
-          <Field label="PIN">
-            {(id) => <input id={id} type="password" inputMode="numeric" autoComplete="off" autoFocus required className={pinInput} value={pin} onChange={(e) => setPin(onlyDigits(e.target.value))} />}
-          </Field>
-          {error && <ErrorText>{error}</ErrorText>}
-          <Btn type="submit" disabled={busy || pin.length !== 4}>{busy ? "Checking…" : "Unlock"}</Btn>
-        </form>
-      )}
-
-      {password !== null && (
-        <div className="space-y-3">
-          <p className="text-sm text-gray-600 dark:text-gray-300">Make sure nobody can see your screen before you show it.</p>
-          <div className="flex items-center gap-2">
-            <input
-              readOnly
-              type={visible ? "text" : "password"}
-              aria-label="Requested password"
-              value={password}
-              className={`${inputClass} flex-1 font-mono text-base`}
-            />
-            <Btn variant="secondary" onClick={() => setVisible((v) => !v)} aria-pressed={visible}>
-              {visible ? "Hide" : "Show"}
-            </Btn>
-          </div>
-          <p className="text-xs text-gray-400">It hides again after 30 seconds and is cleared when you close this window.</p>
-        </div>
-      )}
-    </Modal>
   );
 }

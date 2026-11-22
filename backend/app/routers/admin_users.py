@@ -4,11 +4,10 @@ from uuid import UUID
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
-from app import secretbox
 from app.audit import write_audit
-from app.auth import SYSADMIN_ROLES, SYSTEM_ADMIN, hash_password, require_roles, verify_password
+from app.auth import SYSADMIN_ROLES, SYSTEM_ADMIN, hash_password, require_roles
 from app.profile import clean_full_name
-from app.schemas import PasswordDecisionIn, RevealIn, RevealPinIn, StaffCreate, StaffUpdate
+from app.schemas import PasswordDecisionIn, StaffCreate, StaffUpdate
 from app.settings import get_settings
 
 router = APIRouter()
@@ -159,7 +158,7 @@ async def reset_password(user_id: UUID, request: Request, current_admin: dict = 
             if username is None:
                 raise HTTPException(status_code=404, detail="Admin user not found")
             await conn.execute(
-                "UPDATE password_change_requests SET status = 'cancelled', decided_at = NOW(), new_password_encrypted = NULL "
+                "UPDATE password_change_requests SET status = 'cancelled', decided_at = NOW() "
                 "WHERE user_id = $1 AND status = 'pending';",
                 user_id,
             )
@@ -217,8 +216,8 @@ async def approve_password_request(request_id: UUID, body: PasswordDecisionIn, r
                 req["user_id"], req["new_password_hash"],
             )
             await conn.execute(
-                "UPDATE password_change_requests SET status = 'approved', decided_by = $2::uuid, decided_at = NOW(), decision_note = $3, "
-                "new_password_encrypted = NULL WHERE request_id = $1;",
+                "UPDATE password_change_requests SET status = 'approved', decided_by = $2::uuid, decided_at = NOW(), decision_note = $3 "
+                "WHERE request_id = $1;",
                 request_id, current_admin["sub"], (body.note or "").strip() or None,
             )
             await write_audit(conn, current_admin["sub"], "UPDATE", "admin_users", None, f"{req['username']}: password change approved, sessions revoked")
@@ -234,92 +233,10 @@ async def reject_password_request(request_id: UUID, body: PasswordDecisionIn, re
         async with conn.transaction():
             req = await _load_pending(conn, request_id, current_admin)
             await conn.execute(
-                "UPDATE password_change_requests SET status = 'rejected', decided_by = $2::uuid, decided_at = NOW(), decision_note = $3, "
-                "new_password_encrypted = NULL WHERE request_id = $1;",
+                "UPDATE password_change_requests SET status = 'rejected', decided_by = $2::uuid, decided_at = NOW(), decision_note = $3 "
+                "WHERE request_id = $1;",
                 request_id, current_admin["sub"], note,
             )
             await write_audit(conn, current_admin["sub"], "UPDATE", "password_change_requests", None, f"{req['username']}: password change rejected ({note})")
     return {"status": "rejected"}
 
-
-# ---------------------------------------------------------------------------
-# Viewing a requested password — protected by the System Administrator's own
-# 4-digit PIN, with a lockout after repeated wrong PINs. Every view is audited.
-# ---------------------------------------------------------------------------
-MAX_PIN_FAILS = 5
-PIN_LOCK_MINUTES = 15
-
-
-@router.get("/api/admin-users/reveal-pin")
-async def reveal_pin_status(request: Request, current_admin: dict = Depends(sysadmin)):
-    async with request.app.state.db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT reveal_pin_hash IS NOT NULL AS has_pin, "
-            "CASE WHEN reveal_pin_locked_until > NOW() THEN reveal_pin_locked_until END AS locked_until "
-            "FROM admin_users WHERE user_id = $1::uuid;",
-            current_admin["sub"],
-        )
-    return dict(row)
-
-
-@router.put("/api/admin-users/reveal-pin")
-async def set_reveal_pin(body: RevealPinIn, request: Request, current_admin: dict = Depends(sysadmin)):
-    async with request.app.state.db_pool.acquire() as conn:
-        current_hash = await conn.fetchval("SELECT password_hash FROM admin_users WHERE user_id = $1::uuid;", current_admin["sub"])
-        if not verify_password(body.current_password, current_hash):
-            raise HTTPException(status_code=400, detail="Your account password is incorrect.")
-        async with conn.transaction():
-            await conn.execute(
-                "UPDATE admin_users SET reveal_pin_hash = $2, reveal_pin_failed = 0, reveal_pin_locked_until = NULL WHERE user_id = $1::uuid;",
-                current_admin["sub"], hash_password(body.pin),
-            )
-            await write_audit(conn, current_admin["sub"], "UPDATE", "admin_users", None, f"{current_admin['username']}: set password-view PIN")
-    return {"has_pin": True}
-
-
-@router.post("/api/admin-users/password-requests/{request_id}/reveal")
-async def reveal_requested_password(request_id: UUID, body: RevealIn, request: Request, current_admin: dict = Depends(sysadmin)):
-    me = current_admin["sub"]
-    async with request.app.state.db_pool.acquire() as conn:
-        pin = await conn.fetchrow(
-            "SELECT reveal_pin_hash, reveal_pin_failed, reveal_pin_locked_until, "
-            "COALESCE(reveal_pin_locked_until > NOW(), FALSE) AS locked FROM admin_users WHERE user_id = $1::uuid;",
-            me,
-        )
-        if pin["reveal_pin_hash"] is None:
-            raise HTTPException(status_code=409, detail="Set your 4-digit PIN first.")
-        if pin["locked"]:
-            raise HTTPException(status_code=429, detail=f"Too many wrong PINs. Try again in {PIN_LOCK_MINUTES} minutes.")
-
-        if not verify_password(body.pin, pin["reveal_pin_hash"]):
-            fails = pin["reveal_pin_failed"] + 1
-            async with conn.transaction():
-                if fails >= MAX_PIN_FAILS:
-                    await conn.execute(
-                        "UPDATE admin_users SET reveal_pin_failed = 0, reveal_pin_locked_until = NOW() + make_interval(mins => $2) WHERE user_id = $1::uuid;",
-                        me, PIN_LOCK_MINUTES,
-                    )
-                else:
-                    await conn.execute("UPDATE admin_users SET reveal_pin_failed = $2 WHERE user_id = $1::uuid;", me, fails)
-                await write_audit(conn, me, "FAILED_PIN", "password_change_requests", None,
-                                  f"{current_admin['username']}: wrong PIN when viewing a requested password ({fails}/{MAX_PIN_FAILS})")
-            if fails >= MAX_PIN_FAILS:
-                raise HTTPException(status_code=429, detail=f"Too many wrong PINs. Viewing is locked for {PIN_LOCK_MINUTES} minutes.")
-            left = MAX_PIN_FAILS - fails
-            raise HTTPException(status_code=403, detail=f"Wrong PIN. {left} {'try' if left == 1 else 'tries'} left.")
-
-        await conn.execute("UPDATE admin_users SET reveal_pin_failed = 0, reveal_pin_locked_until = NULL WHERE user_id = $1::uuid;", me)
-        req = await conn.fetchrow(
-            "SELECT pr.status, pr.new_password_encrypted, au.username FROM password_change_requests pr "
-            "JOIN admin_users au ON au.user_id = pr.user_id WHERE pr.request_id = $1;",
-            request_id,
-        )
-        if req is None:
-            raise HTTPException(status_code=404, detail="Request not found")
-        if req["status"] != "pending" or req["new_password_encrypted"] is None:
-            raise HTTPException(status_code=409, detail="This request is no longer waiting for approval, so its password was erased.")
-        password = secretbox.decrypt(req["new_password_encrypted"])
-        if password is None:
-            raise HTTPException(status_code=409, detail="This password can't be read (the backend's secret key changed). Ask the person to submit it again.")
-        await write_audit(conn, me, "VIEW_PASSWORD", "password_change_requests", None, f"{current_admin['username']} viewed {req['username']}'s requested password")
-    return {"password": password}

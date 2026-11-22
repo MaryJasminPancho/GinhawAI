@@ -422,12 +422,6 @@ export const listPasswordRequests = (status: PasswordRequestStatus | "all" = "pe
   request<PasswordRequestRow[]>(`/api/admin-users/password-requests?status=${status}`);
 export const approvePasswordRequest = (id: string, note?: string) =>
   request<{ status: string }>(`/api/admin-users/password-requests/${id}/approve`, { method: "POST", body: json({ note: note ?? null }) });
-// Viewing a requested password needs the System Administrator's own 4-digit PIN.
-export const getRevealPin = () => request<{ has_pin: boolean; locked_until: string | null }>("/api/admin-users/reveal-pin");
-export const setRevealPin = (current_password: string, pin: string) =>
-  request<{ has_pin: boolean }>("/api/admin-users/reveal-pin", { method: "PUT", body: json({ current_password, pin }) });
-export const revealRequestedPassword = (id: string, pin: string) =>
-  request<{ password: string }>(`/api/admin-users/password-requests/${id}/reveal`, { method: "POST", body: json({ pin }) });
 
 export const rejectPasswordRequest = (id: string, note: string) =>
   request<{ status: string }>(`/api/admin-users/password-requests/${id}/reject`, { method: "POST", body: json({ note }) });

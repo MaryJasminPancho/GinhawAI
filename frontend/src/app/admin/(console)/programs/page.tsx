@@ -29,8 +29,11 @@ import {
 
 type Tab = "criteria" | "documents";
 
+// Only the LGU Administrator configures the rules matrix; Social Workers and System Administrators view it.
+const RULES_VIEW_NOTE = "Only LGU Administrators can change the program rules, eligibility rules and required documents.";
+
 export default function ProgramsPage() {
-  const { canEditWelfare: canEdit } = useAdmin();
+  const { canEditRules: canEdit } = useAdmin();
   const [programs, setPrograms] = useState<AdminProgram[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +68,7 @@ export default function ProgramsPage() {
       <PageTitle
         title="Program Rules Matrix"
         description="The eligibility rules and document checklists the assessment uses to match citizens with programs. Changes apply to new assessments right away and are recorded in the audit log."
-        actions={canEdit ? <Btn onClick={() => setAdding(true)}>+ Add program</Btn> : <ViewOnly />}
+        actions={canEdit ? <Btn onClick={() => setAdding(true)}>+ Add program</Btn> : <ViewOnly note={RULES_VIEW_NOTE} />}
       />
       {error && <div className="mb-4"><ErrorText>{error}</ErrorText></div>}
       {!programs && !error && <Loading />}
@@ -113,7 +116,7 @@ export default function ProgramsPage() {
 }
 
 function ProgramDetail({ program }: { program: AdminProgram }) {
-  const { canEditWelfare: canEdit } = useAdmin();
+  const { canEditRules: canEdit } = useAdmin();
   const [tab, setTab] = useState<Tab>("criteria");
   const [criteria, setCriteria] = useState<Criterion[] | null>(null);
   const [docs, setDocs] = useState<DocumentReq[] | null>(null);

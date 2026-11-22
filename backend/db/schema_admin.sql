@@ -178,16 +178,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_password_request_pending ON password_change
 UPDATE system_config SET value = '8', updated_at = NOW()
 WHERE key = 'password_min_length' AND value = '10'::jsonb;
 
--- System Administrators may view a requested password before approving it.
--- It is kept encrypted (key derived from the backend SECRET_KEY) only while the
--- request is pending, and erased once it is approved, rejected or cancelled.
-ALTER TABLE password_change_requests ADD COLUMN IF NOT EXISTS new_password_encrypted TEXT;
-
--- Each System Administrator's 4-digit PIN for viewing requested passwords
--- (bcrypt hash only), with a lockout after repeated wrong PINs.
-ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS reveal_pin_hash VARCHAR(255);
-ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS reveal_pin_failed INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS reveal_pin_locked_until TIMESTAMPTZ;
+-- Requested passwords are stored as a bcrypt hash only and are never shown to
+-- anyone. An earlier version kept an encrypted copy that a System Administrator
+-- could view with a 4-digit PIN; that was removed, so drop its columns
+-- (IF EXISTS: safe on new databases and on ones that never had them).
+ALTER TABLE password_change_requests DROP COLUMN IF EXISTS new_password_encrypted;
+ALTER TABLE admin_users DROP COLUMN IF EXISTS reveal_pin_hash;
+ALTER TABLE admin_users DROP COLUMN IF EXISTS reveal_pin_failed;
+ALTER TABLE admin_users DROP COLUMN IF EXISTS reveal_pin_locked_until;
 
 -- ---------------------------------------------------------------------------
 -- Staff profiles: display name and profile picture (Manage Profile Dashboard)

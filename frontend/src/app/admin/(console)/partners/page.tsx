@@ -20,9 +20,10 @@ import {
 } from "@/lib/adminApi";
 
 // Partner registry: "Maintain Local Civil Society Registries" (Appendix R #40) and
-// "Track Neighborhood NGO Resource Tracks" (#38). LGU staff manage everything;
-// Partner Organization accounts manage only their own entries, which citizens see
-// only after LGU staff verify them.
+// "Track Neighborhood NGO Resource Tracks" (#38). LGU Administrators and Social Workers
+// manage every entry; only the LGU Administrator verifies. A Partner Organization account
+// manages its one organization. Changes by anyone but the LGU Administrator are seen by
+// citizens only after an LGU Administrator verifies them (the backend decides; see can_verify).
 
 export default function PartnersPage() {
   const { group } = useAdmin();
@@ -57,7 +58,7 @@ export default function PartnersPage() {
             </div>
           )}
           {!data.can_verify && data.can_create && (
-            <p className="text-[13px] text-gray-500 dark:text-gray-400">Anything you add or change is checked by LGU staff before citizens can see it.</p>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400">Anything you add or change is checked by an LGU Administrator before citizens can see it.</p>
           )}
           {data.organizations.length === 0 ? (
             <EmptyState title="No organizations yet">{data.can_create ? "Add the first one with “Add organization”." : "Nothing has been added yet."}</EmptyState>

@@ -1,9 +1,9 @@
 """Welfare Core: programs, eligibility criteria and document requirements.
 
-Reads are public (the citizen app uses them). Changes are for Authorized
-Welfare Personnel — LGU Administrators, Social Workers and System
-Administrators ("Manage Program Rules Matrix", Fig. 9) — and every change is
-written to the audit trail.
+Reads are public (the citizen app uses them). Changes are for the LGU
+Administrator only ("configure the 7-program eligibility rules matrix", Fig. 9);
+Social Workers and System Administrators view it. Every change is written to
+the audit trail.
 """
 
 from uuid import UUID
@@ -13,7 +13,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.audit import write_audit
-from app.auth import WELFARE_EDIT_ROLES, WELFARE_ROLES, require_roles
+from app.auth import RULES_EDIT_ROLES, WELFARE_ROLES, require_roles
 from app.schemas import DocumentRequirementCreate, EligibilityCriteriaCreate, ProgramCreate, ProgramUpdate
 from app.scoring import ATTRIBUTE_LABELS, COMPUTED_ATTRIBUTES
 
@@ -21,7 +21,7 @@ router = APIRouter()
 
 DUPLICATE_NAME = "A program with this name already exists."
 welfare = require_roles(WELFARE_ROLES)
-editor = require_roles(WELFARE_EDIT_ROLES)
+editor = require_roles(RULES_EDIT_ROLES)  # LGU Administrator only
 
 PROGRAM_COLS = "program_id, program_name, agency, scope, is_active"
 CRITERIA_COLS = "criteria_id, program_id, attribute, operator, threshold_value, weight"
