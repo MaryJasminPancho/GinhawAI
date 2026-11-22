@@ -74,10 +74,11 @@ export function Badge({ children, tone = "gray", dot = false }: { children: Reac
   );
 }
 
-/** Shown in place of the Add/Edit buttons for the System Administrator on welfare screens. */
-export function ViewOnly() {
+/** Shown in place of the Add/Edit buttons when the signed-in role can only view a screen.
+ *  `note` (hover text) says who can change it; the default fits most welfare screens. */
+export function ViewOnly({ note = "System Administrators can view this page but only LGU Administrators and Social Workers can change it." }: { note?: string }) {
   return (
-    <span title="System Administrators can view this page but only LGU Administrators and Social Workers can change it.">
+    <span title={note}>
       <Badge>View only</Badge>
     </span>
   );

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
 
-from app import secretbox, sms_codes
+from app import sms_codes
 from app.audit import write_audit
 from app.auth import SYSTEM_ADMIN, create_access_token, get_current_admin, hash_password, verify_password
 from app.profile import clean_full_name, decode_avatar
@@ -137,7 +137,7 @@ async def _submit_password_request(conn, user_id: str, username: str, role: str,
     async with conn.transaction():
         # Replace any earlier pending request.
         await conn.execute(
-            "UPDATE password_change_requests SET status = 'cancelled', decided_at = NOW(), new_password_encrypted = NULL "
+            "UPDATE password_change_requests SET status = 'cancelled', decided_at = NOW() "
             "WHERE user_id = $1::uuid AND status = 'pending';",
             user_id,
         )
@@ -155,11 +155,12 @@ async def _submit_password_request(conn, user_id: str, username: str, role: str,
             await write_audit(conn, user_id, "UPDATE", "admin_users", None,
                               f"{username}: password changed (auto-approved, {'Super Administrator' if is_super else 'no other System Administrator'})")
         else:
-            # Encrypted copy so a System Administrator can view it (with their PIN) before approving.
+            # Only the bcrypt hash is stored. The approver checks that the request is really from this
+            # person; the password itself already passed the rules above and is never shown to anyone.
             row = await conn.fetchrow(
-                "INSERT INTO password_change_requests (user_id, new_password_hash, new_password_encrypted, reason) VALUES ($1::uuid, $2, $3, $4) "
+                "INSERT INTO password_change_requests (user_id, new_password_hash, reason) VALUES ($1::uuid, $2, $3) "
                 f"RETURNING {REQUEST_COLS};",
-                user_id, new_hash, secretbox.encrypt(new_password), reason,
+                user_id, new_hash, reason,
             )
             await write_audit(conn, user_id, "PASSWORD_REQUEST", "password_change_requests", None,
                               f"{username}: new password submitted for approval ({reason.replace('_', ' ')})")
@@ -170,7 +171,7 @@ async def _submit_password_request(conn, user_id: str, username: str, role: str,
 async def cancel_password_request(request: Request, current_admin: dict = Depends(get_current_admin)):
     async with request.app.state.db_pool.acquire() as conn:
         await conn.execute(
-            "UPDATE password_change_requests SET status = 'cancelled', decided_at = NOW(), new_password_encrypted = NULL "
+            "UPDATE password_change_requests SET status = 'cancelled', decided_at = NOW() "
             "WHERE user_id = $1::uuid AND status = 'pending';",
             current_admin["sub"],
         )

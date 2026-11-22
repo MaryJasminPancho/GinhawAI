@@ -5,11 +5,14 @@ Appendix R #40 "Maintain Local Civil Society Registries" (organizations) and
 when).
 
 Who can do what:
-* LGU Administrator, Social Worker, System Administrator: manage every entry and
-  verify entries from partners.
-* Partner Organization: manages only the organizations it added. Anything it
-  adds or changes is hidden from citizens until LGU staff verify it again.
-* LGU Executive: can view the registry, not change it.
+* LGU Administrator: manages every entry and is the only role that verifies
+  entries (manuscript Fig. 9: "verifying partner NGOs").
+* Social Worker: manages every entry, but what it adds or changes waits for an
+  LGU Administrator to verify it before citizens see it.
+* Partner Organization: one account = one organization. It manages only its own
+  organization and that organization's resources; anything it adds or changes is
+  hidden from citizens until an LGU Administrator verifies it again.
+* LGU Executive and System Administrator: can view the registry, not change it.
 Citizens see verified, active organizations and their current resources.
 """
 
@@ -20,7 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, model_validator
 
 from app.audit import write_audit
-from app.auth import LGU_EXECUTIVE, PARTNER_ORG, WELFARE_EDIT_ROLES, WELFARE_ROLES, get_current_admin
+from app.auth import LGU_EXECUTIVE, PARTNER_ORG, PARTNER_VERIFY_ROLES, WELFARE_EDIT_ROLES, WELFARE_ROLES, get_current_admin
 
 router = APIRouter()
 
@@ -72,6 +75,11 @@ def _is_staff(admin: dict) -> bool:
 def _is_editor(admin: dict) -> bool:
     """Welfare staff who may change the registry (the System Administrator only views it)."""
     return admin["role"] in WELFARE_EDIT_ROLES
+
+
+def _is_verifier(admin: dict) -> bool:
+    """Only the LGU Administrator verifies entries; their own changes count as verified."""
+    return admin["role"] in PARTNER_VERIFY_ROLES
 
 
 def _can_view(admin: dict) -> bool:
@@ -157,8 +165,9 @@ async def list_partners(request: Request, current_admin: dict = Depends(get_curr
         resources = await conn.fetch(f"SELECT {RES_COLS} FROM partner_resources ORDER BY starts_on NULLS FIRST, title;")
     return {
         "org_types": [{"value": k, "label": v} for k, v in ORG_TYPES.items()],
-        "can_create": _is_editor(current_admin) or current_admin["role"] == PARTNER_ORG,
-        "can_verify": _is_editor(current_admin),
+        # A Partner Organization account can add only its one organization (own_only lists just that).
+        "can_create": _is_editor(current_admin) or (own_only and len(orgs) == 0),
+        "can_verify": _is_verifier(current_admin),
         "organizations": [_org_view(o, resources, current_admin) for o in orgs],
     }
 
@@ -168,17 +177,24 @@ async def create_partner(body: OrgIn, request: Request, current_admin: dict = De
     if not (_is_editor(current_admin) or current_admin["role"] == PARTNER_ORG):
         raise HTTPException(status_code=403, detail="Your role can't add organizations")
     staff = _is_editor(current_admin)
+    verified = _is_verifier(current_admin)  # Social Worker and partner entries wait for an LGU Administrator
     async with request.app.state.db_pool.acquire() as conn:
         async with conn.transaction():
+            if not staff:
+                # One Partner Organization account represents one organization.
+                # Lock the account row so two quick submits can't both pass this check.
+                await conn.execute("SELECT 1 FROM admin_users WHERE user_id = $1::uuid FOR UPDATE;", current_admin["sub"])
+                if await conn.fetchval("SELECT 1 FROM partner_organizations WHERE managed_by = $1::uuid;", current_admin["sub"]):
+                    raise HTTPException(status_code=409, detail="Your account already has an organization. Edit it instead.")
             await _check_barangay(conn, _clean(body.barangay_code))
             org_id = await conn.fetchval(
                 "INSERT INTO partner_organizations (name, org_type, services, address, barangay_code, contact, is_active, is_verified, managed_by) "
                 "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::uuid) RETURNING org_id;",
                 body.name.strip(), body.org_type, _clean(body.services), _clean(body.address), _clean(body.barangay_code),
-                _clean(body.contact), body.is_active, staff, None if staff else current_admin["sub"],
+                _clean(body.contact), body.is_active, verified, None if staff else current_admin["sub"],
             )
             await write_audit(conn, current_admin["sub"], "INSERT", "partner_organizations", None,
-                              f"{body.name.strip()} ({ORG_TYPES[body.org_type]})" + ("" if staff else " — awaiting verification"))
+                              f"{body.name.strip()} ({ORG_TYPES[body.org_type]})" + ("" if verified else " — awaiting verification"))
             row = await _org(conn, org_id)
     return _org_view(row, [], current_admin)
 
@@ -191,8 +207,8 @@ async def update_partner(org_id: UUID, body: OrgIn, request: Request, current_ad
             if not _can_edit(current_admin, before):
                 raise HTTPException(status_code=403, detail="You can only change your own organization")
             await _check_barangay(conn, _clean(body.barangay_code))
-            # A partner's own edits need LGU staff to look again before citizens see them.
-            verified = before["is_verified"] if _is_editor(current_admin) else False
+            # Changes by a Social Worker or a partner need an LGU Administrator to look again before citizens see them.
+            verified = before["is_verified"] if _is_verifier(current_admin) else False
             await conn.execute(
                 "UPDATE partner_organizations SET name = $2, org_type = $3, services = $4, address = $5, barangay_code = $6, "
                 "contact = $7, is_active = $8, is_verified = $9, updated_at = NOW() WHERE org_id = $1;",
@@ -208,8 +224,8 @@ async def update_partner(org_id: UUID, body: OrgIn, request: Request, current_ad
 
 @router.post("/api/admin/partners/{org_id}/verify")
 async def verify_partner(org_id: UUID, body: VerifyIn, request: Request, current_admin: dict = Depends(get_current_admin)):
-    if not _is_editor(current_admin):
-        raise HTTPException(status_code=403, detail="Only LGU staff can verify organizations")
+    if not _is_verifier(current_admin):
+        raise HTTPException(status_code=403, detail="Only an LGU Administrator can verify organizations")
     async with request.app.state.db_pool.acquire() as conn:
         async with conn.transaction():
             before = await _org(conn, org_id)
@@ -240,8 +256,9 @@ async def _org_for_resource_edit(conn, org_id: UUID, admin: dict):
     return org
 
 
-async def _mark_unverified_if_partner(conn, org, admin: dict):
-    if not _is_editor(admin) and org["is_verified"]:
+async def _mark_unverified_unless_verifier(conn, org, admin: dict):
+    """A resource change by anyone but the LGU Administrator sends the organization back for verification."""
+    if not _is_verifier(admin) and org["is_verified"]:
         await conn.execute("UPDATE partner_organizations SET is_verified = FALSE, updated_at = NOW() WHERE org_id = $1;", org["org_id"])
 
 
@@ -255,7 +272,7 @@ async def add_resource(org_id: UUID, body: ResourceIn, request: Request, current
                 f"INSERT INTO partner_resources (org_id, title, details, barangay_code, starts_on, ends_on) VALUES ($1, $2, $3, $4, $5, $6) RETURNING {RES_COLS};",
                 org_id, body.title.strip(), _clean(body.details), _clean(body.barangay_code), body.starts_on, body.ends_on,
             )
-            await _mark_unverified_if_partner(conn, org, current_admin)
+            await _mark_unverified_unless_verifier(conn, org, current_admin)
             await write_audit(conn, current_admin["sub"], "INSERT", "partner_resources", None, f"{org['name']}: {body.title.strip()}")
     return dict(row)
 
@@ -273,7 +290,7 @@ async def update_resource(resource_id: UUID, body: ResourceIn, request: Request,
                 f"UPDATE partner_resources SET title = $2, details = $3, barangay_code = $4, starts_on = $5, ends_on = $6 WHERE resource_id = $1 RETURNING {RES_COLS};",
                 resource_id, body.title.strip(), _clean(body.details), _clean(body.barangay_code), body.starts_on, body.ends_on,
             )
-            await _mark_unverified_if_partner(conn, org, current_admin)
+            await _mark_unverified_unless_verifier(conn, org, current_admin)
             await write_audit(conn, current_admin["sub"], "UPDATE", "partner_resources", f"{org['name']}: {before['title']}", f"{org['name']}: {body.title.strip()}")
     return dict(row)
 

@@ -112,15 +112,6 @@ class PasswordRequestIn(BaseModel):
     new_password: str = Field(min_length=1, max_length=200)
 
 
-class RevealPinIn(BaseModel):
-    current_password: str = Field(min_length=1, max_length=200)
-    pin: str = Field(pattern=r"^\d{4}$")
-
-
-class RevealIn(BaseModel):
-    pin: str = Field(pattern=r"^\d{4}$")
-
-
 class PasswordDecisionIn(BaseModel):
     note: str | None = Field(default=None, max_length=500)
 

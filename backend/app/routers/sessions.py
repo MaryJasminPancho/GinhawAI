@@ -426,7 +426,8 @@ async def assess(session_id: str, request: Request):
             "SELECT office_id, office_name, address, barangay_code, contact_number, operating_hours FROM lgu_offices ORDER BY office_name;"
         )
         schedules = await conn.fetch(
-            "SELECT s.schedule_id, s.program_id, s.office_id, s.start_date, s.end_date, s.notes, o.office_name, o.address "
+            "SELECT s.schedule_id, s.program_id, s.office_id, s.start_date, s.end_date, s.notes, o.office_name, o.address, "
+            "o.barangay_code AS office_barangay "
             "FROM barangay_schedules s JOIN lgu_offices o ON o.office_id = s.office_id "
             "WHERE s.end_date >= CURRENT_DATE ORDER BY s.start_date;"
         )
@@ -445,12 +446,21 @@ async def assess(session_id: str, request: Request):
             docs_by_program.setdefault(str(d["program_id"]), []).append(
                 {"doc_id": str(d["doc_id"]), "document_name": d["document_name"], "is_mandatory": d["is_mandatory"], "notes": one_per_line(d["notes"])}
             )
+        # Schedules: the citizen's own barangay first, then city / agency offices, then other
+        # barangays. sorted() is stable, so each group keeps the query's earliest-first order.
+        home = state["entities"].get("barangay_code")
+
+        def schedule_rank(s):
+            if home and s["office_barangay"] == home:
+                return 0
+            return 2 if re.match(r"(barangay|brgy\.?)\s", s["office_name"], re.I) else 1
+
         for e in evaluations:
             e["documents"] = docs_by_program.get(e["program_id"], [])
             e["schedules"] = [
                 {"schedule_id": str(s["schedule_id"]), "start_date": s["start_date"].isoformat(), "end_date": s["end_date"].isoformat(),
                  "notes": s["notes"], "office_name": s["office_name"], "address": s["address"]}
-                for s in schedules if str(s["program_id"]) == e["program_id"]
+                for s in sorted((s for s in schedules if str(s["program_id"]) == e["program_id"]), key=schedule_rank)
             ]
 
         # "Where to go" (Fig. 21): the nearest relevant offices.

@@ -21,6 +21,11 @@ WELFARE_ROLES = {SYSTEM_ADMIN, LGU_ADMIN, SOCIAL_WORKER}  # rules, schedules, of
 # but not edit them (separation of duties: whoever controls accounts and audit logs cannot
 # also change who qualifies for aid, or add ratings to the Blind Validation).
 WELFARE_EDIT_ROLES = {LGU_ADMIN, SOCIAL_WORKER}
+# Only the LGU Administrator configures the 7-program eligibility rules matrix (programs, rules,
+# required documents) and verifies partner organizations (manuscript Fig. 9). Social Workers
+# view the rules matrix and keep schedules, offices, local terms, feedback and validation.
+RULES_EDIT_ROLES = {LGU_ADMIN}
+PARTNER_VERIFY_ROLES = {LGU_ADMIN}
 ANALYTICS_ROLES = {SYSTEM_ADMIN, LGU_ADMIN, SOCIAL_WORKER, LGU_EXECUTIVE, PARTNER_ORG}  # anonymized dashboards
 SYSADMIN_ROLES = {SYSTEM_ADMIN}  # accounts, system health, SMS gateway, security policy
 
