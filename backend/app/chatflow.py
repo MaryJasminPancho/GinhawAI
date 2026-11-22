@@ -278,7 +278,9 @@ ENUM_SYNONYMS = {
                        "wala koy trabaho", "wala akong trabaho", "wala koy work", "walay work", "walang work", "wala work", "no job"],
         "displaced": ["natanggal", "tinanggal", "natangtang", "laid off", "lost my job", "lost job", "displaced"],
         "informal": ["arawan", "daily", "extra", "sideline", "odd job", "construction", "tricycle", "habal", "labandera"],
-        "seasonal": ["seasonal", "pana-panahon", "harvest"],
+        # "season" also matches "seasonal"; tag-/ting- words are the rainy and dry seasons (Filipino / Cebuano)
+        "seasonal": ["seasonal", "season", "pana-panahon", "harvest", "anihan", "tag-ulan", "ting-ulan",
+                     "tag-init", "ting-init", "tag-araw"],
         "underemployed": ["kulang", "part-time", "part time", "underemployed"],
         "self_employed": ["negosyo", "tindahan", "sari-sari", "business", "vendor", "tinda"],
         "employed": ["regular", "empleyado", "employed", "office", "trabaho sa", "may trabaho", "naay trabaho"],
@@ -433,6 +435,13 @@ def parse_for_slot(slot: str, text: str, lang: str, synonyms: dict | None = None
         pairs = sorted(((w.lower(), v) for v, ws in synonyms[slot].items() if v != "none" for w in ws), key=lambda p: -len(p[0]))
         low_words = set(re.findall(r"[a-z']+", low))
         has_negator = bool(low_words & NEGATORS)
+        if slot == "employment_status":
+            # A season word decides the answer, even next to "naay trabaho" / "walay trabaho": "sa harvest season ra
+            # ko naay trabaho" and "tag-ulan walay trabaho, ting-init naa" both describe seasonal work, not a regular
+            # job or no job (longest-word-first would pick "naay trabaho" / "walay trabaho").
+            for w in sorted(synonyms[slot].get("seasonal", []), key=len, reverse=True):
+                if w and re.search(rf"(?<![a-z]){re.escape(w.lower())}", low):
+                    return "seasonal"
         if slot == "crisis_type":
             # Negated crisis ("walang sakit", "walay namatay", "no sickness") means NO crisis. Only 0-1 words may sit between
             # the negation and the keyword, so "wala kaming pambayad sa ospital" (can't pay the hospital) is NOT caught.
