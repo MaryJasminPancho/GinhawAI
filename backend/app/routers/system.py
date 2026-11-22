@@ -8,7 +8,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from app import mailer, ml_scoring, secretbox
 from app.audit import write_audit
 from app.auth import SYSADMIN_ROLES, require_roles
+from app.ai import slot_classifier
 from app.config import GEMINI_API_KEY
+from app.routers.sessions import SLOT_MODELS
 from app.schemas import CacheTtlIn, EmailGatewayUpdate, SecurityPolicyIn, SmsGatewayUpdate, TestEmailIn, TestSmsIn
 from app.settings import get_settings, save_settings
 from app.sms import SMS_FEATURE_ENABLED, ANDROID_SECRET, account_balance, api_key, android_password, is_configured, normalize_ph_number, provider, send_sms
@@ -42,12 +44,23 @@ async def services(request: Request, current_admin: dict = Depends(sysadmin)):
             f"{balance:,} credits left" if balance is not None else "Key set, but the gateway didn't answer"
         )
     return [
-        {"name": "NLP extraction (Gemini, stand-in for XLM-RoBERTa)", "status": "up" if GEMINI_API_KEY else "down",
-         "detail": "API key configured" if GEMINI_API_KEY else "GEMINI_API_KEY missing — chat falls back to the built-in parser"},
+        {"name": "NLP engine (XLM-RoBERTa)", **_nlp_status()},
         {"name": "Vulnerability scoring engine", "status": "up" if ml_scoring.model() else "degraded", "detail": ml_scoring.describe()},
         *([{"name": sms_name, "status": sms_status, "detail": sms_detail}] if SMS_FEATURE_ENABLED else []),
         {"name": "Email gateway (SMTP)", **_email_status(s)},
     ]
+
+
+def _nlp_status() -> dict:
+    """The fine-tuned XLM-RoBERTa classifiers read the answers; Gemini is only the fallback."""
+    keys = sorted(set(SLOT_MODELS.values()))
+    loaded = sum(1 for k in keys if k in slot_classifier._loaded)
+    gemini = "Gemini fallback on" if GEMINI_API_KEY else "Gemini fallback off"
+    if loaded == len(keys):
+        return {"status": "up", "detail": f"All {loaded} classifiers loaded · {gemini}"}
+    if loaded:
+        return {"status": "degraded", "detail": f"{loaded} of {len(keys)} classifiers loaded · {gemini}"}
+    return {"status": "degraded", "detail": f"Classifiers not loaded, using the built-in parser · {gemini}"}
 
 
 def _email_status(s: dict) -> dict:
