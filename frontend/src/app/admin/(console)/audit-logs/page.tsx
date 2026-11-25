@@ -20,6 +20,43 @@ const ACTION_TONE: Record<string, "green" | "amber" | "red" | "blue" | "gray" | 
   REVIEW: "gray",
 };
 
+// Plain words on screen instead of database names (bugs list #11). The System Administrator's
+// compliance CSV keeps the raw names; unknown values fall back to a tidied-up raw name.
+const ACTION_LABEL: Record<string, string> = {
+  INSERT: "Added",
+  UPDATE: "Changed",
+  DELETE: "Removed",
+  LOGIN: "Signed in",
+  LOGOUT: "Signed out",
+  FAILED_LOGIN: "Failed sign-in",
+  FORGOT_PASSWORD: "Forgot password",
+  PASSWORD_REQUEST: "Password change request",
+  REVIEW: "Reviewed flag",
+  PURGE: "Cleared",
+};
+const TABLE_LABEL: Record<string, string> = {
+  admin_users: "Staff accounts",
+  password_change_requests: "Password requests",
+  audit_logs: "Audit logs",
+  feedback_logs: "Citizen feedback",
+  jargon_terms: "Local terms",
+  barangays: "Barangays",
+  lgu_offices: "Office directory",
+  barangay_schedules: "Aid schedules",
+  partner_organizations: "Partner organizations",
+  partner_resources: "Partner resources",
+  programs: "Programs",
+  eligibility_criteria: "Program rules",
+  document_requirements: "Program documents",
+  session_cache: "Chat sessions",
+  system_config: "System settings",
+  validation_cases: "Validation cases",
+  citizen_accounts: "Citizen accounts",
+};
+const tidy = (s: string) => s.replace(/_/g, " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+const actionLabel = (a: string) => ACTION_LABEL[a] ?? tidy(a);
+const tableLabel = (t: string) => TABLE_LABEL[t] ?? tidy(t);
+
 const PAGE = 25;
 
 export default function AuditLogsPage() {
@@ -47,7 +84,7 @@ export default function AuditLogsPage() {
       (table === "all" || l.target_table === table) &&
       (user === "all" || l.username === user) &&
       (!flaggedOnly || (l.flagged && !l.reviewed)) &&
-      (!q || `${l.old_value} ${l.new_value} ${l.target_table} ${l.username}`.toLowerCase().includes(q.toLowerCase()))
+      (!q || `${l.old_value} ${l.new_value} ${l.target_table} ${tableLabel(l.target_table)} ${l.username}`.toLowerCase().includes(q.toLowerCase()))
   );
   // Only flags nobody has reviewed yet count as alerts.
   const open = (logs ?? []).filter((l) => l.flagged && !l.reviewed);
@@ -71,7 +108,8 @@ export default function AuditLogsPage() {
   function exportCsv() {
     downloadCsv(`ginhawai-audit-trail-${new Date().toISOString().slice(0, 10)}.csv`, [
       ["timestamp", "user", "action", "table", "old_value", "new_value", "flag", "flag_reviewed_by"],
-      ...filtered.map((l) => [l.timestamp, l.username, l.action_type, l.target_table, l.old_value, l.new_value, l.flag_reason ?? "", l.reviewed_by ?? ""]),
+      // Raw names for the System Administrator's compliance export; plain words in a staff member's own download.
+      ...filtered.map((l) => [l.timestamp, l.username, seeAll ? l.action_type : actionLabel(l.action_type), seeAll ? l.target_table : tableLabel(l.target_table), l.old_value, l.new_value, l.flag_reason ?? "", l.reviewed_by ?? ""]),
     ]);
   }
 
@@ -117,11 +155,11 @@ export default function AuditLogsPage() {
           <input type="search" aria-label="Search" placeholder="Search values…" className={inputClass} value={q} onChange={(e) => setQ(e.target.value)} />
           <select aria-label="Action" className={inputClass} value={action} onChange={(e) => setAction(e.target.value)}>
             <option value="all">All actions</option>
-            {uniq("action_type").map((a) => <option key={a}>{a}</option>)}
+            {uniq("action_type").map((a) => <option key={a} value={a}>{actionLabel(a)}</option>)}
           </select>
-          <select aria-label="Table" className={`${inputClass} font-mono text-xs`} value={table} onChange={(e) => setTable(e.target.value)}>
-            <option value="all">All tables</option>
-            {uniq("target_table").map((a) => <option key={a}>{a}</option>)}
+          <select aria-label="Area" className={inputClass} value={table} onChange={(e) => setTable(e.target.value)}>
+            <option value="all">All areas</option>
+            {uniq("target_table").map((a) => <option key={a} value={a}>{tableLabel(a)}</option>)}
           </select>
           {seeAll && (
             <select aria-label="User" className={inputClass} value={user} onChange={(e) => setUser(e.target.value)}>
@@ -144,7 +182,7 @@ export default function AuditLogsPage() {
                 <th className={th}>When</th>
                 <th className={th}>User</th>
                 <th className={th}>Action</th>
-                <th className={th}>Table</th>
+                <th className={th}>Area</th>
                 <th className={th}>Change</th>
               </tr>
             </thead>
@@ -155,13 +193,13 @@ export default function AuditLogsPage() {
                   <td className={`${td} font-medium`}>{l.username}</td>
                   <td className={td}>
                     <div className="flex items-center gap-1.5">
-                      <Badge tone={ACTION_TONE[l.action_type] ?? "gray"}>{l.action_type.replace("_", " ")}</Badge>
+                      <Badge tone={ACTION_TONE[l.action_type] ?? "gray"}>{actionLabel(l.action_type)}</Badge>
                       {l.flagged && !l.reviewed && <span title={l.flag_reason}><Badge tone="red" dot>Flagged</Badge></span>}
                       {l.reviewed && <span title={l.flag_reason}><Badge tone="gray">Reviewed</Badge></span>}
                     </div>
                   </td>
                   <td className={td}>
-                    <code className="font-mono text-[12px]">{l.target_table}</code>
+                    <span title={seeAll ? l.target_table : undefined}>{tableLabel(l.target_table)}</span>
                   </td>
                   <td className={`${td} max-w-md`}>
                     {l.old_value && <p className="text-xs text-gray-400 line-through decoration-gray-300 dark:text-gray-500">{l.old_value}</p>}

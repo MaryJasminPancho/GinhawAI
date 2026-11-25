@@ -7,6 +7,7 @@ import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
 import Button, { buttonClasses } from "@/components/Button";
 import UrgentHelp from "@/components/UrgentHelp";
+import { useSavedToast } from "@/components/SavedToast";
 import { LockedFeatures, SignInNudge, signInHref } from "@/components/SignInPrompts";
 import { ResultsPrint } from "@/components/PrintDocument";
 import LinkText from "@/components/LinkText";
@@ -168,6 +169,7 @@ function RecommendationsInner() {
   const [channels, setChannels] = useState<{ sms: boolean; email: boolean }>({ sms: false, email: false });
   const [via, setVia] = useState<"email" | "sms">("email");
   const [finishing, setFinishing] = useState(false);
+  const { flash, toast } = useSavedToast(lang); // signed in: a tick saved to the account
 
   useEffect(() => {
     if (!sessionId) return;
@@ -204,7 +206,7 @@ function RecommendationsInner() {
 
   function toggleDoc(programId: string, docId: string) {
     // Signed in: also save the tick to the account (a failed save is ignored; the tab still remembers it).
-    if (signedIn) setMyDocument(docId, !have.has(docId)).catch(() => {});
+    if (signedIn) setMyDocument(docId, !have.has(docId)).then(flash, () => {});
     setHave((h) => {
       const n = new Set(h);
       if (n.has(docId)) n.delete(docId);
@@ -253,6 +255,7 @@ function RecommendationsInner() {
     {result && <ResultsPrint result={result} lang={lang} have={have} />}
     <div className="relative isolate print:hidden min-h-screen overflow-hidden bg-white dark:bg-[#0a0f0c] sm:flex sm:items-center sm:justify-center sm:p-6 lg:p-10">
       <Backdrop />
+      {toast}
 
       <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col p-5 text-gray-900 dark:text-gray-100 sm:min-h-0 sm:max-w-2xl lg:max-w-5xl sm:rounded-4xl sm:bg-white/80 sm:p-8 sm:shadow-2xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-black/5 sm:backdrop-blur-xl dark:sm:bg-white/4 dark:sm:ring-white/10">
         <PageHeader title={t(lang, "programsTitle")} subtitle={result?.barangay ? `Brgy. ${result.barangay}` : undefined} />

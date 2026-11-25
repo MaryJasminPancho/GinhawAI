@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
-import { AdminSession, getAdminSession, getProfile, logout, OWN_AVATAR_PATH, Profile, roleGroup, RoleGroup } from "@/lib/adminApi";
+import { AdminSession, AuthError, getAdminSession, getProfile, logout, OWN_AVATAR_PATH, Profile, roleGroup, RoleGroup } from "@/lib/adminApi";
 import Avatar from "./Avatar";
 import { ACCOUNT_PATH, canAccess, CONSOLE_NAME, navFor } from "./nav";
 
@@ -90,6 +90,27 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       })
       .catch((e) => setProfileError(e instanceof Error ? e.message : "Could not load your profile"));
   }, [userId, mustChange, profileTry]);
+  // Coming back to this tab: ask the server whether the account is still allowed in, so a user who
+  // was deactivated (or whose sessions were ended) is signed out now, not at their next refresh.
+  // A 401 clears the stored session (adminApi.request); at most one check every 10 seconds.
+  useEffect(() => {
+    if (!userId) return;
+    let last = 0;
+    const check = () => {
+      if (document.visibilityState !== "visible" || Date.now() - last < 10_000) return;
+      last = Date.now();
+      getProfile().catch((e) => {
+        if (e instanceof AuthError) router.replace("/admin/login");
+      });
+    };
+    window.addEventListener("focus", check);
+    document.addEventListener("visibilitychange", check);
+    return () => {
+      window.removeEventListener("focus", check);
+      document.removeEventListener("visibilitychange", check);
+    };
+  }, [userId, router]);
+
   const reloadProfile = () => {
     setProfileError(null);
     setProfileTry((n) => n + 1);

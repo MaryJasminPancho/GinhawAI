@@ -201,7 +201,7 @@ export default function UsersPage() {
         </p>
         <div className="flex items-center gap-2">
           <code className="flex-1 rounded-xl bg-gray-100 px-4 py-3 text-center font-mono text-lg font-bold tracking-wider dark:bg-white/10">{tempPassword?.password}</code>
-          <Btn variant="secondary" onClick={() => tempPassword && navigator.clipboard?.writeText(tempPassword.password)}>Copy</Btn>
+          <CopyButton text={tempPassword?.password ?? ""} />
         </div>
       </Modal>
     </>
@@ -396,5 +396,30 @@ function PasswordRequests({ requests, selfId, onDecided }: { requests: PasswordR
         </form>
       </Modal>
     </Card>
+  );
+}
+
+/** Copies the temporary password and says "Copied" for 2 seconds, so the System Administrator knows it worked. */
+function CopyButton({ text }: { text: string }) {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  useEffect(() => {
+    if (state === "idle") return;
+    const id = setTimeout(() => setState("idle"), 2000);
+    return () => clearTimeout(id);
+  }, [state]);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setState("copied");
+    } catch {
+      setState("failed"); // e.g. no clipboard access: the password is still on screen to copy by hand
+    }
+  }
+  return (
+    <span role="status" aria-live="polite">
+      <Btn variant="secondary" onClick={copy} disabled={!text}>
+        {state === "copied" ? "Copied ✓" : state === "failed" ? "Copy failed" : "Copy"}
+      </Btn>
+    </span>
   );
 }
