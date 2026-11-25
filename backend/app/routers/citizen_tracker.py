@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 
 from app import mailer
 from app.routers.citizens import current_citizen
+from app.scoring import document_situation
 
 router = APIRouter()
 
@@ -93,7 +94,7 @@ async def my_tracker(request: Request, me: dict = Depends(current_citizen)):
         last, rows = await _my_programs(conn, cid)
         ids = [r["program_id"] for r in rows]
         answers = (last or {}).get("entities") or {}
-        situation = [v for v in (answers.get("crisis_type"), answers.get("help_needed")) if v]
+        situation = sorted(document_situation(answers))
         # Papers ready per program: the same documents (and crisis rule) as the checklist.
         docs = await conn.fetch(
             "SELECT d.program_id, COUNT(*) AS total, COUNT(cd.doc_id) AS ready FROM document_requirements d "

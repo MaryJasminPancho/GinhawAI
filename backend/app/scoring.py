@@ -163,6 +163,8 @@ def value_label(v: str, lang: str = "en") -> str:
             for value, label in CHIPS[slot][lang]:
                 if value == v:
                     return label[0].lower() + label[1:] if label[:2] != label[:2].upper() else label
+        if v in VALUE_LABELS_LOCAL:
+            return VALUE_LABELS_LOCAL[v][lang]
     return VALUE_LABELS.get(v, v)
 
 
@@ -181,7 +183,8 @@ CRISIS_VALUES = ["none", "medical", "death", "fire", "calamity", "job_loss"]
 # "medical" and "death" match the crisis answers, so those AICS papers show for either question.
 HELP_VALUES = ["none", "medical", "death", "transport", "education", "food", "assistive_device", "other_help"]
 # Values a document can be limited to (document_requirements.for_crisis).
-DOC_CONDITION_VALUES = CRISIS_VALUES[1:] + [v for v in HELP_VALUES[1:] if v not in CRISIS_VALUES]
+# "senior": only when the applicant is 60 or older (e.g. TUPAD's Certification of Fit to Work, DOLE DO 239-23 Sec. 11).
+DOC_CONDITION_VALUES = CRISIS_VALUES[1:] + [v for v in HELP_VALUES[1:] if v not in CRISIS_VALUES] + ["senior"]
 
 VALUE_LABELS = {
     "employed": "regular job", "self_employed": "self-employed / small business", "informal": "informal / daily wage",
@@ -191,6 +194,11 @@ VALUE_LABELS = {
     "job_loss": "sudden loss of income",
     "transport": "fare or transport", "education": "school expenses", "food": "food",
     "assistive_device": "a wheelchair, hearing aid or other device", "other_help": "other help",
+    "senior": "the applicant is 60 or older",
+}
+# Document conditions that are not chat answers, in Filipino and Bisaya.
+VALUE_LABELS_LOCAL = {
+    "senior": {"fil": "ang aplikante ay 60 taong gulang pataas", "ceb": "ang aplikante 60 anyos pataas"},
 }
 
 
@@ -919,3 +927,13 @@ def rank_programs(evaluations: list[dict]) -> list[dict]:
 
 def today_iso() -> str:
     return date.today().isoformat()
+
+
+def document_situation(entities: dict) -> set[str]:
+    """Conditions a document can be limited to that apply to this citizen: their crisis, the help
+    they need, and "senior" when the applicant is 60 or older."""
+    situation = {v for v in (entities.get("crisis_type"), entities.get("help_needed")) if v}
+    age = _num(entities.get("age"))
+    if age is not None and age >= 60:
+        situation.add("senior")
+    return situation

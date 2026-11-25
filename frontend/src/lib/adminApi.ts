@@ -160,9 +160,9 @@ export async function logout() {
 // ===========================================================================
 export type AdminProgram = { program_id: string; program_name: string; agency: string; scope: string; is_active: boolean };
 export type Criterion = { criteria_id: string; attribute: string; operator: string; threshold_value: string; weight: number };
-/** for_crisis: show only when the citizen's crisis is this type (null = always). */
+/** for_crisis: show only when the citizen's crisis or needed help is this type, or "senior" when the applicant is 60+ (null = always). */
 export type DocumentReq = { doc_id: string; document_name: string; is_mandatory: boolean; notes: string | null; for_crisis: CrisisType | null };
-export type CrisisType = "medical" | "death" | "fire" | "calamity" | "job_loss" | "transport" | "education" | "food" | "assistive_device" | "other_help";
+export type CrisisType = "medical" | "death" | "fire" | "calamity" | "job_loss" | "transport" | "education" | "food" | "assistive_device" | "other_help" | "senior";
 export const CRISIS_LABELS: Record<CrisisType, string> = {
   medical: "Medical / hospital",
   death: "Death in the family",
@@ -174,6 +174,7 @@ export const CRISIS_LABELS: Record<CrisisType, string> = {
   food: "Help needed: food",
   assistive_device: "Help needed: wheelchair, hearing aid or other device",
   other_help: "Help needed: something else",
+  senior: "Applicant is 60 or older",
 };
 export type AttributeMeta = { attribute: string; label: string; computed: boolean };
 
