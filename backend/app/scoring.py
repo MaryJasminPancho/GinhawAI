@@ -667,6 +667,13 @@ OFFICE_NOTES = {
         "ceb": "Ang gitan-aw sa TUPAD kay ang imong kaugalingong trabaho, dili ang sa labing dako ang kita sa pamilya. Makaapil ka kung wala o kulang ang imong trabaho, o seasonal, naay kaugalingong negosyo o impormal ang imong trabaho. Usa lang ka miyembro sa pamilya ang makaapil.",
     },
 }
+# TUPAD's own version: DOLE DO 239-23 Sec. 8 bars government employees but says nothing about
+# elected positions, so the TUPAD note leaves that phrase out.
+TUPAD_RULE_NOTE = {
+    "en": "The office can still turn you down if you work for the government.",
+    "fil": "Maaari pa rin kayong hindi tanggapin ng opisina kung nagtatrabaho kayo sa gobyerno.",
+    "ceb": "Mahimo gihapon ka nga dili dawaton sa opisina kung nagtrabaho ka sa gobyerno.",
+}
 # TUPAD also counts anyone the government pays a regular honorarium or allowance (DOLE DO 239-23 Sec. 8).
 TUPAD_GOV_NOTE = {
     "en": " This includes anyone paid a regular honorarium or allowance by the government, like a barangay tanod or health worker.",
@@ -678,7 +685,7 @@ TUPAD_GOV_NOTE = {
 def _rule_note(attr: str, program_name: str, lang: str) -> str | None:
     note = RULE_NOTES.get(attr, {}).get(lang)
     if note and attr == "not_government_employee_or_elected_official" and re.search(r"tupad", program_name, re.I):
-        note += TUPAD_GOV_NOTE[lang]
+        note = TUPAD_RULE_NOTE[lang] + TUPAD_GOV_NOTE[lang]
     return note
 
 

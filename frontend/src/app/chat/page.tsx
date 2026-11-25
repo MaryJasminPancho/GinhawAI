@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
@@ -33,6 +33,7 @@ function ChatInner() {
   const started = useRef(false); // stops React dev Strict Mode from creating 2 sessions
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const sendingRef = useRef(false); // read by showNewest, which also runs from keyboard events
 
   const addMessage = (role: Role, text: string) =>
     setMessages((prev) => [...prev, { id: nextId.current++, role, text }]);
@@ -78,11 +79,24 @@ function ChatInner() {
   // (via scrollTop), not scrollIntoView — that call also "scrolls" ancestors
   // with overflow-hidden (like the h-screen <main> below), which silently
   // shifted the whole page up and pushed the header off-screen.
-  useEffect(() => {
+  // "In view" means the start of the newest question: when the keyboard leaves only a small box,
+  // scrolling to the very bottom showed the end of a long question (or just its tap-one chips)
+  // and cut off its first lines (checklist G19). While waiting for a reply, show the bottom.
+  const showNewest = useCallback((smooth: boolean) => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [messages, sending]);
+    const bottom = el.scrollHeight - el.clientHeight;
+    const asks = el.querySelectorAll<HTMLElement>('[data-from="assistant"]');
+    const newest = asks[asks.length - 1];
+    // offsetTop is measured from the message box (it is position: relative); 12px keeps a little gap above.
+    const top = !sendingRef.current && newest ? Math.min(bottom, newest.offsetTop - 12) : bottom;
+    el.scrollTo({ top, behavior: smooth ? "smooth" : "auto" });
+  }, []);
+
+  useEffect(() => {
+    sendingRef.current = sending;
+    showNewest(true);
+  }, [messages, sending, chips, showNewest]);
 
   // Phones: fit the chat to the part of the screen the keyboard leaves visible. Android shrinks the
   // page itself (interactiveWidget in layout.tsx), but iPhone Safari ignores that: the keyboard
@@ -94,13 +108,12 @@ function ChatInner() {
     if (!vv) return;
     const phone = window.matchMedia("(max-width: 639px)"); // below Tailwind's sm:, where the card layout starts
     const fit = () => {
-      const el = scrollRef.current;
       // Skip while pinch-zoomed: the visible area is then small because of the zoom, not a keyboard.
       if (phone.matches && vv.scale < 1.05) {
         document.documentElement.style.setProperty("--chat-h", `${Math.round(vv.height)}px`);
         if (window.scrollY !== 0 || vv.offsetTop !== 0) window.scrollTo(0, 0);
       }
-      if (el) el.scrollTop = el.scrollHeight;
+      showNewest(false);
     };
     fit();
     vv.addEventListener("resize", fit);
@@ -110,7 +123,7 @@ function ChatInner() {
       vv.removeEventListener("scroll", fit);
       document.documentElement.style.removeProperty("--chat-h");
     };
-  }, []);
+  }, [showNewest]);
 
   async function send(text: string) {
     if (!text || !sessionId || sending || complete) return;
@@ -237,7 +250,7 @@ function ChatInner() {
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onFocus={() => setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }), 300)}
+              onFocus={() => setTimeout(() => showNewest(false), 300)}
               placeholder={t(lang, "typeMessage")}
               disabled={!sessionId || sending}
               className="min-w-0 flex-1 rounded-full bg-white px-4 py-3 text-[0.875rem] text-gray-900 shadow-sm ring-1 ring-black/5 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-60 dark:bg-white/4 dark:text-gray-100 dark:ring-white/10 dark:placeholder:text-gray-500"

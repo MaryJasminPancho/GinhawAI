@@ -26,7 +26,8 @@ export default function ChatBubble({ role, text }: Props) {
     );
   }
   return (
-    <div className="flex items-end gap-2">
+    // data-from: the chat page finds the newest question by it, to keep its first line in view.
+    <div data-from="assistant" className="flex items-end gap-2">
       <AssistantAvatar />
       <div className="max-w-[86%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-white px-4 py-2.5 text-[0.875rem] leading-relaxed text-gray-800 shadow-sm ring-1 ring-brand-900/5 dark:bg-white/[0.07] dark:text-gray-100 dark:ring-white/5 sm:text-[0.9375rem]">
         {text}
