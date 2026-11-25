@@ -11,3 +11,16 @@ FROM programs p
 WHERE d.program_id = p.program_id
   AND p.program_name = 'Tulong Panghanapbuhay sa Ating Disadvantaged/Displaced Workers (TUPAD)'
   AND d.document_name = 'Certification of Fit to Work';
+
+-- Sec. 5c, 8: TUPAD is for the person who will do the work. The chat's work question is about the
+-- household's main earner, so it can't decide TUPAD (a jobless member of a household whose main
+-- earner has a regular job would be wrongly turned away). The applicant's own work is checked at
+-- the office instead; the app shows it as "checked at the office" with a note.
+UPDATE eligibility_criteria c SET
+    attribute = 'is_disadvantaged_worker',
+    operator = '=',
+    threshold_value = 'true'
+FROM programs p
+WHERE c.program_id = p.program_id
+  AND p.program_name = 'Tulong Panghanapbuhay sa Ating Disadvantaged/Displaced Workers (TUPAD)'
+  AND c.attribute = 'employment_status';
