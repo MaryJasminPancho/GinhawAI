@@ -28,11 +28,13 @@ import {
 
 // "Change Account Password" (Appendix R module 5) + "Manage Profile Dashboard".
 // Every password change, including the first one after receiving a temporary
-// password, waits for a System Administrator's approval. Until then the current
-// password keeps working.
+// password, waits for a different System Administrator's approval. Until then the
+// current password keeps working. Two cases apply at once: the Super Administrator's
+// own change, and a System Administrator who has no other active System Administrator
+// to approve it. The backend decides which; this page shows whatever it returns.
 
 export default function AccountPage() {
-  const { session, group } = useAdmin();
+  const { session } = useAdmin();
   const router = useRouter();
   const [mustChange, setMustChange] = useState(!!session.must_change_password);
   const [req, setReq] = useState<MyPasswordRequest | null | undefined>(undefined); // undefined = loading
@@ -72,15 +74,12 @@ export default function AccountPage() {
   }
 
   const pending = req?.status === "pending";
-  // System Administrators change their own password with the backend script,
-  // so they only get the password section while on a temporary password.
-  const showPassword = group !== "sysadmin" || mustChange;
 
   return (
     <>
       <PageTitle
         title="My Account"
-        description={showPassword ? "Your profile and sign-in details. Password changes are approved by a System Administrator before they take effect." : "Your name and profile picture."}
+        description="Your profile and sign-in details. Password changes are approved by another System Administrator before they take effect, except the Super Administrator's, which apply at once."
       />
       {error && <div className="mb-4"><ErrorText>{error}</ErrorText></div>}
 
@@ -93,7 +92,7 @@ export default function AccountPage() {
         </div>
       )}
 
-      <div className={showPassword ? "grid grid-cols-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]" : "max-w-xl"}>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
         {mustChange ? (
           <Card title="Your account" className="h-fit">
             <dl className="space-y-3 text-[13px]">
@@ -116,13 +115,13 @@ export default function AccountPage() {
           <ProfileCard />
         )}
 
-        {showPassword && <Card title="Change password">
+        <Card title="Change password">
           {req === undefined && !error && <Loading />}
 
           {applied && (
             <div className="space-y-3">
               <p className="rounded-xl bg-brand-50 px-3 py-2 text-[13px] text-brand-900 dark:bg-brand-500/10 dark:text-brand-200">
-                Your password was changed right away, because there&apos;s no other System Administrator to approve it. Sign in again with your new password.
+                Your password was changed right away. Sign in again with your new password.
               </p>
               <Btn onClick={signInAgain}>Sign in again</Btn>
             </div>
@@ -147,7 +146,7 @@ export default function AccountPage() {
               )}
             </div>
           )}
-        </Card>}
+        </Card>
       </div>
     </>
   );

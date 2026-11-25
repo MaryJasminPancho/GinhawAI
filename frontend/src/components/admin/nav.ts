@@ -76,8 +76,9 @@ export const NAV: NavSection[] = [
   },
   {
     title: "Account",
-    // System Administrators manage their own password with backend/scripts/reset_password.py.
-    // They still land here (forced) if they're ever on a temporary password.
+    // System Administrators open My Account from the name card at the bottom of the sidebar and change
+    // their password there (another System Administrator approves it; the Super Administrator's applies
+    // at once). They also land here (forced) while on a temporary password.
     items: [{ href: ACCOUNT_PATH, label: "My Account", icon: I.key, roles: ["welfare", "executive"] }],
   },
 ];

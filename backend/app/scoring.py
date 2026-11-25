@@ -48,9 +48,12 @@ ATTRIBUTE_LABELS = {
     "not_government_employee_or_elected_official": "Not a government employee or elected official",
     "not_receiving_other_dswd_program": "Not receiving a similar DSWD program",
     "has_supporting_documents_for_assistance_type": "Has supporting documents for the type of help needed",
-    "physically_fit_for_assigned_task": "Physically fit for the assigned work",
+    "physically_fit_for_assigned_task": "Fit to work (required only for applicants aged 60 or older)",
     "not_receiving_other_pension": "Not receiving another pension (SSS, GSIS, AFP/PNP or veterans)",
     "not_receiving_similar_assistance": "Not receiving similar government assistance at the same time",
+    # TUPAD is for the person who will do the work. The chat's work question is about the household's
+    # main earner, so the applicant's own work is checked at the office (DOLE DO 239-23 Sec. 5c, 8).
+    "is_disadvantaged_worker": "You are a disadvantaged worker (no work, not enough work, seasonal, self-employed or informal)",
 }
 
 # The same labels in Filipino and Bisaya, for the citizen's "why" breakdown.
@@ -81,9 +84,10 @@ ATTRIBUTE_LABELS_LOCAL = {
         "not_government_employee_or_elected_official": "Hindi empleyado ng gobyerno o halal na opisyal",
         "not_receiving_other_dswd_program": "Hindi tumatanggap ng katulad na programa ng DSWD",
         "has_supporting_documents_for_assistance_type": "May dokumento para sa uri ng tulong na kailangan",
-        "physically_fit_for_assigned_task": "Kayang gawin ang itatakdang trabaho",
+        "physically_fit_for_assigned_task": "Kayang magtrabaho (kailangan lang sa aplikanteng 60 taong gulang pataas)",
         "not_receiving_other_pension": "Walang ibang pensyon (SSS, GSIS, AFP/PNP o beterano)",
         "not_receiving_similar_assistance": "Hindi tumatanggap ng katulad na tulong mula sa gobyerno ngayon",
+        "is_disadvantaged_worker": "Kayo ay disadvantaged na manggagawa (walang trabaho, kulang ang trabaho, seasonal, may sariling negosyo o impormal)",
     },
     "ceb": {
         "monthly_income": "Binulan nga kita sa pamilya (₱)",
@@ -111,9 +115,10 @@ ATTRIBUTE_LABELS_LOCAL = {
         "not_government_employee_or_elected_official": "Dili empleyado sa gobyerno o napiling opisyal",
         "not_receiving_other_dswd_program": "Wala nakadawat og susama nga programa sa DSWD",
         "has_supporting_documents_for_assistance_type": "Adunay dokumento para sa klase sa tabang nga gikinahanglan",
-        "physically_fit_for_assigned_task": "Makahimo sa trabaho nga ihatag",
+        "physically_fit_for_assigned_task": "Makahimo sa trabaho (kinahanglan ra sa aplikante nga 60 anyos pataas)",
         "not_receiving_other_pension": "Walay laing pensyon (SSS, GSIS, AFP/PNP o beterano)",
         "not_receiving_similar_assistance": "Wala nakadawat og susama nga tabang gikan sa gobyerno karon",
+        "is_disadvantaged_worker": "Ikaw usa ka disadvantaged nga mamumuo (walay trabaho, kulang ang trabaho, seasonal, naay kaugalingong negosyo o impormal)",
     },
 }
 
@@ -211,6 +216,15 @@ def _has_senior(entities: dict):
     return None
 
 
+def _fit_to_work(entities: dict):
+    """TUPAD fitness rule: required only when the applicant is 60 or older (DOLE DO 239-23 Sec. 8).
+    Unknown age falls back to the answer, as before."""
+    age = _num(entities.get("age"))
+    if age is not None and age < 60:
+        return True
+    return entities.get("can_do_physical_work")
+
+
 def derive_profile(entities: dict) -> dict:
     """Turn raw chat answers into every attribute a rule can reference."""
     income = _num(entities.get("monthly_income"))
@@ -245,8 +259,9 @@ def derive_profile(entities: dict) -> dict:
         "crisis_type": crisis,
         "has_crisis": (crisis not in (None, "none")) if crisis is not None else None,
         "help_needed": entities.get("help_needed"),
-        # TUPAD rule that used to be "checked at the office" (DOLE DO 239-23 Sec. 8: seniors may join if fit).
-        "physically_fit_for_assigned_task": entities.get("can_do_physical_work"),
+        # TUPAD (DOLE DO 239-23 Sec. 8, 11): only senior applicants (60+) must be fit to work. Under 60
+        # the rule is met whatever the answer, so a person with a disability isn't turned away.
+        "physically_fit_for_assigned_task": _fit_to_work(entities),
         "is_unemployed": (employment in ("unemployed", "displaced")) if employment else None,
         # Barangay hazard exposure (filled in by the assessment from the barangays table).
         "flood_level": entities.get("flood_level"),
@@ -645,6 +660,12 @@ OFFICE_NOTES = {
         "fil": "Kung may natatanggap nang pensyon ang senior (SSS, GSIS, AFP/PNP o pang-beterano), hindi siya kwalipikado. Kung wala, ihanda na ang mga dokumento sa ibaba.",
         "ceb": "Kung naa nay pensyon ang senior (SSS, GSIS, AFP/PNP o sa beterano), dili siya kwalipikado. Kung wala, andama na ang mga dokumento sa ubos.",
     },
+    # TUPAD: about the person who will work, not the main earner the chat asked about.
+    "is_disadvantaged_worker": {
+        "en": "TUPAD looks at your own work, not the main earner's. You may join if you have no work or not enough work, or you do seasonal, self-employed or informal work. Only one member of a family can join.",
+        "fil": "Ang tinitingnan ng TUPAD ay ang sarili ninyong trabaho, hindi ang sa pinakamalaki ang kita sa pamilya. Puwede kayong sumali kung wala o kulang ang trabaho ninyo, o seasonal, may sariling negosyo o impormal ang trabaho ninyo. Isang miyembro lang ng pamilya ang puwedeng sumali.",
+        "ceb": "Ang gitan-aw sa TUPAD kay ang imong kaugalingong trabaho, dili ang sa labing dako ang kita sa pamilya. Makaapil ka kung wala o kulang ang imong trabaho, o seasonal, naay kaugalingong negosyo o impormal ang imong trabaho. Usa lang ka miyembro sa pamilya ang makaapil.",
+    },
 }
 # TUPAD also counts anyone the government pays a regular honorarium or allowance (DOLE DO 239-23 Sec. 8).
 TUPAD_GOV_NOTE = {
@@ -692,9 +713,14 @@ _WORK = {
     "ceb": "Para kini nga programa sa mga mamumuo nga walay regular nga trabaho: walay trabaho, kulang ang trabaho, seasonal, adlaw-adlaw, o bag-o lang natangtang.",
 }
 _FIT = {
-    "en": "This program is short-term physical work, like cleaning or lifting.",
-    "fil": "Pansamantalang pisikal na trabaho ang programang ito, gaya ng paglilinis o pagbubuhat.",
-    "ceb": "Mubo nga pisikal nga trabaho kini nga programa, sama sa paglimpyo o pag-alsa.",
+    "en": "Applicants aged 60 or older may join if they are fit to work and won't do hazardous work.",
+    "fil": "Puwedeng sumali ang aplikanteng 60 taong gulang pataas kung kaya pa nilang magtrabaho at hindi sila gagawa ng mapanganib na trabaho.",
+    "ceb": "Makaapil ang aplikante nga 60 anyos pataas kung makahimo pa sila sa trabaho ug dili sila mobuhat og delikado nga trabaho.",
+}
+_FIT_YOUNG = {
+    "en": "Only applicants aged 60 or older need to show they are fit to work.",
+    "fil": "Ang aplikanteng 60 taong gulang pataas lang ang kailangang magpakitang kaya pa nilang magtrabaho.",
+    "ceb": "Ang aplikante nga 60 anyos pataas ra ang kinahanglan mopakita nga makahimo pa sila sa trabaho.",
 }
 _IN = {"en": "so you meet this.", "fil": "kaya pasok kayo rito.", "ceb": "busa pasok ka niini."}
 _OUT = {"en": "so you don't meet this yet.", "fil": "kaya hindi pa kayo pasok rito.", "ceb": "busa dili pa ka pasok niini."}
@@ -757,6 +783,7 @@ PLAIN = {
     "work_no": _both(_WORK, {"en": "Your answer was: {v}", "fil": "Ang sagot ninyo ay: {v}", "ceb": "Ang imong tubag: {v}"}, False),
     "fit": _both(_FIT, {"en": "You said you can do this kind of work", "fil": "Sinabi ninyong kaya ninyo ito", "ceb": "Giingon nimo nga kaya nimo kini"}, True),
     "not_fit": _both(_FIT, {"en": "You said you can't do this kind of work", "fil": "Sinabi ninyong hindi ninyo ito kaya", "ceb": "Giingon nimo nga dili nimo kini kaya"}, False),
+    "fit_young": _both(_FIT_YOUNG, {"en": "You are {age}", "fil": "{age} taong gulang kayo", "ceb": "{age} anyos ka"}, True),
 }
 
 
@@ -788,6 +815,8 @@ def _plain_rule(attr: str, op: str, threshold: str, ok: bool, profile: dict, lan
         if not ok:
             return say("no_kids")
         return say("kids") if profile.get("has_children_0_18") else say("pregnant")
+    if attr == "physically_fit_for_assigned_task" and ok and profile.get("age") is not None and profile["age"] < 60:
+        return say("fit_young", age=int(profile["age"]))
     if attr in yes_no and _as_bool(threshold) is True and op.strip() in ("=", "=="):
         good, bad = yes_no[attr]
         return say(good if ok else bad)
