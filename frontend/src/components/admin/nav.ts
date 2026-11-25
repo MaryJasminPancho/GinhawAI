@@ -60,7 +60,8 @@ export const NAV: NavSection[] = [
       { href: "/admin/analytics", label: "Vulnerability Heatmap", icon: I.map, roles: ["welfare", "executive", "sysadmin"] },
       { href: "/admin/partners", label: "Partner Registry", icon: I.handshake, roles: ["welfare", "executive", "sysadmin"] },
       // Optional citizen accounts: anonymous counts only (no names, answers or actions on accounts).
-      { href: "/admin/citizen-accounts", label: "Citizen Accounts", icon: I.person, roles: ["welfare", "executive", "sysadmin"] },
+      // A policy page, so not for the LGU Administrator or Social Worker (canAccess also blocks the URL).
+      { href: "/admin/citizen-accounts", label: "Citizen Accounts", icon: I.person, roles: ["executive", "sysadmin"] },
       { href: "/admin/reports", label: "Reports & Exports", icon: I.report, roles: ["executive", "sysadmin"] },
     ],
   },

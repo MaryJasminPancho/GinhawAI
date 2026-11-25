@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { RecheckCard, RemindersCard, TrackerCard, useTracker } from "@/components/AccountExtras";
 import Backdrop from "@/components/Backdrop";
+import { useSavedToast } from "@/components/SavedToast";
 import ThemeToggle from "@/components/ThemeToggle";
 import { buttonClasses } from "@/components/Button";
 import {
@@ -96,6 +97,7 @@ function MeInner() {
 
   // The language is the one used in the last check (the start of every new check asks again).
   const lang: Lang = acct?.profile?.language ?? "en";
+  const { flash, toast } = useSavedToast(lang);
 
   useEffect(() => {
     if (!signedIn) router.replace("/account");
@@ -127,7 +129,7 @@ function MeInner() {
       );
     setTickError(false);
     apply(have);
-    setMyDocument(docId, have).catch(() => {
+    setMyDocument(docId, have).then(flash, () => {
       apply(!have);
       setTickError(true);
     });
@@ -231,6 +233,7 @@ function MeInner() {
                   <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{t(lang, "dashChecklistNone")}</p>
                 ) : (
                   <>
+                    {toast}
                     <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{t(lang, "dashChecklistHint")}</p>
                     {tickError && (
                       <p role="alert" className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">

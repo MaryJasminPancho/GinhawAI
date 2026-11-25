@@ -48,6 +48,9 @@ function consensus(tiers: Tier[]): Tier | null {
   return sorted[Math.floor(sorted.length / 2)]; // tie → median rating
 }
 
+// Results stay locked until every case is rated, so say how many are left (bugs list #10).
+const moreToRate = (n: number) => `Rate ${n} more ${n === 1 ? "case" : "cases"} to see the results`;
+
 const peso = (n: number) => `₱${n.toLocaleString("en-PH")}`;
 const LABEL: Record<string, string> = {
   employed: "regular job", self_employed: "own small business", informal: "daily wage / odd jobs", seasonal: "seasonal work",
@@ -168,9 +171,9 @@ export default function ValidationPage() {
           model ? <ResultsView cases={cases} ratings={ratings} model={model} /> : <Loading label="Loading engine results…" />
         ) : (
           <Card className="text-center">
-            <p className="text-[15px] font-semibold">Results are locked until you finish rating</p>
+            <p className="text-[15px] font-semibold">{moreToRate(cases.length - mine.size)}</p>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              You&apos;ve rated {mine.size} of {cases.length} cases. The engine&apos;s classifications stay hidden so they can&apos;t influence your judgment.
+              You&apos;ve rated {mine.size} of {cases.length} cases. Results open once every case is rated, including cases added with &ldquo;Generate cases&rdquo;. The engine&apos;s classifications stay hidden until then so they can&apos;t influence your judgment.
             </p>
             <Btn className="mt-4" onClick={() => setView("rate")}>Continue rating</Btn>
           </Card>
@@ -289,6 +292,7 @@ function RateView({ cases, index, setIndex, mine, rate, onDone, done }: { cases:
       </Card>
 
       <Card title="Your progress" subtitle={`${mine.size} of ${cases.length} rated`} className="h-fit">
+        {!done && <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">{moreToRate(cases.length - mine.size)}.</p>}
         <div className="grid grid-cols-6 gap-1.5">
           {cases.map((x, i) => {
             const t = mine.get(x.case_id);

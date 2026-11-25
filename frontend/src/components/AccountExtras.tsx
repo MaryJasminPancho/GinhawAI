@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { buttonClasses } from "@/components/Button";
+import { useSavedToast } from "@/components/SavedToast";
 import { AppStatus, getMyReminders, getMyTracker, Lang, Reminders, setMyApplication, setMyReminders, TrackedProgram, Tracker } from "@/lib/api";
 
 // Signed-in extras on the dashboard (answer to the professor's "That's all?"):
@@ -203,6 +204,7 @@ function TrackedRow({ p, lang, onChange }: { p: TrackedProgram; lang: Lang; onCh
 
 export function TrackerCard({ tracker, setTracker, lang }: { tracker: Tracker | null; setTracker: (t: Tracker) => void; lang: Lang }) {
   const [failed, setFailed] = useState(false);
+  const { flash, toast } = useSavedToast(lang);
 
   /** Changes at once, then saves; put back if saving fails. */
   function change(p: TrackedProgram, status: AppStatus, validUntil: string | null) {
@@ -211,7 +213,7 @@ export function TrackerCard({ tracker, setTracker, lang }: { tracker: Tracker | 
     const next = { ...p, status, valid_until: status === "approved" ? validUntil : null };
     setFailed(false);
     setTracker({ ...tracker, programs: tracker.programs.map((x) => (x.program_id === p.program_id ? next : x)) });
-    setMyApplication(p.program_id, status, next.valid_until).catch(() => {
+    setMyApplication(p.program_id, status, next.valid_until).then(flash, () => {
       setTracker(before);
       setFailed(true);
     });
@@ -219,6 +221,7 @@ export function TrackerCard({ tracker, setTracker, lang }: { tracker: Tracker | 
 
   return (
     <section className={card}>
+      {toast}
       <h2 className={cardTitle}>{tx(lang, "trackerTitle")}</h2>
       {tracker === null ? null : tracker.programs.length === 0 ? (
         <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{tx(lang, "trackerNone")}</p>
