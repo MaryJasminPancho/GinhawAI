@@ -25,7 +25,7 @@ from app.routers.citizens import citizen_id_from, load_citizen_profile, save_cit
 from app.action_plan import build_plan, urgent_contacts
 from app.textfmt import one_per_line
 from app.schemas import AssessmentFeedbackIn, DocumentChecksIn, EmailChecklistRequest, EntityPatch, MessageIn, PlanRequest, SessionStart, SmsRequest
-from app.scoring import derive_profile, evaluate_program, hazard_notes, rank_programs, score_vulnerability, today_iso
+from app.scoring import derive_profile, document_situation, evaluate_program, hazard_notes, rank_programs, score_vulnerability, today_iso
 from app.settings import get_settings
 from app import mailer, sms
 from app.mailer import build_checklist_email, mask_email, normalize_email, send_email
@@ -439,10 +439,10 @@ async def assess(session_id: str, request: Request):
         evaluations = rank_programs([evaluate_program(dict(p), by_program.get(str(p["program_id"]), []), profile, lang) for p in programs])
 
         docs_by_program: dict[str, list] = {}
-        situation = {profile.get("crisis_type"), profile.get("help_needed")}
+        situation = document_situation(state["entities"])
         for d in docs:
             if d["for_crisis"] and d["for_crisis"] not in situation:
-                continue  # e.g. AICS burial papers only when there was a death or burial help is needed
+                continue  # e.g. AICS burial papers only after a death; TUPAD's fit-to-work only for seniors
             docs_by_program.setdefault(str(d["program_id"]), []).append(
                 {"doc_id": str(d["doc_id"]), "document_name": d["document_name"], "is_mandatory": d["is_mandatory"], "notes": one_per_line(d["notes"])}
             )

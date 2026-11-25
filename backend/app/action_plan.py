@@ -226,6 +226,12 @@ STEP = {
         "fil": "Itanong kung nakalista na ang inyong pamilya sa {program} o kung maaari itong masuri. DSWD ang pumipili ng mga pamilya, kaya sasabihin ng staff ang susunod na mangyayari at kung ano ang dadalhin.",
         "ceb": "Pangutana kung nalista na ang inyong pamilya sa {program} o kung masusi ba kini. DSWD ang mopili sa mga pamilya, busa isulti sa staff ang sunod nga mahitabo ug unsa ang dad-on.",
     },
+    # TUPAD (DOLE DO 239-23 Sec. 7, 8, 10): what a citizen should know before signing up.
+    "there_text_tupad": {
+        "en": "Ask to be listed for the next TUPAD project. The work lasts 10 to 90 days, at most 8 hours a day, and is paid the regional minimum wage within 7 working days after DOLE receives the attendance sheet and completion report. Only one member of a family can join, once a year (more often only after a disaster). Nobody is allowed to ask you for money to join.",
+        "fil": "Hilinging maisama sa susunod na TUPAD project. Ang trabaho ay 10 hanggang 90 araw, hanggang 8 oras bawat araw, at may bayad na regional minimum wage sa loob ng 7 araw ng trabaho mula nang matanggap ng DOLE ang attendance sheet at completion report. Isang miyembro lang ng pamilya ang puwedeng sumali, isang beses bawat taon (higit pa lang kung may sakuna). Walang sinuman ang puwedeng humingi sa inyo ng pera para makasali.",
+        "ceb": "Hangyoa nga malista ka sa sunod nga TUPAD project. Ang trabaho 10 hangtod 90 ka adlaw, hangtod 8 ka oras matag adlaw, ug bayran og regional minimum wage sulod sa 7 ka adlaw sa trabaho human madawat sa DOLE ang attendance sheet ug completion report. Usa lang ka miyembro sa pamilya ang makaapil, kausa matag tuig (labaw pa lang kung naay katalagman). Walay bisan kinsa nga tugotan nga mangayo nimo og kwarta aron makaapil.",
+    },
     "dates": {"en": "Upcoming dates", "fil": "Mga paparating na petsa", "ceb": "Mga umaabot nga petsa"},
 }
 
@@ -277,6 +283,14 @@ def urgent_contacts(crisis: str | None, directory: dict[str, dict], lang: str) -
     return out
 
 
+def _there_key(program_name: str) -> str:
+    if re.search(r"pantawid|4ps", program_name, re.I):
+        return "there_text_selected"
+    if re.search(r"tupad|displaced workers", program_name, re.I):
+        return "there_text_tupad"
+    return "there_text"
+
+
 def _go_title(program_name: str, lang: str) -> str:
     short = next((s for pat, s in PROGRAM_OFFICE_SHORT if re.search(pat, program_name, re.I)), None)
     return _t(STEP["go_named"], lang).format(office=short) if short else _t(STEP["go"], lang)
@@ -323,7 +337,7 @@ def build_plan(assessment: dict, crisis: str | None, have: set[str], directory: 
             "office": office,
             "office_note": office_note,
             "go_title": _go_title(name, lang),
-            "what_happens": _t(STEP["there_text_selected" if re.search(r"pantawid|4ps", name, re.I) else "there_text"], lang).format(program=name),
+            "what_happens": _t(STEP[_there_key(name)], lang).format(program=name),
             "schedules": p.get("schedules", []),
         })
     return {

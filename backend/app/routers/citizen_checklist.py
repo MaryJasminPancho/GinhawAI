@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from app.routers.citizens import current_citizen
+from app.scoring import document_situation
 
 router = APIRouter()
 
@@ -62,7 +63,7 @@ async def my_checklist(request: Request, me: dict = Depends(current_citizen)):
         if not names:
             return {"checked_on": last["created_at"], "programs": []}
         answers = last["entities"] or {}
-        situation = [v for v in (answers.get("crisis_type"), answers.get("help_needed")) if v]
+        situation = sorted(document_situation(answers))
         rows = await conn.fetch(
             "SELECT p.program_name, d.doc_id, d.document_name, d.is_mandatory, d.notes, (cd.doc_id IS NOT NULL) AS have "
             "FROM programs p JOIN document_requirements d ON d.program_id = p.program_id "

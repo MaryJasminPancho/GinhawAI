@@ -264,7 +264,8 @@ ALTER TABLE document_requirements ADD COLUMN IF NOT EXISTS for_crisis VARCHAR(20
 ALTER TABLE document_requirements DROP CONSTRAINT IF EXISTS document_requirements_for_crisis_check;
 ALTER TABLE document_requirements ADD CONSTRAINT document_requirements_for_crisis_check
     CHECK (for_crisis IS NULL OR for_crisis IN ('medical', 'death', 'fire', 'calamity', 'job_loss',
-                                             'transport', 'education', 'food', 'assistive_device', 'other_help'));
+                                             'transport', 'education', 'food', 'assistive_device', 'other_help',
+                                             'senior'));
 
 -- ---------------------------------------------------------------------------
 -- Local words and slang the chat understands (admin console > Local Terms).
