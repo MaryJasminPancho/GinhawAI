@@ -283,7 +283,7 @@ function MeInner() {
                       {FIELD_ORDER.map((f) => (
                         <div key={f} className="flex justify-between gap-3 border-b border-gray-100 pb-1.5 text-sm dark:border-white/5">
                           <dt className="text-gray-500 dark:text-gray-400">{FIELD_LABELS[f][lang]}</dt>
-                          <dd className="text-right font-medium">{displayValue(f, saved![f], lang)}</dd>
+                          <dd className="text-right font-medium">{displayValue(f, saved![f], lang, saved)}</dd>
                         </div>
                       ))}
                     </dl>

@@ -274,6 +274,7 @@ async def save_profile(body: ProfileIn, request: Request, me: dict = Depends(cur
             v = chatflow.coerce(slot, value)
             if v is not None:
                 clean[slot] = v
+    chatflow.auto_answer(clean)  # marks skipped questions again, so "Not asked" survives the save
     await save_citizen_profile(request, str(me["citizen_id"]), clean, chatflow.lang_of(body.language))
     return {"saved": len(clean)}
 

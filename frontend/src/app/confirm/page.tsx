@@ -7,7 +7,7 @@ import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
 import Button, { buttonClasses } from "@/components/Button";
 import { assess, editEntities, Entities, getBarangays, getSession, Lang, SessionExpiredError } from "@/lib/api";
-import { BOOL_FIELDS, boolLabel, CHOICES, displayValue, FIELD_LABELS, FIELD_ORDER, NUMBER_FIELDS, t } from "@/lib/i18n";
+import { BOOL_FIELDS, boolLabel, CHOICES, displayValue, FIELD_LABELS, FIELD_ORDER, notAsked, NUMBER_FIELDS, t } from "@/lib/i18n";
 
 // Fig. 17 — Data Confirmation: review every answer, fix any of them with
 // "I-edit / Edit" without restarting, then "Kumpirmahin at Isumite".
@@ -162,8 +162,9 @@ function ConfirmInner() {
                   <div className="flex items-center justify-between gap-4">
                     <dt className="text-sm text-gray-500 dark:text-gray-400">{FIELD_LABELS[key][lang]}</dt>
                     <dd className="flex items-center gap-3 text-right text-sm font-semibold text-gray-900 dark:text-gray-100">
-                      <span>{displayValue(key, data[key], lang)}</span>
-                      {editing !== key && (
+                      <span className={notAsked(data, key) ? "font-normal text-gray-400 dark:text-gray-500" : undefined}>{displayValue(key, data[key], lang, data)}</span>
+                      {/* A skipped question has nothing to edit; changing the answer it depends on brings it back. */}
+                      {editing !== key && !notAsked(data, key) && (
                         <button type="button" onClick={() => { setEditing(key); setFieldError(null); }} className="text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300">
                           {t(lang, "edit")}
                         </button>
