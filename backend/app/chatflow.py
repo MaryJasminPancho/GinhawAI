@@ -322,16 +322,45 @@ def quick_replies(slot: str | None, lang: str) -> list[dict]:
     return [{"value": v, "label": label} for v, label in CHIPS[slot][lang]]
 
 
+# Where a filled-in answer is listed, so the confirm page can show "not asked" and so it can be
+# taken back (and asked after all) if the earlier answer it depends on is edited.
+AUTO_KEY = "_auto"
+
+
+def _not_needed(entities: dict) -> dict:
+    """Questions an earlier answer already settles, with the value they get.
+    - Light physical work: TUPAD checks fitness only for applicants aged 60+ (DOLE DO 239-23
+      Sec. 8), so it isn't asked of anyone younger. The value is never used for them (scoring._fit_to_work).
+    - Solo parent: not asked when there are no children 0-18 and no one pregnant in the household."""
+    out = {}
+    age = entities.get("age")
+    if isinstance(age, (int, float)) and age < 60:
+        out["can_do_physical_work"] = True
+    if entities.get("has_children_0_18") is False and entities.get("has_pregnant") is False:
+        out["is_solo_parent"] = False
+    return out
+
+
 def auto_answer(entities: dict) -> None:
     """Fill in answers that follow from earlier ones, so the citizen isn't asked the obvious:
     an applicant aged 60+ means there is a senior in the household; someone under 60 who
-    lives alone means there isn't."""
-    if entities.get("has_senior") is not None or entities.get("age") is None:
-        return
-    if entities["age"] >= 60:
-        entities["has_senior"] = True
-    elif entities.get("household_size") == 1:
-        entities["has_senior"] = False
+    lives alone means there isn't; and the questions in _not_needed are skipped."""
+    if entities.get("has_senior") is None and entities.get("age") is not None:
+        if entities["age"] >= 60:
+            entities["has_senior"] = True
+        elif entities.get("household_size") == 1:
+            entities["has_senior"] = False
+
+    skip = _not_needed(entities)
+    # An answer filled in earlier whose reason is gone (e.g. the age was edited to 60+): ask it after all.
+    for slot in entities.get(AUTO_KEY, []):
+        if slot not in skip:
+            entities.pop(slot, None)
+    entities.update(skip)
+    if skip:
+        entities[AUTO_KEY] = sorted(skip)
+    else:
+        entities.pop(AUTO_KEY, None)
 
 
 def next_slot(entities: dict) -> str | None:

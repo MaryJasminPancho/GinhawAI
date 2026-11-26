@@ -23,6 +23,8 @@ export type Entities = {
   can_do_physical_work?: boolean;
   crisis_type?: string;
   help_needed?: string;
+  /** Answers the chat filled in itself (the question was skipped); shown as "Not asked". */
+  _auto?: string[];
 };
 
 export type StartResponse = { session_id: string; language: Lang; messages: string[]; asking: string | null; quick_replies: QuickReply[]; is_complete?: boolean };

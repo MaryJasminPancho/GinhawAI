@@ -366,7 +366,7 @@ export const t = (lang: Lang, key: Key) => T[key][lang] ?? T[key].en;
 // ---------------------------------------------------------------------------
 // Answer labels (Fig. 17 data confirmation)
 // ---------------------------------------------------------------------------
-export const FIELD_LABELS: Record<keyof Omit<Entities, "barangay_code">, Record<Lang, string>> = {
+export const FIELD_LABELS: Record<keyof Omit<Entities, "barangay_code" | "_auto">, Record<Lang, string>> = {
   barangay: { fil: "Barangay", ceb: "Barangay", en: "Barangay" },
   household_size: { fil: "Bilang ng nakatira", ceb: "Gidaghanon sa nagpuyo", en: "People in household" },
   age: { fil: "Edad", ceb: "Edad", en: "Age" },
@@ -428,7 +428,13 @@ export const boolLabel = (field: string, value: boolean, lang: Lang) =>
 export const BOOL_FIELDS = new Set(["has_children_0_18", "has_pregnant", "has_pwd", "has_senior", "is_solo_parent", "can_do_physical_work"]);
 export const NUMBER_FIELDS = new Set(["household_size", "monthly_income", "age"]);
 
-export function displayValue(field: string, value: unknown, lang: Lang): string {
+// Questions the chat skipped because an earlier answer settled them (backend chatflow._not_needed):
+// physical work for applicants under 60, solo parent when there are no children or pregnant member.
+const NOT_ASKED: Record<Lang, string> = { en: "Not asked", fil: "Hindi itinanong", ceb: "Wala gipangutana" };
+export const notAsked = (entities: { _auto?: string[] } | null | undefined, field: string) => !!entities?._auto?.includes(field);
+
+export function displayValue(field: string, value: unknown, lang: Lang, entities?: { _auto?: string[] } | null): string {
+  if (notAsked(entities, field)) return NOT_ASKED[lang];
   if (value === undefined || value === null || value === "") return t(lang, "notAnswered");
   if (BOOL_FIELDS.has(field)) return boolLabel(field, Boolean(value), lang);
   if (field === "monthly_income") return `₱${Number(value).toLocaleString("en-PH")}`;
