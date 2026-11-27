@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
+import { rememberedLang } from "@/components/LangSync";
 import Button, { buttonClasses } from "@/components/Button";
 import UrgentHelp from "@/components/UrgentHelp";
 import { useSavedToast } from "@/components/SavedToast";
@@ -178,7 +179,12 @@ function RecommendationsInner() {
         setLang(s.language);
         setResult(s.assessment ?? (await assess(sessionId)));
       })
-      .catch((e) => setError(e instanceof SessionExpiredError ? t("en", "sessionEnded") : e.message));
+      .catch((e) => {
+        if (!(e instanceof SessionExpiredError)) return setError(e.message);
+        const l = rememberedLang(); // the session (and its language) is gone: use the tab's choice
+        setLang(l);
+        setError(t(l, "sessionEnded"));
+      });
     getChannels()
       .then((c) => {
         setChannels(c);

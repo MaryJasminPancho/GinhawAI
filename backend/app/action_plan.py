@@ -269,6 +269,20 @@ def _hall_text(offices: list[dict], lang: str) -> tuple[str, dict | None]:
     return (hall["office_name"] if hall else _t(YOUR_HALL, lang)), hall
 
 
+def localized_doc_notes(programs: list[dict], offices: list[dict], lang: str) -> None:
+    """Results page: in Filipino or Bisaya, show each document's "where to get it" guide in that
+    language instead of the staff's English notes, so the page does not mix languages. English
+    keeps the staff's notes; a document with no guide keeps its notes too."""
+    if lang not in ("fil", "ceb"):
+        return
+    hall_name, _ = _hall_text(offices, lang)
+    for p in programs:
+        for d in p.get("documents", []):
+            guide = next((g for pat, g in DOC_GUIDE if re.search(pat, d["document_name"], re.I)), None)
+            if guide:
+                d["notes"] = one_per_line(_t(guide, lang).format(hall=hall_name))
+
+
 def urgent_contacts(crisis: str | None, directory: dict[str, dict], lang: str) -> list[dict]:
     out = []
     for key in URGENT_BY_CRISIS.get(crisis or "", []):

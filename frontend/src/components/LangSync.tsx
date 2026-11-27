@@ -9,6 +9,17 @@ import { usePathname } from "next/navigation";
 // by a session link (results, plan...) use it too. The home page and the staff console stay English.
 const LANG_KEY = "ginhawai-lang";
 
+// The language chosen earlier in this tab, for pages that can no longer read it from the session
+// (e.g. "Your session has ended" after Finish).
+export function rememberedLang(): "en" | "fil" | "ceb" {
+  try {
+    const saved = sessionStorage.getItem(LANG_KEY);
+    return saved === "fil" || saved === "ceb" ? saved : "en";
+  } catch {
+    return "en";
+  }
+}
+
 export default function LangSync() {
   const pathname = usePathname();
   useEffect(() => {

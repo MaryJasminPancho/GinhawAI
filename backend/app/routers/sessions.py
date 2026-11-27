@@ -22,7 +22,7 @@ from app.ai.slot_classifier import classify
 from app.ai.ai_parser import extract_entities
 from app.config import INTENT_ENABLED
 from app.routers.citizens import citizen_id_from, load_citizen_profile, save_citizen_assessment, save_citizen_profile
-from app.action_plan import build_plan, urgent_contacts
+from app.action_plan import build_plan, localized_doc_notes, urgent_contacts
 from app.textfmt import one_per_line
 from app.schemas import AssessmentFeedbackIn, DocumentChecksIn, EmailChecklistRequest, EntityPatch, MessageIn, PlanRequest, SessionStart, SmsRequest
 from app.scoring import derive_profile, document_situation, evaluate_program, hazard_notes, rank_programs, score_vulnerability, today_iso
@@ -489,6 +489,7 @@ async def assess(session_id: str, request: Request):
 
         office_list = sorted((dict(o) for o in offices if not other_barangay_hall(o)), key=rank)
         office_list = [{**o, "office_id": str(o["office_id"])} for o in office_list[:3]]
+        localized_doc_notes(evaluations, office_list, lang)
 
         # Anonymized demand log — once per session (Fig. 22 / Table 16).
         if not state.get("demand_logged"):

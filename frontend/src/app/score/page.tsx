@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
+import { rememberedLang } from "@/components/LangSync";
 import { buttonClasses } from "@/components/Button";
 import { assess, Assessment, getSession, Lang, SessionExpiredError, Tier } from "@/lib/api";
 import { t } from "@/lib/i18n";
@@ -170,7 +171,12 @@ function ScoreInner() {
         setLang(s.language);
         setResult(s.assessment ?? (await assess(sessionId)));
       })
-      .catch((e) => setError(e instanceof SessionExpiredError ? t("en", "sessionEnded") : e.message));
+      .catch((e) => {
+        if (!(e instanceof SessionExpiredError)) return setError(e.message);
+        const l = rememberedLang(); // the session (and its language) is gone: use the tab's choice
+        setLang(l);
+        setError(t(l, "sessionEnded"));
+      });
   }, [sessionId]);
 
   const missingSession = !sessionId;
