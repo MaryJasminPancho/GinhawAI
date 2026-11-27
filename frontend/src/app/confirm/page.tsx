@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Backdrop from "@/components/Backdrop";
 import PageHeader from "@/components/PageHeader";
+import { rememberedLang } from "@/components/LangSync";
 import Button, { buttonClasses } from "@/components/Button";
 import { assess, editEntities, Entities, getBarangays, getSession, Lang, SessionExpiredError } from "@/lib/api";
 import { BOOL_FIELDS, boolLabel, CHOICES, displayValue, FIELD_LABELS, FIELD_ORDER, notAsked, NUMBER_FIELDS, t } from "@/lib/i18n";
@@ -108,7 +109,12 @@ function ConfirmInner() {
         setLang(s.language);
         setData(s.entities);
       })
-      .catch((e) => setError(e instanceof SessionExpiredError ? t("en", "sessionEnded") : e.message));
+      .catch((e) => {
+        if (!(e instanceof SessionExpiredError)) return setError(e.message);
+        const l = rememberedLang(); // the session (and its language) is gone: use the tab's choice
+        setLang(l);
+        setError(t(l, "sessionEnded"));
+      });
   }, [sessionId]);
 
   async function saveField(field: string, value: unknown) {

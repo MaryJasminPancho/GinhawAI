@@ -88,6 +88,25 @@ async def rate_limit(request: Request, call_next):
     return await call_next(request)
 
 
+# Basic security headers on every API response (alpha-testing review, Nov 2026); the web pages
+# get the same ones from frontend/next.config.ts.
+SECURITY_HEADERS = {
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Content-Security-Policy": "frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
+}
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    for key, value in SECURITY_HEADERS.items():
+        response.headers.setdefault(key, value)
+    return response
+
+
 # Added last so it wraps everything (including 429 responses) with CORS headers.
 app.add_middleware(
     CORSMiddleware,
